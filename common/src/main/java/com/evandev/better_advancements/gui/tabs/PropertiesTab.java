@@ -23,10 +23,10 @@ import java.util.stream.Collectors;
 public class PropertiesTab implements IEditorTab {
     private final Font font;
     private final List<GuiEventListener> widgets = new ArrayList<>();
-    private EditBox titleBox, descriptionBox, parentBox;
+    private EditBox idBox, titleBox, descriptionBox, parentBox;
     private SuggestingEditBox iconBox;
 
-    private String title = "", description = "", icon = "minecraft:stone", parent = "";
+    private String id = "", title = "", description = "", icon = "minecraft:stone", parent = "";
     private int startX, startY;
 
     public PropertiesTab(Font font) {
@@ -35,6 +35,7 @@ public class PropertiesTab implements IEditorTab {
 
     @Override
     public void loadState(AdvancementDraft draft) {
+        this.id = draft.id;
         JsonObject display = draft.rootJson.has("display") ? draft.rootJson.getAsJsonObject("display") : new JsonObject();
         RegistryOps<JsonElement> ops = Minecraft.getInstance().level.registryAccess().createSerializationContext(JsonOps.INSTANCE);
 
@@ -84,28 +85,33 @@ public class PropertiesTab implements IEditorTab {
         this.startX = x;
         this.startY = y;
 
-        titleBox = new EditBox(font, x, y, width, 20, Component.literal("Title"));
+        idBox = new EditBox(font, x, y, width, 20, Component.literal("ID"));
+        idBox.setMaxLength(256);
+        idBox.setValue(id);
+
+        titleBox = new EditBox(font, x, y + 45, width, 20, Component.literal("Title"));
         titleBox.setMaxLength(256);
         titleBox.setValue(title);
 
-        descriptionBox = new EditBox(font, x, y + 45, width, 20, Component.literal("Description"));
+        descriptionBox = new EditBox(font, x, y + 90, width, 20, Component.literal("Description"));
         descriptionBox.setMaxLength(512);
         descriptionBox.setValue(description);
 
-        iconBox = new SuggestingEditBox(font, x, y + 90, width, 20, Component.literal("Icon"),
+        iconBox = new SuggestingEditBox(font, x, y + 135, width, 20, Component.literal("Icon"),
                 () -> BuiltInRegistries.ITEM.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList()));
         iconBox.setMaxLength(512);
         iconBox.setValue(icon);
 
-        parentBox = new EditBox(font, x, y + 135, width, 20, Component.literal("Parent"));
+        parentBox = new EditBox(font, x, y + 180, width, 20, Component.literal("Parent"));
         parentBox.setMaxLength(256);
         parentBox.setValue(parent);
 
-        widgets.addAll(List.of(titleBox, descriptionBox, iconBox, parentBox));
+        widgets.addAll(List.of(idBox, titleBox, descriptionBox, iconBox, parentBox));
     }
 
     @Override
     public void saveState(AdvancementDraft draft) {
+        if (idBox != null) draft.id = idBox.getValue();
         JsonObject display = draft.rootJson.has("display") ? draft.rootJson.getAsJsonObject("display") : new JsonObject();
 
         if (titleBox != null) {
@@ -137,10 +143,11 @@ public class PropertiesTab implements IEditorTab {
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
-        gfx.drawString(font, "Title", startX, startY - 11, 0xFFA08060, false);
-        gfx.drawString(font, "Description", startX, startY + 34, 0xFFA08060, false);
-        gfx.drawString(font, "Icon (Item ID)", startX, startY + 79, 0xFFA08060, false);
-        gfx.drawString(font, "Parent ID", startX, startY + 124, 0xFFA08060, false);
+        gfx.drawString(font, "ID", startX, startY - 11, 0xFFA08060, false);
+        gfx.drawString(font, "Title", startX, startY + 34, 0xFFA08060, false);
+        gfx.drawString(font, "Description", startX, startY + 79, 0xFFA08060, false);
+        gfx.drawString(font, "Icon (Item ID)", startX, startY + 124, 0xFFA08060, false);
+        gfx.drawString(font, "Parent ID", startX, startY + 169, 0xFFA08060, false);
     }
 
     @Override

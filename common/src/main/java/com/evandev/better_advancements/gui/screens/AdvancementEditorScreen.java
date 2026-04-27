@@ -1,6 +1,5 @@
 package com.evandev.better_advancements.gui.screens;
 
-import com.evandev.better_advancements.gui.BetterAdvancementWidget;
 import com.evandev.better_advancements.gui.model.AdvancementDraft;
 import com.evandev.better_advancements.gui.tabs.CriteriaTab;
 import com.evandev.better_advancements.gui.tabs.IEditorTab;
@@ -8,6 +7,7 @@ import com.evandev.better_advancements.gui.tabs.LayoutTab;
 import com.evandev.better_advancements.gui.tabs.PropertiesTab;
 import com.evandev.better_advancements.network.EditAdvancementPayload;
 import com.evandev.better_advancements.platform.Services;
+import com.evandev.better_advancements.util.PersistentData;
 import com.google.gson.GsonBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -16,6 +16,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -33,8 +34,10 @@ public class AdvancementEditorScreen extends Screen {
     private static final int ROW_H = 24;
 
     private final BetterAdvancementsScreen parentScreen;
-    private final BetterAdvancementWidget widget;
+    private final ResourceLocation advId;
     private final AdvancementDraft draft;
+    private final boolean isNew;
+    private final int posX, posY;
 
     private final Map<String, IEditorTab> tabs = new LinkedHashMap<>();
     private String activeTabName;
@@ -48,15 +51,18 @@ public class AdvancementEditorScreen extends Screen {
     private Button saveBtn;
     private Button cancelBtn;
 
-    public AdvancementEditorScreen(BetterAdvancementsScreen parentScreen, BetterAdvancementWidget widget, String initialTabName, String rawJsonFromServer) {
-        super(Component.literal("Edit Advancement: " + widget.getAdvancement().holder().id()));
+    public AdvancementEditorScreen(BetterAdvancementsScreen parentScreen, ResourceLocation id, boolean isNew, int posX, int posY, String initialTabName, String rawJsonFromServer) {
+        super(Component.literal((isNew ? "Create" : "Edit") + " Advancement: " + id));
         this.parentScreen = parentScreen;
-        this.widget = widget;
+        this.advId = id;
+        this.isNew = isNew;
+        this.posX = posX;
+        this.posY = posY;
 
-        this.draft = new AdvancementDraft(rawJsonFromServer);
+        this.draft = new AdvancementDraft(rawJsonFromServer, id.toString(), isNew);
 
         this.tabs.put("Properties", new PropertiesTab(Minecraft.getInstance().font));
-        this.tabs.put("Layout", new LayoutTab(Minecraft.getInstance().font, widget));
+        this.tabs.put("Layout", new LayoutTab(Minecraft.getInstance().font, posX, posY));
         this.tabs.put("Criteria", new CriteriaTab(Minecraft.getInstance().font));
 
         for (IEditorTab tab : this.tabs.values()) {
@@ -147,8 +153,18 @@ public class AdvancementEditorScreen extends Screen {
     private void saveAndClose() {
         activeTab.saveState(draft);
 
+        ResourceLocation finalId = ResourceLocation.parse(draft.id);
+
+        int finalX = posX;
+        int finalY = posY;
+        if (tabs.get("Layout") instanceof LayoutTab layoutTab) {
+            finalX = layoutTab.getX();
+            finalY = layoutTab.getY();
+        }
+        PersistentData.setPosition(finalId, finalX, finalY);
+
         String payloadStr = new GsonBuilder().setPrettyPrinting().create().toJson(draft.rootJson);
-        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), payloadStr, false);
+        EditAdvancementPayload payload = new EditAdvancementPayload(finalId, payloadStr, false);
 
         if (Services.PLATFORM.canSendAdvancementEdit()) {
             Services.PLATFORM.sendAdvancementEdit(payload);
@@ -168,7 +184,7 @@ public class AdvancementEditorScreen extends Screen {
         gfx.fill(uiX, uiY, uiX + uiW, uiY + uiH, 0xFF202020);
         gfx.fill(uiX, uiY, uiX + SIDEBAR_WIDTH, uiY + uiH, 0xFF181818);
 
-        gfx.drawString(this.font, "Edit Advancement", uiX + SIDEBAR_WIDTH + 20, uiY + 15, COL_GOLD, false);
+        gfx.drawString(this.font, (isNew ? "Create" : "Edit") + " Advancement", uiX + SIDEBAR_WIDTH + 20, uiY + 15, COL_GOLD, false);
         gfx.fill(uiX + SIDEBAR_WIDTH + 20, uiY + 30, uiX + uiW - 20, uiY + 31, 0x55808080);
 
         int treeTop = uiY + 15;

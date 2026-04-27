@@ -1,3 +1,4 @@
+// better_advancements/gui/screens/BetterAdvancementsScreen.java
 package com.evandev.better_advancements.gui.screens;
 
 import com.evandev.better_advancements.gui.AdvancementContextMenu;
@@ -8,30 +9,26 @@ import com.evandev.better_advancements.network.EditAdvancementPayload;
 import com.evandev.better_advancements.network.LinkAdvancementPayload;
 import com.evandev.better_advancements.network.RequestAdvancementJsonPayload;
 import com.evandev.better_advancements.platform.Services;
-import com.evandev.better_advancements.reference.Constants;
 import com.evandev.better_advancements.reference.Resources;
 import com.evandev.better_advancements.util.PersistentData;
 import com.evandev.better_advancements.util.RenderUtil;
 import com.google.common.collect.Maps;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.serialization.DataResult;
-import com.mojang.serialization.JsonOps;
 import net.minecraft.Util;
-import net.minecraft.advancements.*;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.AdvancementNode;
+import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.client.GameNarrator;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientAdvancements;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundSeenAdvancementsPacket;
-import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
@@ -140,38 +137,8 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
 
 
     public void copyAdvancement(BetterAdvancementWidget widget) {
-        Advancement adv = widget.getAdvancement().advancement();
-        JsonObject root = new JsonObject();
-
-        try {
-            RegistryOps<JsonElement> ops = this.minecraft.level.registryAccess().createSerializationContext(JsonOps.INSTANCE);
-            DataResult<JsonElement> result = Advancement.CODEC.encodeStart(ops, adv);
-            if (result.result().isPresent()) {
-                root = result.result().get().getAsJsonObject();
-            } else if (result.resultOrPartial().isPresent()) {
-                root = result.resultOrPartial().get().getAsJsonObject();
-            }
-        } catch (Exception e) {
-            Constants.LOG.error("Failed to copy advancement", e);
-        }
-
-        JsonObject criteria = new JsonObject();
-        JsonObject crit = new JsonObject();
-        crit.addProperty("trigger", "minecraft:impossible");
-        criteria.add("impossible", crit);
-        root.add("criteria", criteria);
-
-        JsonArray requirements = new JsonArray();
-        JsonArray req = new JsonArray();
-        req.add("impossible");
-        requirements.add(req);
-        root.add("requirements", requirements);
-
-        clipboardJson = root.toString();
-        clipboardId = widget.getAdvancement().holder().id();
-        if (this.minecraft.player != null) {
-            this.minecraft.player.displayClientMessage(Component.literal("Copied advancement: " + clipboardId), false);
-        }
+        ResourceLocation id = widget.getAdvancement().holder().id();
+        Services.PLATFORM.sendAdvancementJsonRequest(new RequestAdvancementJsonPayload(id, "Copy"));
     }
 
     public void pasteAdvancement(int mouseX, int mouseY) {
@@ -179,10 +146,21 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
 
         String namespace = clipboardId.getNamespace();
         String path = clipboardId.getPath();
-        ResourceLocation newId = ResourceLocation.fromNamespaceAndPath(namespace, path + "_copy");
-        int counter = 2;
-        while (this.selectedTab != null && this.selectedTab.getWidgets().containsKey(newId)) {
-            newId = ResourceLocation.fromNamespaceAndPath(namespace, path + "_copy" + counter);
+
+        ResourceLocation newId;
+        int counter = 1;
+
+        while (true) {
+            String suffix = counter == 1 ? "_copy" : "_copy" + counter;
+            ResourceLocation testId = ResourceLocation.fromNamespaceAndPath(namespace, path + suffix);
+
+            boolean exists = this.tabs.keySet().stream().anyMatch(h -> h.id().equals(testId)) ||
+                    (this.selectedTab != null && this.selectedTab.getWidgets().keySet().stream().anyMatch(h -> h.id().equals(testId)));
+
+            if (!exists) {
+                newId = testId;
+                break;
+            }
             counter++;
         }
 
@@ -195,7 +173,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         double unzoomedX = (mouseX - left - PADDING) / this.zoom;
         double unzoomedY = (mouseY - top - 2 * PADDING) / this.zoom;
 
-        int newPosX = (int) Math.round(unzoomedX - (this.selectedTab != null ? this.selectedTab.scrollX : 0)) - 16;
+        int newPosX = (int) Math.round(unzoomedX - (this.selectedTab != null ? this.selectedTab.scrollX : 0)) - BetterAdvancementWidget.ADVANCEMENT_SIZE / 2;
         int newPosY = (int) Math.round(unzoomedY - (this.selectedTab != null ? this.selectedTab.scrollY : 0)) - BetterAdvancementWidget.ADVANCEMENT_SIZE / 2;
 
         PersistentData.setPosition(newId, newPosX, newPosY);
@@ -213,10 +191,19 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     }
 
     public void createNewAdvancement(int mouseX, int mouseY) {
-        ResourceLocation newId = ResourceLocation.fromNamespaceAndPath("minecraft", "new_advancement");
-        int counter = 2;
-        while (this.selectedTab != null && this.selectedTab.getWidgets().containsKey(newId)) {
-            newId = ResourceLocation.fromNamespaceAndPath("minecraft", "new_advancement_" + counter);
+        ResourceLocation newId;
+        int counter = 1;
+
+        while (true) {
+            String suffix = counter == 1 ? "" : "_" + counter;
+            ResourceLocation testId = ResourceLocation.fromNamespaceAndPath("minecraft", "new_advancement" + suffix);
+
+            boolean exists = this.selectedTab != null && this.selectedTab.getWidgets().keySet().stream().anyMatch(h -> h.id().equals(testId));
+
+            if (!exists) {
+                newId = testId;
+                break;
+            }
             counter++;
         }
 
@@ -229,8 +216,6 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
 
         int newPosX = (int) Math.round(unzoomedX - (this.selectedTab != null ? this.selectedTab.scrollX : 0)) - BetterAdvancementWidget.ADVANCEMENT_SIZE / 2;
         int newPosY = (int) Math.round(unzoomedY - (this.selectedTab != null ? this.selectedTab.scrollY : 0)) - BetterAdvancementWidget.ADVANCEMENT_SIZE / 2;
-
-        PersistentData.setPosition(newId, newPosX, newPosY);
 
         JsonObject root = new JsonObject();
         JsonObject display = new JsonObject();
@@ -245,8 +230,6 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         JsonObject description = new JsonObject();
         description.addProperty("text", "Description");
         display.add("description", description);
-
-        display.addProperty("background", "minecraft:textures/gui/advancements/backgrounds/stone.png");
         root.add("display", display);
 
         JsonObject criteria = new JsonObject();
@@ -259,13 +242,12 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             root.addProperty("parent", this.selectedTab.getRootNode().holder().id().toString());
         }
 
-        EditAdvancementPayload payload = new EditAdvancementPayload(newId, root.toString(), false);
-        if (Services.PLATFORM.canSendAdvancementEdit()) {
-            Services.PLATFORM.sendAdvancementEdit(payload);
-        }
+        AdvancementEditorScreen editor = new AdvancementEditorScreen(
+                this, newId, true, newPosX, newPosY, "Properties", root.toString()
+        );
+        Minecraft.getInstance().setScreen(editor);
         this.contextMenu = null;
     }
-
 
     @Override
     protected void init() {
@@ -605,7 +587,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             super.render(guiGraphics, mouseX, mouseY, partialTicks);
         }
 
-        this.renderInside(guiGraphics, mouseX, mouseY, left, top, right, bottom, maxTabs, skip);
+        this.renderInside(guiGraphics, mouseX, mouseY, left, top, right, bottom);
 
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(left + PADDING, top + 2 * PADDING, 0);
@@ -742,7 +724,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         }
     }
 
-    private void renderInside(GuiGraphics guiGraphics, int mouseX, int mouseY, int left, int top, int right, int bottom, int maxTabs, int skip) {
+    private void renderInside(GuiGraphics guiGraphics, int mouseX, int mouseY, int left, int top, int right, int bottom) {
         BetterAdvancementTab betterAdvancementTab = this.selectedTab;
         int boxLeft = left + PADDING;
         int boxTop = top + 2 * PADDING;

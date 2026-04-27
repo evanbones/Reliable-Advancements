@@ -51,7 +51,7 @@ public class TabEditorScreen extends Screen {
         super(Component.literal("Edit Tab: " + tab.getRootNode().holder().id()));
         this.parentScreen = parentScreen;
         this.tab = tab;
-        this.draft = new AdvancementDraft(rawJsonFromServer);
+        this.draft = new AdvancementDraft(rawJsonFromServer, tab.getRootNode().holder().id().toString(), false);
     }
 
     @Override

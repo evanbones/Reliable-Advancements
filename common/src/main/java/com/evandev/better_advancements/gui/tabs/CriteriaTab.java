@@ -206,7 +206,7 @@ public class CriteriaTab implements IEditorTab {
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
         gfx.drawString(font, "Criteria " + (selectedCriterion + 1) + "/" + criteriaList.size(), startX, startY - 11, 0xFFA08060, false);
         gfx.drawString(font, "Trigger", startX, startY + 34, 0xFFA08060, false);
-        gfx.drawString(font, "Conditions (Key top | Value bottom)", startX, startY + 79, 0xFF55FF55, false);
+        gfx.drawString(font, "Conditions", startX, startY + 79, 0xFF55FF55, false);
     }
 
     @Override
