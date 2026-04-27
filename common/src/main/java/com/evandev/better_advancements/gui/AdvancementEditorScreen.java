@@ -148,7 +148,7 @@ public class AdvancementEditorScreen extends Screen {
         String icon = iconBox != null ? iconBox.getValue() : (display != null ? BuiltInRegistries.ITEM.getKey(display.getIcon().getItem()).toString() : "minecraft:stone");
         String parent = parentBox != null ? parentBox.getValue() : (node.parent() != null ? node.parent().holder().id().toString() : "");
 
-        EditAdvancementPayload payload = new EditAdvancementPayload(advancementId, title, desc, icon, parent);
+        EditAdvancementPayload payload = new EditAdvancementPayload(advancementId, title, desc, icon, parent, false);
 
         if (Services.PLATFORM.canSendAdvancementEdit()) {
             Services.PLATFORM.sendAdvancementEdit(payload);

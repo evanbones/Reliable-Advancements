@@ -15,27 +15,35 @@ public class ServerAdvancementEditor {
             File datapackDir = new File(server.getWorldPath(LevelResource.DATAPACK_DIR).toFile(), "betteradvancements_edits");
             File dataDir = new File(datapackDir, "data/" + payload.advancementId().getNamespace() + "/advancement");
             File advFile = new File(dataDir, payload.advancementId().getPath() + ".json");
-            advFile.getParentFile().mkdirs();
 
-            File packMeta = new File(datapackDir, "pack.mcmeta");
-            if (!packMeta.exists()) {
-                JsonObject meta = new JsonObject();
-                JsonObject pack = new JsonObject();
-                pack.addProperty("pack_format", 48);
-                pack.addProperty("description", "In-game edits from Better Advancements");
-                meta.add("pack", pack);
-                try (FileWriter writer = new FileWriter(packMeta)) {
-                    writer.write(meta.toString());
+            if (payload.isDelete()) {
+                if (advFile.exists()) {
+                    advFile.delete();
+                    Constants.LOG.info("Deleted advancement file: {}", advFile.getAbsolutePath());
                 }
+            } else {
+                advFile.getParentFile().mkdirs();
+
+                File packMeta = new File(datapackDir, "pack.mcmeta");
+                if (!packMeta.exists()) {
+                    JsonObject meta = new JsonObject();
+                    JsonObject pack = new JsonObject();
+                    pack.addProperty("pack_format", 48);
+                    pack.addProperty("description", "In-game edits from Better Advancements");
+                    meta.add("pack", pack);
+                    try (FileWriter writer = new FileWriter(packMeta)) {
+                        writer.write(meta.toString());
+                    }
+                }
+
+                JsonObject advJson = getAdvJson(payload);
+
+                try (FileWriter writer = new FileWriter(advFile)) {
+                    writer.write(advJson.toString());
+                }
+
+                Constants.LOG.info("Saved edited advancement directly to datapack: {}", advFile.getAbsolutePath());
             }
-
-            JsonObject advJson = getAdvJson(payload);
-
-            try (FileWriter writer = new FileWriter(advFile)) {
-                writer.write(advJson.toString());
-            }
-
-            Constants.LOG.info("Saved edited advancement directly to datapack: {}", advFile.getAbsolutePath());
 
             server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "reload");
 

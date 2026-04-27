@@ -1,5 +1,7 @@
 package com.evandev.better_advancements.gui;
 
+import com.evandev.better_advancements.network.EditAdvancementPayload;
+import com.evandev.better_advancements.platform.Services;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -41,10 +43,14 @@ public class AdvancementContextMenu {
     }
 
     private void deleteAdvancement() {
-        Minecraft.getInstance().player.displayClientMessage(
-                Component.literal("Delete advancement payload coming in next phase: " + widget.getAdvancement().holder().id()), false
-        );
-        Minecraft.getInstance().setScreen(parentScreen);
+        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), "", "", "", "", true);
+
+        if (Services.PLATFORM.canSendAdvancementEdit()) {
+            Services.PLATFORM.sendAdvancementEdit(payload);
+        }
+
+        parentScreen.removeWidgetFromClient(widget);
+        parentScreen.closeContextMenu();
     }
 
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {

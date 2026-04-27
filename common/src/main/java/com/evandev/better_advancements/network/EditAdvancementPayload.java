@@ -9,7 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
 
 public record EditAdvancementPayload(ResourceLocation advancementId, String title, String description, String iconId,
-                                     String parentId) implements CustomPacketPayload {
+                                     String parentId, boolean isDelete) implements CustomPacketPayload {
     public static final Type<EditAdvancementPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "edit_advancement"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, EditAdvancementPayload> STREAM_CODEC = StreamCodec.composite(
@@ -18,6 +18,7 @@ public record EditAdvancementPayload(ResourceLocation advancementId, String titl
             ByteBufCodecs.STRING_UTF8, EditAdvancementPayload::description,
             ByteBufCodecs.STRING_UTF8, EditAdvancementPayload::iconId,
             ByteBufCodecs.STRING_UTF8, EditAdvancementPayload::parentId,
+            ByteBufCodecs.BOOL, EditAdvancementPayload::isDelete,
             EditAdvancementPayload::new
     );
 

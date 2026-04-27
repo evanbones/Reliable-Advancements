@@ -54,6 +54,19 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         this.clientAdvancements = clientAdvancements;
     }
 
+    public void closeContextMenu() {
+        this.contextMenu = null;
+    }
+
+    public void removeWidgetFromClient(BetterAdvancementWidget widget) {
+        if (selectedTab != null) {
+            selectedTab.getWidgets().remove(widget.getAdvancement().holder());
+            if (widget.getParent() != null) {
+                widget.getParent().getChildren().remove(widget);
+            }
+        }
+    }
+
     public float getZoom() {
         return this.zoom;
     }
@@ -131,10 +144,17 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
                 String icon = display != null ? BuiltInRegistries.ITEM.getKey(display.getIcon().getItem()).toString() : "minecraft:stone";
                 String parentId = target.getAdvancement().holder().id().toString();
 
-                EditAdvancementPayload payload = new EditAdvancementPayload(id, title, desc, icon, parentId);
+                EditAdvancementPayload payload = new EditAdvancementPayload(id, title, desc, icon, parentId, false);
                 if (Services.PLATFORM.canSendAdvancementEdit()) {
                     Services.PLATFORM.sendAdvancementEdit(payload);
                 }
+
+                if (linkingWidget.getParent() != null) {
+                    linkingWidget.getParent().getChildren().remove(linkingWidget);
+                }
+                linkingWidget.setParent(target);
+                target.getChildren().add(linkingWidget);
+
                 this.linkingWidget = null;
                 return true;
             } else if (target == null) {
@@ -316,13 +336,10 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         int left = SIDE + (width - internalWidth) / 2;
         int top = TOP + (height - internalHeight) / 2;
-
         int right = internalWidth - SIDE + (width - internalWidth) / 2;
         int bottom = internalHeight - SIDE + (height - internalHeight) / 2;
-
         int width = right - left;
         int height = bottom - top;
-
         int maxTabs = BetterAdvancementTabType.getMaxTabs(width, height);
         int skip = tabPage * maxTabs;
 
@@ -333,7 +350,29 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             guiGraphics.drawString(this.font, page.getVisualOrderText(), left + (internalWidth - textWidth) / 2 - textWidth, bottom + 8, -1);
             super.render(guiGraphics, mouseX, mouseY, partialTicks);
         }
+
         this.renderInside(guiGraphics, mouseX, mouseY, left, top, right, bottom, maxTabs, skip);
+
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(left + PADDING, top + 2 * PADDING, 0);
+        guiGraphics.pose().scale(zoom, zoom, 1.0F);
+
+        if (BetterAdvancementsScreen.enableEditMode && this.selectedTab != null) {
+            BetterAdvancementWidget hovered = getHoveredWidget(mouseX, mouseY);
+            if (hovered != null && hovered != this.advConnectedToMouse && this.contextMenu == null) {
+                int hx = hovered.getX() + this.selectedTab.scrollX;
+                int hy = hovered.getY() + this.selectedTab.scrollY;
+                guiGraphics.renderOutline(hx - 1, hy - 1, BetterAdvancementWidget.ADVANCEMENT_SIZE + 2, BetterAdvancementWidget.ADVANCEMENT_SIZE + 2, 0xFFFFFF00);
+            }
+
+            if (this.advConnectedToMouse != null) {
+                int ax = this.advConnectedToMouse.getX() + this.selectedTab.scrollX;
+                int ay = this.advConnectedToMouse.getY() + this.selectedTab.scrollY;
+                guiGraphics.renderOutline(ax - 1, ay - 1, BetterAdvancementWidget.ADVANCEMENT_SIZE + 2, BetterAdvancementWidget.ADVANCEMENT_SIZE + 2, 0xFF00FF00);
+                guiGraphics.renderOutline(ax - 2, ay - 2, BetterAdvancementWidget.ADVANCEMENT_SIZE + 4, BetterAdvancementWidget.ADVANCEMENT_SIZE + 4, 0xFF00FF00);
+            }
+        }
+        guiGraphics.pose().popPose();
 
         if (this.linkingWidget != null) {
             int startX = (int) ((this.linkingWidget.getX() + this.selectedTab.scrollX + (float) BetterAdvancementWidget.ADVANCEMENT_SIZE / 2) * zoom) + left + PADDING;

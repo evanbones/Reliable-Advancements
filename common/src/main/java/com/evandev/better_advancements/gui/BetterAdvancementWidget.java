@@ -505,6 +505,18 @@ public class BetterAdvancementWidget implements IBetterAdvancementEntryGui {
         this.x = x;
     }
 
+    public BetterAdvancementWidget getParent() {
+        return this.parent;
+    }
+
+    public void setParent(BetterAdvancementWidget parent) {
+        this.parent = parent;
+    }
+
+    public List<BetterAdvancementWidget> getChildren() {
+        return this.children;
+    }
+
     @Override
     public AdvancementNode getAdvancement() {
         return this.advancementNode;
