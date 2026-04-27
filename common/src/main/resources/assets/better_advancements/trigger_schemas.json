@@ -13,7 +13,7 @@
     "BlockPredicate": {
       "blocks": "net.minecraft.core.HolderSet",
       "nbt": "NbtPredicate",
-      "properties": "StatePropertiesPredicate"
+      "properties": "map[string]"
     },
     "BredAnimalsTrigger.TriggerInstance": {
       "parent": "ContextAwarePredicate",
@@ -89,7 +89,7 @@
     "EnterBlockTrigger.TriggerInstance": {
       "block": "net.minecraft.core.Holder",
       "player": "ContextAwarePredicate",
-      "state": "StatePropertiesPredicate"
+      "state": "map[string]"
     },
     "EntityEquipmentPredicate": {
       "body": "ItemPredicate",
@@ -124,7 +124,7 @@
       "nbt": "NbtPredicate",
       "passenger": "EntityPredicate",
       "periodic_tick": "integer",
-      "slots": "SlotsPredicate",
+      "slots": "map[ItemPredicate]",
       "sub_predicate": "EntitySubPredicate",
       "targeted_entity": "EntityPredicate",
       "team": "string",
@@ -156,7 +156,7 @@
     },
     "FluidPredicate": {
       "fluids": "net.minecraft.core.HolderSet",
-      "properties": "StatePropertiesPredicate"
+      "properties": "map[string]"
     },
     "ImpossibleTrigger.TriggerInstance": {},
     "InventoryChangeTrigger.TriggerInstance": {
@@ -295,20 +295,10 @@
     "SlideDownBlockTrigger.TriggerInstance": {
       "block": "net.minecraft.core.Holder",
       "player": "ContextAwarePredicate",
-      "state": "StatePropertiesPredicate"
-    },
-    "SlotsPredicate": {
-      "slots": "map[ItemPredicate]"
+      "state": "map[string]"
     },
     "StartRidingTrigger.TriggerInstance": {
       "player": "ContextAwarePredicate"
-    },
-    "StatePropertiesPredicate": {
-      "properties": "list[StatePropertiesPredicate.PropertyMatcher]"
-    },
-    "StatePropertiesPredicate.PropertyMatcher": {
-      "name": "string",
-      "value_matcher": "StatePropertiesPredicate.ValueMatcher"
     },
     "SummonedEntityTrigger.TriggerInstance": {
       "entity": "ContextAwarePredicate",

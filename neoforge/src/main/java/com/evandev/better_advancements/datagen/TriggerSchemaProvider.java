@@ -80,11 +80,13 @@ public class TriggerSchemaProvider implements DataProvider {
             case "killingBlow" -> "killing_blow";
             default -> fieldName.replaceAll("([a-z])([A-Z]+)", "$1_$2").toLowerCase();
         };
-
     }
 
     private String resolveType(Type type) {
         if (type instanceof Class<?> clazz) {
+            if (clazz == StatePropertiesPredicate.class) return "map[string]";
+            if (clazz == SlotsPredicate.class) return "map[ItemPredicate]";
+
             if (clazz.isPrimitive() || clazz == String.class || clazz == Integer.class || clazz == Boolean.class || clazz == Float.class || clazz == Double.class) {
                 return clazz.getSimpleName().toLowerCase();
             } else if (clazz == ResourceLocation.class) {

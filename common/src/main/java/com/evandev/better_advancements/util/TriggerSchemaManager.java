@@ -67,6 +67,11 @@ public class TriggerSchemaManager {
     public static String getFieldType(String typeName, String fieldName) {
         if (SCHEMAS.isEmpty()) load();
         typeName = resolveAlias(typeName);
+
+        if (typeName.startsWith("map[")) {
+            return resolveAlias(typeName.substring(4, typeName.length() - 1));
+        }
+
         JsonObject schema = SCHEMAS.get(typeName);
         if (schema != null && schema.has(fieldName)) return schema.get(fieldName).getAsString();
         return "string";
@@ -75,7 +80,7 @@ public class TriggerSchemaManager {
     public static boolean isObject(String typeName) {
         if (SCHEMAS.isEmpty()) load();
         typeName = resolveAlias(typeName);
-        return SCHEMAS.containsKey(typeName);
+        return SCHEMAS.containsKey(typeName) || typeName.startsWith("map[");
     }
 
     public static boolean isList(String typeName) {

@@ -207,7 +207,36 @@ public class CriteriaTab implements IEditorTab {
 
         public String getExpectedType() {
             if (parent instanceof JsonObjectNode objParent) {
-                return TriggerSchemaManager.getFieldType(objParent.getExpectedType(), this.key);
+                String parentType = objParent.getExpectedType();
+
+                String conditionId = objParent.getChildValue("condition");
+                if (conditionId != null && !conditionId.isEmpty()) parentType = conditionId;
+
+                String type = TriggerSchemaManager.getFieldType(parentType, this.key);
+
+                if (type.equals("string") || type.equals("unknown")) {
+                    switch (this.key) {
+                        case "predicate", "entity" -> {
+                            return "EntityPredicate";
+                        }
+                        case "location" -> {
+                            return "LocationPredicate";
+                        }
+                        case "block" -> {
+                            return "BlockPredicate";
+                        }
+                        case "item", "tool" -> {
+                            return "ItemPredicate";
+                        }
+                        case "damage" -> {
+                            return "DamagePredicate";
+                        }
+                        case "properties", "state", "slots" -> {
+                            return "map[string]";
+                        }
+                    }
+                }
+                return type;
             } else if (parent instanceof JsonArrayNode arrParent) {
                 return TriggerSchemaManager.getListInnerType(arrParent.getExpectedType());
             }
@@ -232,7 +261,33 @@ public class CriteriaTab implements IEditorTab {
             this.width = width;
             keyBox = new SuggestingEditBox(Minecraft.getInstance().font, x, y, 100, 20, Component.literal("Key"), () -> {
                 if (parent instanceof JsonObjectNode objParent) {
-                    return TriggerSchemaManager.getFields(objParent.getExpectedType());
+                    String parentType = objParent.getExpectedType();
+
+                    String conditionId = objParent.getChildValue("condition");
+                    if (conditionId != null && !conditionId.isEmpty()) parentType = conditionId;
+
+                    List<String> fields = TriggerSchemaManager.getFields(parentType);
+
+                    if (fields.isEmpty() && conditionId != null) {
+                        switch (conditionId) {
+                            case "minecraft:location_check" -> {
+                                return List.of("predicate", "offsetX", "offsetY", "offsetZ");
+                            }
+                            case "minecraft:entity_properties" -> {
+                                return List.of("entity", "predicate");
+                            }
+                            case "minecraft:match_tool" -> {
+                                return List.of("predicate");
+                            }
+                            case "minecraft:block_state_property" -> {
+                                return List.of("block", "properties");
+                            }
+                            case "minecraft:any_of", "minecraft:all_of" -> {
+                                return List.of("terms");
+                            }
+                        }
+                    }
+                    return fields;
                 }
                 return List.of();
             });
@@ -309,26 +364,37 @@ public class CriteriaTab implements IEditorTab {
                     effectiveKey = arr.key.toLowerCase();
                 }
 
-                if (type.equals("boolean")) return List.of("true", "false");
-
+                if (type.equals("boolean") || effectiveKey.startsWith("is_") || effectiveKey.startsWith("can_") || effectiveKey.equals("expected")) {
+                    return List.of("true", "false");
+                }
+                if (effectiveKey.equals("condition")) {
+                    return List.of("minecraft:entity_properties", "minecraft:location_check", "minecraft:match_tool", "minecraft:block_state_property", "minecraft:damage_source_properties", "minecraft:any_of", "minecraft:all_of");
+                }
                 if (effectiveKey.equals("dimension") || effectiveKey.equals("to") || effectiveKey.equals("from")) {
                     return List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end");
                 }
                 if (effectiveKey.contains("potion")) {
                     return BuiltInRegistries.POTION.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
                 }
-                if (effectiveKey.contains("entity") || effectiveKey.contains("vehicle") || type.contains("Entity") || type.contains("Damage")) {
-                    return BuiltInRegistries.ENTITY_TYPE.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+                if (effectiveKey.equals("type") || effectiveKey.contains("entity") || effectiveKey.contains("vehicle") || type.contains("Entity") || type.contains("Damage")) {
+                    List<String> list = BuiltInRegistries.ENTITY_TYPE.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+                    BuiltInRegistries.ENTITY_TYPE.getTagNames().map(t -> "#" + t.location()).forEach(list::add);
+                    return list;
                 }
                 if (effectiveKey.contains("block") || effectiveKey.equals("state")) {
-                    return BuiltInRegistries.BLOCK.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+                    List<String> list = BuiltInRegistries.BLOCK.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+                    BuiltInRegistries.BLOCK.getTagNames().map(t -> "#" + t.location()).forEach(list::add);
+                    return list;
                 }
                 if (effectiveKey.contains("fluid")) {
-                    return BuiltInRegistries.FLUID.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+                    List<String> list = BuiltInRegistries.FLUID.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+                    BuiltInRegistries.FLUID.getTagNames().map(t -> "#" + t.location()).forEach(list::add);
+                    return list;
                 }
-
                 if (effectiveKey.contains("item") || type.equals("resource_location") || type.contains("Item")) {
-                    return BuiltInRegistries.ITEM.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+                    List<String> list = BuiltInRegistries.ITEM.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+                    BuiltInRegistries.ITEM.getTagNames().map(t -> "#" + t.location()).forEach(list::add);
+                    return list;
                 }
 
                 return List.of();
@@ -349,7 +415,7 @@ public class CriteriaTab implements IEditorTab {
 
         @Override
         public int getHeight() {
-            return 25;
+            return 22;
         }
 
         @Override
@@ -368,23 +434,23 @@ public class CriteriaTab implements IEditorTab {
             if (valueStr == null || valueStr.trim().isEmpty()) return null;
 
             String type = getExpectedType();
-            switch (type) {
-                case "boolean" -> {
-                    return new JsonPrimitive(Boolean.parseBoolean(valueStr));
+            String lowerVal = valueStr.trim().toLowerCase();
+
+            if (type.equals("boolean") || lowerVal.equals("true") || lowerVal.equals("false")) {
+                return new JsonPrimitive(Boolean.parseBoolean(valueStr));
+            }
+            if (type.equals("int") || type.equals("integer")) {
+                try {
+                    return new JsonPrimitive(Integer.parseInt(valueStr));
+                } catch (Exception e) {
+                    return new JsonPrimitive(0);
                 }
-                case "int", "integer" -> {
-                    try {
-                        return new JsonPrimitive(Integer.parseInt(valueStr));
-                    } catch (Exception e) {
-                        return new JsonPrimitive(0);
-                    }
-                }
-                case "double", "float" -> {
-                    try {
-                        return new JsonPrimitive(Double.parseDouble(valueStr));
-                    } catch (Exception e) {
-                        return new JsonPrimitive(0.0);
-                    }
+            }
+            if (type.equals("double") || type.equals("float")) {
+                try {
+                    return new JsonPrimitive(Double.parseDouble(valueStr));
+                } catch (Exception e) {
+                    return new JsonPrimitive(0.0);
                 }
             }
             return new JsonPrimitive(valueStr);
@@ -408,10 +474,22 @@ public class CriteriaTab implements IEditorTab {
             super(key, parent, reinit);
         }
 
+        public String getChildValue(String searchKey) {
+            for (JsonNode child : children) {
+                if (child.key.equals(searchKey) && child instanceof JsonPrimitiveNode prim) {
+                    return prim.valueStr.replace("\"", "").trim();
+                }
+            }
+            return null;
+        }
+
         @Override
         public void init(int x, int y, int width) {
             initBase(x, y, width);
-            int currentY = y + (parent == null ? 0 : 25);
+
+            int headerHeight = (parent == null || parent instanceof JsonArrayNode) ? 0 : 22;
+            int currentY = y + headerHeight;
+
             int childX = (parent == null) ? x : x + 10;
             int childW = (parent == null) ? width : width - 10;
 
@@ -419,15 +497,24 @@ public class CriteriaTab implements IEditorTab {
                 child.init(childX, currentY, childW);
                 currentY += child.getHeight();
             }
+
             addBtn = Button.builder(Component.literal("+ Add Field"), b -> {
                 children.add(new JsonPrimitiveNode("", "", this, reinit));
                 reinit.run();
-            }).pos(childX, currentY).size(80, 20).build();
+            }).pos(childX, currentY).size(80, 16).build();
+
+            if (parent instanceof JsonArrayNode) {
+                removeBtn = Button.builder(Component.literal("X"), b -> {
+                    if (parent instanceof JsonArrayNode arr) arr.children.remove(this);
+                    reinit.run();
+                }).pos(childX + 85, currentY).size(16, 16).build();
+            }
         }
 
         @Override
         public int getHeight() {
-            int h = (parent == null ? 0 : 25) + 25;
+            int headerHeight = (parent == null || parent instanceof JsonArrayNode) ? 0 : 22;
+            int h = headerHeight + 18;
             for (JsonNode child : children) h += child.getHeight();
             return h;
         }
@@ -435,7 +522,8 @@ public class CriteriaTab implements IEditorTab {
         @Override
         public void render(GuiGraphics gfx, int mouseX, int mouseY, float pt) {
             if (parent != null) {
-                gfx.fill(x + 2, y + 22, x + 3, y + getHeight() - 5, 0xFF666666);
+                int headerHeight = (parent instanceof JsonArrayNode) ? 0 : 22;
+                gfx.fill(x + 2, y + headerHeight, x + 3, y + getHeight() - 5, 0xFF666666);
             }
             for (JsonNode child : children) child.render(gfx, mouseX, mouseY, pt);
         }
@@ -491,20 +579,32 @@ public class CriteriaTab implements IEditorTab {
         @Override
         public void init(int x, int y, int width) {
             initBase(x, y, width);
-            int currentY = y + 25;
+
+            int headerHeight = (parent == null || parent instanceof JsonArrayNode) ? 0 : 22;
+            int currentY = y + headerHeight;
+
             for (JsonNode child : children) {
                 child.init(x + 10, currentY, width - 10);
                 currentY += child.getHeight();
             }
+
             addBtn = Button.builder(Component.literal("+ Add Item"), b -> {
                 children.add(new JsonPrimitiveNode("", "", this, reinit));
                 reinit.run();
-            }).pos(x + 10, currentY).size(80, 20).build();
+            }).pos(x + 10, currentY).size(80, 16).build();
+
+            if (parent instanceof JsonArrayNode) {
+                removeBtn = Button.builder(Component.literal("X"), b -> {
+                    if (parent instanceof JsonArrayNode arr) arr.children.remove(this);
+                    reinit.run();
+                }).pos(x + 95, currentY).size(16, 16).build();
+            }
         }
 
         @Override
         public int getHeight() {
-            int h = 50;
+            int headerHeight = (parent == null || parent instanceof JsonArrayNode) ? 0 : 22;
+            int h = headerHeight + 18;
             for (JsonNode child : children) h += child.getHeight();
             return h;
         }
@@ -512,7 +612,8 @@ public class CriteriaTab implements IEditorTab {
         @Override
         public void render(GuiGraphics gfx, int mouseX, int mouseY, float pt) {
             if (parent != null) {
-                gfx.fill(x + 2, y + 22, x + 3, y + getHeight() - 5, 0xFF448844);
+                int headerHeight = (parent instanceof JsonArrayNode) ? 0 : 22;
+                gfx.fill(x + 2, y + headerHeight, x + 3, y + getHeight() - 5, 0xFF448844);
             }
             for (JsonNode child : children) child.render(gfx, mouseX, mouseY, pt);
         }
