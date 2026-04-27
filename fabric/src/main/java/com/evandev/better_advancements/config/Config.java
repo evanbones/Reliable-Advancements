@@ -5,6 +5,6 @@ import net.minecraft.client.gui.screens.Screen;
 
 public class Config {
     public static Screen createConfigScreen(Screen parent) {
-        return ClothConfigScreen.create(parent, ConfigFileHandler::writeToConfig);
+        return ClothConfigScreen.create(parent, ModConfig::save);
     }
 }

@@ -32,13 +32,10 @@ public class NeoForgeAdvancementVisitor implements IAdvancementVisitor {
                 // source = mod.getSource();
 
                 if ("minecraft".equals(mod.getModId())) {
-                    try
-                    {
+                    try {
                         URI tmp = RecipeManager.class.getResource("/assets/.mcassetsroot").toURI();
                         source = new File(tmp.resolve("..").getPath());
-                    }
-                    catch (URISyntaxException e)
-                    {
+                    } catch (URISyntaxException e) {
                         Constants.LOG.error("Error finding Minecraft jar: ", e);
                         return false;
                     }
@@ -50,8 +47,7 @@ public class NeoForgeAdvancementVisitor implements IAdvancementVisitor {
                 if (serverLevel != null) {
                     root = serverLevel.getServer().getServerDirectory().resolve("advancements/" + location.getNamespace());
                 }
-            }
-            else if (source.isFile()) {
+            } else if (source.isFile()) {
                 try {
                     fs = FileSystems.newFileSystem(source.toURI(), null);
                     root = fs.getPath("/assets/" + mod.getModId() + "/advancements");
@@ -75,7 +71,7 @@ public class NeoForgeAdvancementVisitor implements IAdvancementVisitor {
             boolean success = true;
 
             if (processor != null) {
-                Iterator<Path> itr = null;
+                Iterator<Path> itr;
                 try {
                     itr = Files.walk(root).iterator();
                 } catch (IOException e) {
@@ -83,7 +79,7 @@ public class NeoForgeAdvancementVisitor implements IAdvancementVisitor {
                     return false;
                 }
 
-                while (itr != null && itr.hasNext()) {
+                while (itr.hasNext()) {
                     Boolean cont = processor.apply(root, itr.next());
 
                     if (visitAllFiles) {

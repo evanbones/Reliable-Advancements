@@ -1,7 +1,5 @@
 package com.evandev.better_advancements.network;
 
-import com.evandev.better_advancements.network.EditAdvancementPayload;
-import com.evandev.better_advancements.network.ServerAdvancementEditor;
 import com.evandev.better_advancements.reference.Constants;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.SubscribeEvent;

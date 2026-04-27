@@ -44,7 +44,7 @@ publishMods {
         projectId = ""
         minecraftVersions.add("${minecraft_version}")
 
-        optional("cloth-config")
+        requires("cloth-config")
     }
 
     modrinth {
@@ -52,6 +52,6 @@ publishMods {
         projectId = ""
         minecraftVersions.add("${minecraft_version}")
 
-        optional("cloth-config")
+        requires("cloth-config")
     }
 }

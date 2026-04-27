@@ -4,6 +4,7 @@ import com.evandev.better_advancements.reference.Constants;
 import com.google.gson.JsonObject;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -28,27 +29,7 @@ public class ServerAdvancementEditor {
                 }
             }
 
-            JsonObject advJson = new JsonObject();
-            JsonObject display = new JsonObject();
-
-            display.addProperty("title", payload.title());
-            display.addProperty("description", payload.description());
-
-            JsonObject icon = new JsonObject();
-            icon.addProperty("id", payload.iconId());
-            display.add("icon", icon);
-
-            advJson.add("display", display);
-
-            if (!payload.parentId().isEmpty()) {
-                advJson.addProperty("parent", payload.parentId());
-            }
-
-            JsonObject criteria = new JsonObject();
-            JsonObject requirement = new JsonObject();
-            requirement.addProperty("trigger", "minecraft:impossible");
-            criteria.add("dummy", requirement);
-            advJson.add("criteria", criteria);
+            JsonObject advJson = getAdvJson(payload);
 
             try (FileWriter writer = new FileWriter(advFile)) {
                 writer.write(advJson.toString());
@@ -61,5 +42,30 @@ public class ServerAdvancementEditor {
         } catch (Exception e) {
             Constants.LOG.error("Failed to save and persist advancement edit", e);
         }
+    }
+
+    private static @NotNull JsonObject getAdvJson(EditAdvancementPayload payload) {
+        JsonObject advJson = new JsonObject();
+        JsonObject display = new JsonObject();
+
+        display.addProperty("title", payload.title());
+        display.addProperty("description", payload.description());
+
+        JsonObject icon = new JsonObject();
+        icon.addProperty("id", payload.iconId());
+        display.add("icon", icon);
+
+        advJson.add("display", display);
+
+        if (!payload.parentId().isEmpty()) {
+            advJson.addProperty("parent", payload.parentId());
+        }
+
+        JsonObject criteria = new JsonObject();
+        JsonObject requirement = new JsonObject();
+        requirement.addProperty("trigger", "minecraft:impossible");
+        criteria.add("dummy", requirement);
+        advJson.add("criteria", criteria);
+        return advJson;
     }
 }

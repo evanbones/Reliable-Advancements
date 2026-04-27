@@ -37,7 +37,7 @@ public class BetterAdvancementWidget implements IBetterAdvancementEntryGui {
     private static final int WIDGET_HEIGHT = 26;
     private static final int TITLE_SIZE = 32;
     private static final int ICON_SIZE = 26;
-    public static boolean drawArrows = true;
+    public static boolean drawArrows = false;
     protected final BetterDisplayInfo betterDisplayInfo;
     private final BetterAdvancementTab betterAdvancementTabGui;
     private final AdvancementNode advancementNode;

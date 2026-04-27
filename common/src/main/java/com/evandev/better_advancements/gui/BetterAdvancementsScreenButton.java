@@ -13,7 +13,7 @@ import org.jetbrains.annotations.NotNull;
 
 
 public class BetterAdvancementsScreenButton extends AbstractButton {
-    public static boolean addToInventory = false;
+    public static boolean addToInventory = true;
 
     public BetterAdvancementsScreenButton(int x, int y, Component buttonText) {
         super(x - 28, y - 28, 28, 28, buttonText);

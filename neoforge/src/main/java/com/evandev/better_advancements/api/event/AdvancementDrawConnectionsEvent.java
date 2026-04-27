@@ -8,9 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- *  Event fired during advancement connection drawing.
- *  
- *  Used for adding extra connection lines.
+ * Event fired during advancement connection drawing.
+ * <p>
+ * Used for adding extra connection lines.
  */
 public class AdvancementDrawConnectionsEvent extends Event implements IAdvancementDrawConnectionsEvent {
     /**
@@ -21,12 +21,12 @@ public class AdvancementDrawConnectionsEvent extends Event implements IAdvanceme
      * Extra connections to draw lines to.
      */
     private final List<AdvancementHolder> extraConnections;
-    
+
     public AdvancementDrawConnectionsEvent(AdvancementNode advancement) {
         this.advancement = advancement;
         this.extraConnections = new ArrayList<>();
     }
-    
+
     public AdvancementNode getAdvancement() {
         return this.advancement;
     }

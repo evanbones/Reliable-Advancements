@@ -1,7 +1,7 @@
 package com.evandev.better_advancements.platform;
 
-import com.evandev.better_advancements.reference.Constants;
 import com.evandev.better_advancements.platform.services.IPlatformHelper;
+import com.evandev.better_advancements.reference.Constants;
 
 import java.util.ServiceLoader;
 

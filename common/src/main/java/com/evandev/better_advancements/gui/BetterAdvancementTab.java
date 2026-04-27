@@ -20,7 +20,7 @@ import java.util.Optional;
 
 public class BetterAdvancementTab {
     public static final Map<AdvancementHolder, Tuple<Integer, Integer>> scrollHistory = Maps.newLinkedHashMap();
-    public static boolean doFade = true;
+    public static boolean doFade = false;
     protected final Map<AdvancementHolder, BetterAdvancementWidget> widgets = Maps.newLinkedHashMap();
     private final Minecraft minecraft;
     private final BetterAdvancementsScreen screen;

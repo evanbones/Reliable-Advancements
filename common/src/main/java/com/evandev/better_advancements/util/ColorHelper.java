@@ -54,10 +54,10 @@ public class ColorHelper {
     }
 
     /**
-     * Convert an #RRGGBB value to a int colour
+     * Convert an #RRGGBB value to an int color
      *
      * @param colour the #RRGGBB value
-     * @return the int colour value or an {@link IllegalArgumentException} if a mal formed input is given
+     * @return the int color value or an {@link IllegalArgumentException} if a malformed input is given
      */
     public static int RGB(String colour) {
         if (!colour.startsWith("#") || !(colour.length() == 7))
