@@ -31,6 +31,13 @@ public class ModConfig {
     public int uiScaling = 100;
     public boolean onlyUseAboveAdvancementTabs = false;
 
+    // --- Inventory Button ---
+    public InventoryButtonStyle inventoryButtonStyle = InventoryButtonStyle.BUTTON;
+    public int inventoryButtonOffsetX = 0;
+    public int inventoryButtonOffsetY = 0;
+    public String customInventoryButtonTexture = "";
+    public String customInventoryButtonTextureHovered = "";
+
     // --- Editing ---
     public boolean enableEditMode = false;
 
@@ -90,6 +97,11 @@ public class ModConfig {
         BetterAdvancementsScreen.orderTabsAlphabetically = INSTANCE.orderTabsAlphabetically;
         BetterAdvancementsScreen.uiScaling = INSTANCE.uiScaling;
         BetterAdvancementTabType.onlyUseAbove = INSTANCE.onlyUseAboveAdvancementTabs;
+        BetterAdvancementsScreenButton.style = INSTANCE.inventoryButtonStyle;
+        BetterAdvancementsScreenButton.offsetX = INSTANCE.inventoryButtonOffsetX;
+        BetterAdvancementsScreenButton.offsetY = INSTANCE.inventoryButtonOffsetY;
+        BetterAdvancementsScreenButton.customTexture = INSTANCE.customInventoryButtonTexture;
+        BetterAdvancementsScreenButton.customTextureHovered = INSTANCE.customInventoryButtonTextureHovered;
 
         // Editing
         BetterAdvancementsScreen.enableEditMode = INSTANCE.enableEditMode;
@@ -118,6 +130,11 @@ public class ModConfig {
         INSTANCE.orderTabsAlphabetically = BetterAdvancementsScreen.orderTabsAlphabetically;
         INSTANCE.uiScaling = BetterAdvancementsScreen.uiScaling;
         INSTANCE.onlyUseAboveAdvancementTabs = BetterAdvancementTabType.onlyUseAbove;
+        INSTANCE.inventoryButtonStyle = BetterAdvancementsScreenButton.style;
+        INSTANCE.inventoryButtonOffsetX = BetterAdvancementsScreenButton.offsetX;
+        INSTANCE.inventoryButtonOffsetY = BetterAdvancementsScreenButton.offsetY;
+        INSTANCE.customInventoryButtonTexture = BetterAdvancementsScreenButton.customTexture;
+        INSTANCE.customInventoryButtonTextureHovered = BetterAdvancementsScreenButton.customTextureHovered;
 
         // Editing
         INSTANCE.enableEditMode = BetterAdvancementsScreen.enableEditMode;

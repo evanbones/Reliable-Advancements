@@ -1,6 +1,7 @@
 package com.evandev.better_advancements.handler;
 
 import com.evandev.better_advancements.gui.BetterAdvancementsScreenButton;
+import com.evandev.better_advancements.gui.InventoryButtonStyle;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.Minecraft;
@@ -24,7 +25,18 @@ public class GuiOpenHandler implements ScreenEvents.AfterInit {
         if (screen instanceof InventoryScreen) {
             if (BetterAdvancementsScreenButton.addToInventory) {
                 InventoryScreen inventoryScreen = (InventoryScreen) screen;
-                Screens.getButtons(screen).add(new BetterAdvancementsScreenButton(inventoryScreen.leftPos + inventoryScreen.imageWidth, inventoryScreen.topPos, Component.literal("BA")));
+
+                int x = inventoryScreen.leftPos;
+                int y = inventoryScreen.topPos;
+
+                if (BetterAdvancementsScreenButton.style == InventoryButtonStyle.BUTTON) {
+                    x += 126;
+                    y += 61;
+                } else {
+                    x += inventoryScreen.imageWidth;
+                }
+
+                Screens.getButtons(screen).add(new BetterAdvancementsScreenButton(x, y, Component.literal("BA")));
             }
         }
     }

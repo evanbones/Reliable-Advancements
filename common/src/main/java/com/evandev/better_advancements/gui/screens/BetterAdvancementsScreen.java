@@ -147,7 +147,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         this.minecraft.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
                 (confirmed) -> {
                     if (confirmed) {
-                        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), "{\"criteria\":{}}", false);
+                        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), "{\"criteria\":{\"impossible\":{\"trigger\":\"minecraft:impossible\"}},\"display\":{\"hidden\":true}}", false);
                         if (Services.PLATFORM.canSendAdvancementEdit()) {
                             Services.PLATFORM.sendAdvancementEdit(payload);
                         }
@@ -551,6 +551,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (this.advConnectedToMouse != null) {
             Services.PLATFORM.getEventHelper().postAdvancementMovementEvent(this.advConnectedToMouse);
+            PersistentData.setMemoryPosition(this.advConnectedToMouse.getAdvancement().holder().id(), this.advConnectedToMouse.getX(), this.advConnectedToMouse.getY());
             this.advConnectedToMouse = null;
             if (BetterAdvancementsScreen.enableEditMode) {
                 PersistentData.save(this.tabs);

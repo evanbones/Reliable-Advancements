@@ -83,6 +83,14 @@ public class PersistentData {
         }
     }
 
+    public static boolean hasSavedPosition(AdvancementHolder holder) {
+        return advancementPositions.containsKey(holder.id().toString());
+    }
+
+    public static void setMemoryPosition(ResourceLocation id, int x, int y) {
+        advancementPositions.put(id.toString(), new int[]{x, y});
+    }
+
     public static void loadTabProperties(BetterAdvancementTab tab) {
         String id = tab.getRootNode().holder().id().toString();
         try {

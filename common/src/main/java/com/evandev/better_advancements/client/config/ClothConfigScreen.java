@@ -76,6 +76,37 @@ public class ClothConfigScreen {
                 .setSaveConsumer(newValue -> BetterAdvancementTabType.onlyUseAbove = newValue)
                 .build());
 
+        general.addEntry(entryBuilder.startEnumSelector(Component.translatable("config.better_advancements.inventoryButtonStyle"),
+                        InventoryButtonStyle.class, BetterAdvancementsScreenButton.style)
+                .setDefaultValue(defaults.inventoryButtonStyle)
+                .setTooltip(Component.translatable("config.better_advancements.inventoryButtonStyle.tooltip"))
+                .setSaveConsumer(newValue -> BetterAdvancementsScreenButton.style = newValue)
+                .build());
+
+        general.addEntry(entryBuilder.startIntField(Component.translatable("config.better_advancements.inventoryButtonOffsetX"), BetterAdvancementsScreenButton.offsetX)
+                .setDefaultValue(defaults.inventoryButtonOffsetX)
+                .setTooltip(Component.translatable("config.better_advancements.inventoryButtonOffsetX.tooltip"))
+                .setSaveConsumer(newValue -> BetterAdvancementsScreenButton.offsetX = newValue)
+                .build());
+
+        general.addEntry(entryBuilder.startIntField(Component.translatable("config.better_advancements.inventoryButtonOffsetY"), BetterAdvancementsScreenButton.offsetY)
+                .setDefaultValue(defaults.inventoryButtonOffsetY)
+                .setTooltip(Component.translatable("config.better_advancements.inventoryButtonOffsetY.tooltip"))
+                .setSaveConsumer(newValue -> BetterAdvancementsScreenButton.offsetY = newValue)
+                .build());
+
+        general.addEntry(entryBuilder.startStrField(Component.translatable("config.better_advancements.customInventoryButtonTexture"), BetterAdvancementsScreenButton.customTexture)
+                .setDefaultValue(defaults.customInventoryButtonTexture)
+                .setTooltip(Component.translatable("config.better_advancements.customInventoryButtonTexture.tooltip"))
+                .setSaveConsumer(newValue -> BetterAdvancementsScreenButton.customTexture = newValue)
+                .build());
+
+        general.addEntry(entryBuilder.startStrField(Component.translatable("config.better_advancements.customInventoryButtonTextureHovered"), BetterAdvancementsScreenButton.customTextureHovered)
+                .setDefaultValue(defaults.customInventoryButtonTextureHovered)
+                .setTooltip(Component.translatable("config.better_advancements.customInventoryButtonTextureHovered.tooltip"))
+                .setSaveConsumer(newValue -> BetterAdvancementsScreenButton.customTextureHovered = newValue)
+                .build());
+
         ConfigCategory editing = builder.getOrCreateCategory(Component.translatable("config.better_advancements.category.editing"));
 
         editing.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.better_advancements.enableEditMode"), BetterAdvancementsScreen.enableEditMode)

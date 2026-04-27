@@ -63,7 +63,11 @@ public class BetterAdvancementWidget implements IBetterAdvancementEntryGui {
         this.title = displayInfo.getTitle().getString(163);
         this.x = this.betterDisplayInfo.getPosX() != null ? this.betterDisplayInfo.getPosX() : Mth.floor(displayInfo.getX() * 32.0F);
         this.y = this.betterDisplayInfo.getPosY() != null ? this.betterDisplayInfo.getPosY() : Mth.floor(displayInfo.getY() * 27.0F);
-        PersistentData.loadSavedPosition(this.advancementNode.holder(), this);
+        if (PersistentData.hasSavedPosition(this.advancementNode.holder())) {
+            PersistentData.loadSavedPosition(this.advancementNode.holder(), this);
+        } else {
+            PersistentData.setMemoryPosition(this.advancementNode.holder().id(), this.x, this.y);
+        }
         this.refreshHover();
     }
 

@@ -1,7 +1,8 @@
 package com.evandev.better_advancements.handler;
 
-import com.evandev.better_advancements.gui.screens.BetterAdvancementsScreen;
 import com.evandev.better_advancements.gui.BetterAdvancementsScreenButton;
+import com.evandev.better_advancements.gui.InventoryButtonStyle;
+import com.evandev.better_advancements.gui.screens.BetterAdvancementsScreen;
 import com.evandev.better_advancements.util.AdvancementComparer;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.AdvancementTree;
@@ -39,7 +40,18 @@ public class GuiOpenHandler {
         if (event.getScreen() instanceof InventoryScreen) {
             if (BetterAdvancementsScreenButton.addToInventory) {
                 InventoryScreen guiInventory = (InventoryScreen) event.getScreen();
-                event.addListener(new BetterAdvancementsScreenButton(guiInventory.getGuiLeft() + guiInventory.getXSize(), guiInventory.getGuiTop(), Component.literal("BA")));
+
+                int x = guiInventory.getGuiLeft();
+                int y = guiInventory.getGuiTop();
+
+                if (BetterAdvancementsScreenButton.style == InventoryButtonStyle.BUTTON) {
+                    x += 126;
+                    y += 61;
+                } else {
+                    x += guiInventory.getXSize();
+                }
+
+                event.addListener(new BetterAdvancementsScreenButton(x, y, Component.literal("BA")));
             }
         }
     }
