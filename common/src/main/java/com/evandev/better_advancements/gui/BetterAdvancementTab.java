@@ -2,6 +2,7 @@ package com.evandev.better_advancements.gui;
 
 import com.evandev.better_advancements.advancements.BetterDisplayInfo;
 import com.evandev.better_advancements.advancements.BetterDisplayInfoRegistry;
+import com.evandev.better_advancements.gui.screens.BetterAdvancementsScreen;
 import com.google.common.collect.Maps;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
@@ -32,7 +33,8 @@ public class BetterAdvancementTab {
     private final BetterAdvancementWidget root;
     private final BetterDisplayInfoRegistry betterDisplayInfos;
 
-    protected int scrollX, scrollY;
+    public int scrollX;
+    public int scrollY;
     private int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
     private int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
     private float fade;

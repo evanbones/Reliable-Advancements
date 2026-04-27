@@ -1,8 +1,14 @@
 package com.evandev.better_advancements.platform;
 
+import com.evandev.better_advancements.network.AdvancementJsonPayload;
 import com.evandev.better_advancements.network.EditAdvancementPayload;
+import com.evandev.better_advancements.network.LinkAdvancementPayload;
+import com.evandev.better_advancements.network.RequestAdvancementJsonPayload;
 import com.evandev.better_advancements.platform.services.IEventHelper;
 import com.evandev.better_advancements.platform.services.IPlatformHelper;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.loading.FMLLoader;
@@ -52,11 +58,41 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
 
     @Override
     public boolean canSendAdvancementEdit() {
-        return true;
+        var connection = Minecraft.getInstance().getConnection();
+        return connection != null && connection.hasChannel(EditAdvancementPayload.TYPE);
     }
 
     @Override
     public void sendAdvancementEdit(EditAdvancementPayload payload) {
-        PacketDistributor.sendToServer(payload);
+        if (canSendAdvancementEdit()) {
+            PacketDistributor.sendToServer(payload);
+        }
+    }
+
+    @Override
+    public void sendAdvancementJsonRequest(RequestAdvancementJsonPayload payload) {
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection != null && connection.hasChannel(RequestAdvancementJsonPayload.TYPE)) {
+            PacketDistributor.sendToServer(payload);
+        } else {
+            Minecraft.getInstance().player.displayClientMessage(
+                    Component.literal("§cThis server does not have Better Advancements installed. Editing is disabled."), false
+            );
+        }
+    }
+
+    @Override
+    public void sendLinkAdvancement(LinkAdvancementPayload payload) {
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection != null && connection.hasChannel(LinkAdvancementPayload.TYPE)) {
+            PacketDistributor.sendToServer(payload);
+        }
+    }
+
+    @Override
+    public void sendAdvancementJsonToClient(ServerPlayer player, AdvancementJsonPayload payload) {
+        if (player.connection.hasChannel(AdvancementJsonPayload.TYPE)) {
+            PacketDistributor.sendToPlayer(player, payload);
+        }
     }
 }

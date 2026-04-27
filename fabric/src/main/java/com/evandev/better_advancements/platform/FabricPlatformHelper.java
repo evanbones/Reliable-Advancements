@@ -1,12 +1,19 @@
 package com.evandev.better_advancements.platform;
 
+import com.evandev.better_advancements.network.AdvancementJsonPayload;
 import com.evandev.better_advancements.network.EditAdvancementPayload;
+import com.evandev.better_advancements.network.LinkAdvancementPayload;
+import com.evandev.better_advancements.network.RequestAdvancementJsonPayload;
 import com.evandev.better_advancements.platform.services.IAdvancementVisitor;
 import com.evandev.better_advancements.platform.services.IEventHelper;
 import com.evandev.better_advancements.platform.services.IPlatformHelper;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.nio.file.Path;
 
@@ -56,6 +63,33 @@ public class FabricPlatformHelper implements IPlatformHelper {
 
     @Override
     public void sendAdvancementEdit(EditAdvancementPayload payload) {
-        ClientPlayNetworking.send(payload);
+        if (canSendAdvancementEdit()) {
+            ClientPlayNetworking.send(payload);
+        }
+    }
+
+    @Override
+    public void sendAdvancementJsonRequest(RequestAdvancementJsonPayload payload) {
+        if (ClientPlayNetworking.canSend(RequestAdvancementJsonPayload.TYPE)) {
+            ClientPlayNetworking.send(payload);
+        } else {
+            Minecraft.getInstance().player.displayClientMessage(
+                    Component.literal("§cThis server does not have Better Advancements installed. Editing is disabled."), false
+            );
+        }
+    }
+
+    @Override
+    public void sendLinkAdvancement(LinkAdvancementPayload payload) {
+        if (ClientPlayNetworking.canSend(LinkAdvancementPayload.TYPE)) {
+            ClientPlayNetworking.send(payload);
+        }
+    }
+
+    @Override
+    public void sendAdvancementJsonToClient(ServerPlayer player, AdvancementJsonPayload payload) {
+        if (ServerPlayNetworking.canSend(player, AdvancementJsonPayload.TYPE)) {
+            ServerPlayNetworking.send(player, payload);
+        }
     }
 }

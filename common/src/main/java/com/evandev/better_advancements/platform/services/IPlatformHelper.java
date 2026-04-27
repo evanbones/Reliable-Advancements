@@ -1,6 +1,10 @@
 package com.evandev.better_advancements.platform.services;
 
+import com.evandev.better_advancements.network.AdvancementJsonPayload;
 import com.evandev.better_advancements.network.EditAdvancementPayload;
+import com.evandev.better_advancements.network.LinkAdvancementPayload;
+import com.evandev.better_advancements.network.RequestAdvancementJsonPayload;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.nio.file.Path;
 
@@ -46,6 +50,7 @@ public interface IPlatformHelper {
 
     /**
      * Checks if the code is running on the physical client.
+     *
      * @return True if on the client, false if on a dedicated server.
      */
     boolean isPhysicalClient();
@@ -57,4 +62,10 @@ public interface IPlatformHelper {
     boolean canSendAdvancementEdit();
 
     void sendAdvancementEdit(EditAdvancementPayload payload);
+
+    void sendAdvancementJsonRequest(RequestAdvancementJsonPayload payload);
+
+    void sendLinkAdvancement(LinkAdvancementPayload payload);
+
+    void sendAdvancementJsonToClient(ServerPlayer player, AdvancementJsonPayload payload);
 }

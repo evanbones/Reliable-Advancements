@@ -1,0 +1,362 @@
+{
+  "minecraft:allay_drop_item_on_block": {
+    "parameters": [
+      "player",
+      "location"
+    ]
+  },
+  "minecraft:any_block_use": {
+    "parameters": [
+      "player",
+      "location"
+    ]
+  },
+  "minecraft:avoid_vibration": {
+    "parameters": [
+      "player"
+    ]
+  },
+  "minecraft:bee_nest_destroyed": {
+    "parameters": [
+      "player",
+      "block",
+      "item",
+      "beesInside"
+    ]
+  },
+  "minecraft:bred_animals": {
+    "parameters": [
+      "player",
+      "parent",
+      "partner",
+      "child"
+    ]
+  },
+  "minecraft:brewed_potion": {
+    "parameters": [
+      "player",
+      "potion"
+    ]
+  },
+  "minecraft:changed_dimension": {
+    "parameters": [
+      "player",
+      "from",
+      "to"
+    ]
+  },
+  "minecraft:channeled_lightning": {
+    "parameters": [
+      "player",
+      "victims"
+    ]
+  },
+  "minecraft:construct_beacon": {
+    "parameters": [
+      "player",
+      "level"
+    ]
+  },
+  "minecraft:consume_item": {
+    "parameters": [
+      "player",
+      "item"
+    ]
+  },
+  "minecraft:crafter_recipe_crafted": {
+    "parameters": [
+      "player",
+      "recipeId",
+      "ingredients"
+    ]
+  },
+  "minecraft:cured_zombie_villager": {
+    "parameters": [
+      "player",
+      "zombie",
+      "villager"
+    ]
+  },
+  "minecraft:default_block_use": {
+    "parameters": [
+      "player",
+      "location"
+    ]
+  },
+  "minecraft:effects_changed": {
+    "parameters": [
+      "player",
+      "effects",
+      "source"
+    ]
+  },
+  "minecraft:enchanted_item": {
+    "parameters": [
+      "player",
+      "item",
+      "levels"
+    ]
+  },
+  "minecraft:enter_block": {
+    "parameters": [
+      "player",
+      "block",
+      "state"
+    ]
+  },
+  "minecraft:entity_hurt_player": {
+    "parameters": [
+      "player",
+      "damage"
+    ]
+  },
+  "minecraft:entity_killed_player": {
+    "parameters": [
+      "player",
+      "entityPredicate",
+      "killingBlow"
+    ]
+  },
+  "minecraft:fall_after_explosion": {
+    "parameters": [
+      "player",
+      "startPosition",
+      "distance",
+      "cause"
+    ]
+  },
+  "minecraft:fall_from_height": {
+    "parameters": [
+      "player",
+      "startPosition",
+      "distance"
+    ]
+  },
+  "minecraft:filled_bucket": {
+    "parameters": [
+      "player",
+      "item"
+    ]
+  },
+  "minecraft:fishing_rod_hooked": {
+    "parameters": [
+      "player",
+      "rod",
+      "entity",
+      "item"
+    ]
+  },
+  "minecraft:hero_of_the_village": {
+    "parameters": [
+      "player"
+    ]
+  },
+  "minecraft:impossible": {
+    "parameters": []
+  },
+  "minecraft:inventory_changed": {
+    "parameters": [
+      "player",
+      "slots",
+      "items"
+    ]
+  },
+  "minecraft:item_durability_changed": {
+    "parameters": [
+      "player",
+      "item",
+      "durability",
+      "delta"
+    ]
+  },
+  "minecraft:item_used_on_block": {
+    "parameters": [
+      "player",
+      "location"
+    ]
+  },
+  "minecraft:kill_mob_near_sculk_catalyst": {
+    "parameters": [
+      "player",
+      "entityPredicate",
+      "killingBlow"
+    ]
+  },
+  "minecraft:killed_by_crossbow": {
+    "parameters": [
+      "player",
+      "victims",
+      "uniqueEntityTypes"
+    ]
+  },
+  "minecraft:levitation": {
+    "parameters": [
+      "player",
+      "distance",
+      "duration"
+    ]
+  },
+  "minecraft:lightning_strike": {
+    "parameters": [
+      "player",
+      "lightning",
+      "bystander"
+    ]
+  },
+  "minecraft:location": {
+    "parameters": [
+      "player"
+    ]
+  },
+  "minecraft:nether_travel": {
+    "parameters": [
+      "player",
+      "startPosition",
+      "distance"
+    ]
+  },
+  "minecraft:placed_block": {
+    "parameters": [
+      "player",
+      "location"
+    ]
+  },
+  "minecraft:player_generates_container_loot": {
+    "parameters": [
+      "player",
+      "lootTable"
+    ]
+  },
+  "minecraft:player_hurt_entity": {
+    "parameters": [
+      "player",
+      "damage",
+      "entity"
+    ]
+  },
+  "minecraft:player_interacted_with_entity": {
+    "parameters": [
+      "player",
+      "item",
+      "entity"
+    ]
+  },
+  "minecraft:player_killed_entity": {
+    "parameters": [
+      "player",
+      "entityPredicate",
+      "killingBlow"
+    ]
+  },
+  "minecraft:recipe_crafted": {
+    "parameters": [
+      "player",
+      "recipeId",
+      "ingredients"
+    ]
+  },
+  "minecraft:recipe_unlocked": {
+    "parameters": [
+      "player",
+      "recipe"
+    ]
+  },
+  "minecraft:ride_entity_in_lava": {
+    "parameters": [
+      "player",
+      "startPosition",
+      "distance"
+    ]
+  },
+  "minecraft:shot_crossbow": {
+    "parameters": [
+      "player",
+      "item"
+    ]
+  },
+  "minecraft:slept_in_bed": {
+    "parameters": [
+      "player"
+    ]
+  },
+  "minecraft:slide_down_block": {
+    "parameters": [
+      "player",
+      "block",
+      "state"
+    ]
+  },
+  "minecraft:started_riding": {
+    "parameters": [
+      "player"
+    ]
+  },
+  "minecraft:summoned_entity": {
+    "parameters": [
+      "player",
+      "entity"
+    ]
+  },
+  "minecraft:tame_animal": {
+    "parameters": [
+      "player",
+      "entity"
+    ]
+  },
+  "minecraft:target_hit": {
+    "parameters": [
+      "player",
+      "signalStrength",
+      "projectile"
+    ]
+  },
+  "minecraft:thrown_item_picked_up_by_entity": {
+    "parameters": [
+      "player",
+      "item",
+      "entity"
+    ]
+  },
+  "minecraft:thrown_item_picked_up_by_player": {
+    "parameters": [
+      "player",
+      "item",
+      "entity"
+    ]
+  },
+  "minecraft:tick": {
+    "parameters": [
+      "player"
+    ]
+  },
+  "minecraft:used_ender_eye": {
+    "parameters": [
+      "player",
+      "distance"
+    ]
+  },
+  "minecraft:used_totem": {
+    "parameters": [
+      "player",
+      "item"
+    ]
+  },
+  "minecraft:using_item": {
+    "parameters": [
+      "player",
+      "item"
+    ]
+  },
+  "minecraft:villager_trade": {
+    "parameters": [
+      "player",
+      "villager",
+      "item"
+    ]
+  },
+  "minecraft:voluntary_exile": {
+    "parameters": [
+      "player"
+    ]
+  }
+}

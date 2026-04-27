@@ -3,6 +3,7 @@ package com.evandev.better_advancements.gui;
 import com.evandev.better_advancements.advancements.BetterDisplayInfo;
 import com.evandev.better_advancements.api.IBetterAdvancementEntryGui;
 import com.evandev.better_advancements.api.event.IAdvancementDrawConnectionsEvent;
+import com.evandev.better_advancements.gui.screens.BetterAdvancementsScreen;
 import com.evandev.better_advancements.platform.Services;
 import com.evandev.better_advancements.reference.Resources;
 import com.evandev.better_advancements.util.CriterionGrid;
@@ -31,14 +32,14 @@ import java.util.Collections;
 import java.util.List;
 
 public class BetterAdvancementWidget implements IBetterAdvancementEntryGui {
-    protected static final int ADVANCEMENT_SIZE = 26;
+    public static final int ADVANCEMENT_SIZE = 26;
     private static final int CORNER_SIZE = 10;
     private static final int WIDGET_WIDTH = 256;
     private static final int WIDGET_HEIGHT = 26;
     private static final int TITLE_SIZE = 32;
     private static final int ICON_SIZE = 26;
     public static boolean drawArrows = false;
-    protected final BetterDisplayInfo betterDisplayInfo;
+    public final BetterDisplayInfo betterDisplayInfo;
     private final BetterAdvancementTab betterAdvancementTabGui;
     private final AdvancementNode advancementNode;
     private final DisplayInfo displayInfo;

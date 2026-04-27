@@ -1,5 +1,6 @@
 package com.evandev.better_advancements.gui;
 
+import com.evandev.better_advancements.gui.screens.BetterAdvancementsScreen;
 import com.evandev.better_advancements.reference.Resources;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;

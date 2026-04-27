@@ -26,6 +26,10 @@ neoForge {
         server {
             server()
         }
+        data {
+            data()
+            programArguments.addAll '--mod', mod_id, '--all', '--output', file('src/generated/resources/').absolutePath, '--existing', file('src/main/resources/').absolutePath
+        }
     }
 
     mods {

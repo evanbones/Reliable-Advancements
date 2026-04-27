@@ -1,6 +1,6 @@
 package com.evandev.better_advancements.mixin;
 
-import com.evandev.better_advancements.gui.BetterAdvancementsScreen;
+import com.evandev.better_advancements.gui.screens.BetterAdvancementsScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.advancements.AdvancementsScreen;

@@ -2,6 +2,7 @@ package com.evandev.better_advancements.config;
 
 import com.evandev.better_advancements.advancements.BetterDisplayInfo;
 import com.evandev.better_advancements.gui.*;
+import com.evandev.better_advancements.gui.screens.BetterAdvancementsScreen;
 import com.evandev.better_advancements.platform.Services;
 import com.evandev.better_advancements.reference.Constants;
 import com.evandev.better_advancements.util.ColorHelper;

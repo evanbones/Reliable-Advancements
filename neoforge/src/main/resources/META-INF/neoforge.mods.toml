@@ -1,7 +1,7 @@
 modLoader = "javafml"
 loaderVersion = "${neoforge_loader_version_range}"
 license = "${license}"
-issueTrackerURL = "https://github.com/evanbones/Even-Better-Advancements/issues"
+issueTrackerURL = "https://github.com/evanbones/Advancement-Enhancement/issues"
 
 [[mods]]
 modId = "${mod_id}"

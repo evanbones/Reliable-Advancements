@@ -1,30 +1,28 @@
 package com.evandev.better_advancements.network;
 
 import com.evandev.better_advancements.reference.Constants;
-import net.minecraft.server.MinecraftServer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
-@EventBusSubscriber(modid = Constants.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public class NeoForgeNetworkHandler {
+    public static void register(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar(Constants.MOD_ID).optional();
 
-    @SubscribeEvent
-    public static void register(final RegisterPayloadHandlersEvent event) {
-        final PayloadRegistrar registrar = event.registrar("1.0").optional();
+        registrar.playToServer(EditAdvancementPayload.TYPE, EditAdvancementPayload.STREAM_CODEC, (payload, context) -> {
+            context.enqueueWork(() -> ServerAdvancementEditor.saveAdvancementEdit(context.player().getServer(), payload));
+        });
 
-        registrar.playToServer(
-                EditAdvancementPayload.TYPE,
-                EditAdvancementPayload.STREAM_CODEC,
-                (payload, context) -> {
-                    context.enqueueWork(() -> {
-                        MinecraftServer server = context.player().getServer();
-                        if (server != null && server.getPlayerList().isOp(context.player().getGameProfile())) {
-                            ServerAdvancementEditor.saveAdvancementEdit(server, payload);
-                        }
-                    });
-                }
-        );
+        registrar.playToServer(RequestAdvancementJsonPayload.TYPE, RequestAdvancementJsonPayload.STREAM_CODEC, (payload, context) -> {
+            context.enqueueWork(() -> ServerAdvancementEditor.handleJsonRequest(context.player().getServer(), (ServerPlayer) context.player(), payload));
+        });
+
+        registrar.playToServer(LinkAdvancementPayload.TYPE, LinkAdvancementPayload.STREAM_CODEC, (payload, context) -> {
+            context.enqueueWork(() -> ServerAdvancementEditor.handleLinkAdvancement(context.player().getServer(), payload));
+        });
+
+        registrar.playToClient(AdvancementJsonPayload.TYPE, AdvancementJsonPayload.STREAM_CODEC, (payload, context) -> {
+            context.enqueueWork(() -> ClientNetworkHandler.handleAdvancementJson(payload));
+        });
     }
 }

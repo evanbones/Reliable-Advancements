@@ -1,6 +1,6 @@
 package com.evandev.better_advancements.handler;
 
-import com.evandev.better_advancements.gui.BetterAdvancementsScreen;
+import com.evandev.better_advancements.gui.screens.BetterAdvancementsScreen;
 import com.evandev.better_advancements.gui.BetterAdvancementsScreenButton;
 import com.evandev.better_advancements.util.AdvancementComparer;
 import net.minecraft.advancements.AdvancementNode;

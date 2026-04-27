@@ -8,18 +8,18 @@
     "${mod_author}"
   ],
   "contact": {
-    "homepage": "https://github.com/evanbones/Even-Better-Advancements",
-    "sources": "https://github.com/evanbones/Even-Better-Advancements"
+    "homepage": "https://github.com/evanbones/Advancement-Enhancement",
+    "sources": "https://github.com/evanbones/Advancement-Enhancement"
   },
   "license": "${license}",
   "icon": "${mod_id}.png",
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.evandev.better_advancements.network.FabricNetworkHandler"
+      "com.evandev.better_advancements.BetterAdvancements"
     ],
     "client": [
-      "com.evandev.better_advancements.EvenBetterAdvancements"
+      "com.evandev.better_advancements.client.BetterAdvancementsClient"
     ],
     "modmenu": [
       "com.evandev.better_advancements.config.BetterAdvancementsModMenu"

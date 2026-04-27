@@ -1,5 +1,9 @@
-package com.evandev.better_advancements.gui;
+package com.evandev.better_advancements.gui.screens;
 
+import com.evandev.better_advancements.gui.AdvancementContextMenu;
+import com.evandev.better_advancements.gui.BetterAdvancementTab;
+import com.evandev.better_advancements.gui.BetterAdvancementTabType;
+import com.evandev.better_advancements.gui.BetterAdvancementWidget;
 import com.evandev.better_advancements.network.EditAdvancementPayload;
 import com.evandev.better_advancements.platform.Services;
 import com.evandev.better_advancements.reference.Resources;
@@ -45,7 +49,8 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     private final Map<AdvancementHolder, BetterAdvancementTab> tabs = Maps.newLinkedHashMap();
     public BetterAdvancementWidget linkingWidget = null;
     public BetterAdvancementTab selectedTab;
-    protected int internalWidth, internalHeight;
+    public int internalWidth;
+    protected int internalHeight;
     private float zoom = 1.0F;
     private boolean isScrolling;
     private BetterAdvancementWidget advConnectedToMouse = null;

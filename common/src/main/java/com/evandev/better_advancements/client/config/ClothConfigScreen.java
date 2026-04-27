@@ -3,6 +3,7 @@ package com.evandev.better_advancements.client.config;
 import com.evandev.better_advancements.advancements.BetterDisplayInfo;
 import com.evandev.better_advancements.config.ModConfig;
 import com.evandev.better_advancements.gui.*;
+import com.evandev.better_advancements.gui.screens.BetterAdvancementsScreen;
 import com.evandev.better_advancements.util.ColorHelper;
 import com.evandev.better_advancements.util.CriteriaDetail;
 import com.evandev.better_advancements.util.CriterionGrid;

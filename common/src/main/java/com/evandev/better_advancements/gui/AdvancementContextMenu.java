@@ -1,6 +1,8 @@
 package com.evandev.better_advancements.gui;
 
+import com.evandev.better_advancements.gui.screens.BetterAdvancementsScreen;
 import com.evandev.better_advancements.network.EditAdvancementPayload;
+import com.evandev.better_advancements.network.RequestAdvancementJsonPayload;
 import com.evandev.better_advancements.platform.Services;
 import com.evandev.better_advancements.util.PersistentData;
 import net.minecraft.client.Minecraft;
@@ -8,6 +10,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,9 +28,9 @@ public class AdvancementContextMenu {
         this.widget = widget;
 
         if (widget != null) {
-            this.options.add(new ContextOption("Edit Properties", false, () -> openEditor(AdvancementEditorScreen.EditorTab.PROPERTIES)));
-            this.options.add(new ContextOption("Edit Layout (Pos)", false, () -> openEditor(AdvancementEditorScreen.EditorTab.LAYOUT)));
-            this.options.add(new ContextOption("Edit Criteria", false, () -> openEditor(AdvancementEditorScreen.EditorTab.CRITERIA)));
+            this.options.add(new ContextOption("Edit Properties", false, () -> openEditor("Properties")));
+            this.options.add(new ContextOption("Edit Layout (Pos)", false, () -> openEditor("Layout")));
+            this.options.add(new ContextOption("Edit Criteria", false, () -> openEditor("Criteria")));
             this.options.add(new ContextOption("Link to Parent...", false, () -> parentScreen.startLinking(widget)));
             this.options.add(new ContextOption("Reset to Vanilla", true, this::deleteAdvancement));
         } else {
@@ -41,8 +44,13 @@ public class AdvancementContextMenu {
         this.y = Math.min(mouseY, parentScreen.height - this.height - 5);
     }
 
-    private void openEditor(AdvancementEditorScreen.EditorTab tab) {
-        Minecraft.getInstance().setScreen(new AdvancementEditorScreen(this.parentScreen, this.widget, tab));
+    private void openEditor(String tabName) {
+        ResourceLocation id = widget.getAdvancement().holder().id();
+        RequestAdvancementJsonPayload request = new RequestAdvancementJsonPayload(id, tabName);
+
+        Services.PLATFORM.sendAdvancementJsonRequest(request);
+
+        parentScreen.closeContextMenu();
     }
 
     private void deleteAdvancement() {
