@@ -31,10 +31,18 @@ public class AdvancementContextMenu {
             this.options.add(new ContextOption("Edit Properties", false, () -> openEditor("Properties")));
             this.options.add(new ContextOption("Edit Layout (Pos)", false, () -> openEditor("Layout")));
             this.options.add(new ContextOption("Edit Criteria", false, () -> openEditor("Criteria")));
+            this.options.add(new ContextOption("Copy (Ctrl+C)", false, () -> {
+                parentScreen.copyAdvancement(widget);
+                parentScreen.closeContextMenu();
+            }));
             this.options.add(new ContextOption("Link to Parent...", false, () -> parentScreen.startLinking(widget)));
             this.options.add(new ContextOption("Reset to Vanilla", true, this::deleteAdvancement));
         } else {
             this.options.add(new ContextOption("Create New Advancement", false, () -> parentScreen.createNewAdvancement(mouseX, mouseY)));
+            this.options.add(new ContextOption("Paste (Ctrl+V)", false, () -> {
+                parentScreen.pasteAdvancement(mouseX, mouseY);
+                parentScreen.closeContextMenu();
+            }));
             this.options.add(new ContextOption("Edit Tab Properties", false, parentScreen::editTabProperties));
             this.options.add(new ContextOption("Reset Entire Tab", true, this::resetEntireTab));
         }

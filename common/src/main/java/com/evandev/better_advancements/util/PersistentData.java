@@ -93,8 +93,10 @@ public class PersistentData {
                 if (tabProperties.has(id)) {
                     JsonObject tObj = tabProperties.getAsJsonObject(id);
                     if (tObj.has("title")) tab.customTitle = tObj.get("title").getAsString();
-                    if (tObj.has("background")) tab.customBackground = ResourceLocation.parse(tObj.get("background").getAsString());
-                    if (tObj.has("static_background")) tab.isStaticBackground = tObj.get("static_background").getAsBoolean();
+                    if (tObj.has("background"))
+                        tab.customBackground = ResourceLocation.parse(tObj.get("background").getAsString());
+                    if (tObj.has("static_background"))
+                        tab.isStaticBackground = tObj.get("static_background").getAsBoolean();
                     if (tObj.has("bg_width")) tab.bgWidth = tObj.get("bg_width").getAsInt();
                     if (tObj.has("bg_height")) tab.bgHeight = tObj.get("bg_height").getAsInt();
                     if (tObj.has("width")) tab.customWidth = tObj.get("width").getAsInt();
@@ -104,6 +106,29 @@ public class PersistentData {
             }
         } catch (Exception e) {
             Constants.LOG.error("Failed to load tab properties", e);
+        }
+    }
+
+    public static void setPosition(ResourceLocation id, int x, int y) {
+        advancementPositions.put(id.toString(), new int[]{x, y});
+        try {
+            if (!FILE.exists()) {
+                FILE.getParentFile().mkdirs();
+                FILE.createNewFile();
+            }
+            JsonObject json = FILE.exists() ? GSON.fromJson(new FileReader(FILE), JsonObject.class) : new JsonObject();
+            if (json == null) json = new JsonObject();
+            JsonObject positions = json.has("positions") ? json.getAsJsonObject("positions") : new JsonObject();
+            JsonArray arr = new JsonArray();
+            arr.add(x);
+            arr.add(y);
+            positions.add(id.toString(), arr);
+            json.add("positions", positions);
+            try (FileWriter writer = new FileWriter(FILE)) {
+                GSON.toJson(json, writer);
+            }
+        } catch (Exception e) {
+            Constants.LOG.error("Failed to set persistent position", e);
         }
     }
 

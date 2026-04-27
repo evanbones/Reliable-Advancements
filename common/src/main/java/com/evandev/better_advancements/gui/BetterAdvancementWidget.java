@@ -71,7 +71,6 @@ public class BetterAdvancementWidget implements IBetterAdvancementEntryGui {
         Minecraft mc = this.minecraft;
         int k = 0;
         if (this.advancementNode.advancement().requirements().size() > 1) {
-            // Add some space for the requirement counter
             int strLengthRequirementCount = String.valueOf(this.advancementNode.advancement().requirements().size()).length();
             k = mc.font.width("  ") + mc.font.width("0") * strLengthRequirementCount * 2 + mc.font.width("/");
         }
@@ -504,7 +503,7 @@ public class BetterAdvancementWidget implements IBetterAdvancementEntryGui {
 
     public boolean isMouseOver(double scrollX, double scrollY, double mouseX, double mouseY) {
         if (!this.displayInfo.isHidden() || this.advancementProgress != null && this.advancementProgress.isDone()) {
-            double left = scrollX + this.x;
+            double left = scrollX + this.x + 3;
             double right = left + ADVANCEMENT_SIZE;
             double top = scrollY + this.y;
             double bottom = top + ADVANCEMENT_SIZE;

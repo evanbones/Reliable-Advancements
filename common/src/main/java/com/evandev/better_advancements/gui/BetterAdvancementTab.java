@@ -158,6 +158,12 @@ public class BetterAdvancementTab {
         this.root.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, true);
         this.root.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, false);
         this.root.draw(guiGraphics, this.scrollX, this.scrollY, unzoomedX, unzoomedY);
+
+        for (BetterAdvancementWidget betteradvancementwidget : this.widgets.values()) {
+            if (betteradvancementwidget == BetterAdvancementsScreen.selectedWidget) {
+                guiGraphics.fill(betteradvancementwidget.getX() + this.scrollX + 1, betteradvancementwidget.getY() + this.scrollY - 2, betteradvancementwidget.getX() + this.scrollX + 31, betteradvancementwidget.getY() + this.scrollY + 28, 0x6600FF00);
+            }
+        }
         guiGraphics.pose().popPose();
         guiGraphics.disableScissor();
     }
