@@ -63,6 +63,9 @@ public class AdvancementContextMenu {
                             Services.PLATFORM.sendAdvancementEdit(payload);
                         }
                         PersistentData.removePosition(widget.getAdvancement().holder().id());
+                        if (parentScreen.selectedTab != null && widget.getAdvancement().holder().id().equals(parentScreen.selectedTab.getRootNode().holder().id())) {
+                            PersistentData.removeTabProperties(parentScreen.selectedTab.getRootNode().holder().id());
+                        }
                         parentScreen.removeWidgetFromClient(widget);
                     }
                     Minecraft.getInstance().setScreen(parentScreen);
@@ -85,6 +88,7 @@ public class AdvancementContextMenu {
                                 }
                                 PersistentData.removePosition(w.getAdvancement().holder().id());
                             }
+                            PersistentData.removeTabProperties(parentScreen.selectedTab.getRootNode().holder().id());
                             parentScreen.selectedTab.getWidgets().clear();
                         }
                     }

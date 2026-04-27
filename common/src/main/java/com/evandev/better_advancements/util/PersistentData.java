@@ -2,11 +2,13 @@ package com.evandev.better_advancements.util;
 
 import com.evandev.better_advancements.gui.BetterAdvancementTab;
 import com.evandev.better_advancements.gui.BetterAdvancementWidget;
+import com.evandev.better_advancements.platform.Services;
 import com.evandev.better_advancements.reference.Constants;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 
 import java.io.File;
@@ -16,7 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class PersistentData {
-    public static final File FILE = new File(Constants.MOD_ID + "_layout.json");
+    public static final File FILE = Services.PLATFORM.getConfigDirectory().resolve(Constants.MOD_ID + "_layout.json").toFile();
     public static final Gson GSON = new Gson().newBuilder().setPrettyPrinting().create();
     private static final Map<String, int[]> advancementPositions = new HashMap<>();
 
@@ -84,12 +86,12 @@ public class PersistentData {
         try {
             if (!FILE.exists()) return;
             JsonObject json = GSON.fromJson(new FileReader(FILE), JsonObject.class);
-            if (json != null && GsonHelper.isObjectNode(json, "tab_properties")) {
+            if (GsonHelper.isObjectNode(json, "tab_properties")) {
                 JsonObject tabProperties = json.getAsJsonObject("tab_properties");
                 if (tabProperties.has(id)) {
                     JsonObject tObj = tabProperties.getAsJsonObject(id);
                     if (tObj.has("title")) tab.customTitle = tObj.get("title").getAsString();
-                    if (tObj.has("background")) tab.customBackground = net.minecraft.resources.ResourceLocation.parse(tObj.get("background").getAsString());
+                    if (tObj.has("background")) tab.customBackground = ResourceLocation.parse(tObj.get("background").getAsString());
                     if (tObj.has("static_background")) tab.isStaticBackground = tObj.get("static_background").getAsBoolean();
                     if (tObj.has("width")) tab.customWidth = tObj.get("width").getAsInt();
                     if (tObj.has("height")) tab.customHeight = tObj.get("height").getAsInt();
@@ -110,7 +112,7 @@ public class PersistentData {
         }
     }
 
-    public static void removePosition(net.minecraft.resources.ResourceLocation id) {
+    public static void removePosition(ResourceLocation id) {
         advancementPositions.remove(id.toString());
         try {
             if (FILE.exists()) {
@@ -124,6 +126,22 @@ public class PersistentData {
             }
         } catch (Exception e) {
             Constants.LOG.error("Failed to remove persistent data", e);
+        }
+    }
+
+    public static void removeTabProperties(ResourceLocation id) {
+        try {
+            if (FILE.exists()) {
+                JsonObject json = GSON.fromJson(new FileReader(FILE), JsonObject.class);
+                if (json != null && json.has("tab_properties")) {
+                    json.getAsJsonObject("tab_properties").remove(id.toString());
+                    try (FileWriter writer = new FileWriter(FILE)) {
+                        GSON.toJson(json, writer);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Constants.LOG.error("Failed to remove tab properties", e);
         }
     }
 }

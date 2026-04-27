@@ -26,15 +26,12 @@ public class BetterAdvancementTab {
     protected final Map<AdvancementHolder, BetterAdvancementWidget> widgets = Maps.newLinkedHashMap();
     private final Minecraft minecraft;
     private final BetterAdvancementsScreen screen;
-    private final BetterAdvancementTabType type;
-    private final int index;
     private final AdvancementNode rootNode;
     private final DisplayInfo display;
     private final ItemStack icon;
     private final Component title;
     private final BetterAdvancementWidget root;
     private final BetterDisplayInfoRegistry betterDisplayInfos;
-
     public int scrollX;
     public int scrollY;
     public String customTitle = "";
@@ -43,6 +40,8 @@ public class BetterAdvancementTab {
     public int customWidth = 0;
     public int customHeight = 0;
     public int customIndex = 0;
+    private BetterAdvancementTabType type;
+    private int index;
     private int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
     private int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
     private float fade;
@@ -75,6 +74,12 @@ public class BetterAdvancementTab {
                 return new BetterAdvancementTab(mc, betterAdvancementsScreen, advancementTabType, index, advancementNode, optional.get());
             }
         }
+    }
+
+
+    public void updateIndex(int index, int width, int height) {
+        this.index = index;
+        this.type = BetterAdvancementTabType.getTabType(width, height, index);
     }
 
     public Map<AdvancementHolder, BetterAdvancementWidget> getWidgets() {
@@ -183,8 +188,11 @@ public class BetterAdvancementTab {
         int scaledWidth = (int) (width / zoom);
         int scaledHeight = (int) (height / zoom);
 
-        this.scrollX = (int) Math.round(Mth.clamp(this.scrollX + scrollX, -(this.maxX + scaledWidth), -this.minX + scaledWidth));
-        this.scrollY = (int) Math.round(Mth.clamp(this.scrollY + scrollY, -(this.maxY + scaledHeight), -this.minY + scaledHeight));
+        int marginX = scaledWidth / 2;
+        int marginY = scaledHeight / 2;
+
+        this.scrollX = (int) Math.round(Mth.clamp(this.scrollX + scrollX, -(this.maxX - marginX), -this.minX + marginX));
+        this.scrollY = (int) Math.round(Mth.clamp(this.scrollY + scrollY, -(this.maxY - marginY), -this.minY + marginY));
     }
 
     public void addAdvancement(AdvancementNode advancementNode) {
@@ -224,7 +232,9 @@ public class BetterAdvancementTab {
     }
 
     public void storeScroll() {
-        scrollHistory.put(this.rootNode.holder(), new Tuple<>(scrollX, scrollY));
+        if (this.centered) {
+            scrollHistory.put(this.rootNode.holder(), new Tuple<>(scrollX, scrollY));
+        }
     }
 
     public void loadScroll() {

@@ -33,6 +33,9 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 public class BetterAdvancementsScreen extends Screen implements ClientAdvancements.Listener {
@@ -81,22 +84,42 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         this.contextMenu = null;
     }
 
+
+    private int getTabRank(AdvancementHolder holder) {
+        String id = holder.id().getNamespace() + ":" + holder.id().getPath();
+        return switch (id) {
+            case "minecraft:story/root" -> 0;
+            case "minecraft:adventure/root" -> 1;
+            case "minecraft:husbandry/root" -> 2;
+            case "minecraft:nether/root" -> 3;
+            case "minecraft:end/root" -> 4;
+            default -> 5;
+        };
+    }
+
     public void sortTabs() {
-        java.util.List<Map.Entry<AdvancementHolder, BetterAdvancementTab>> list = new java.util.ArrayList<>(this.tabs.entrySet());
-        list.sort(java.util.Comparator.comparingInt((Map.Entry<AdvancementHolder, BetterAdvancementTab> e) -> e.getValue().customIndex)
+        List<Map.Entry<AdvancementHolder, BetterAdvancementTab>> list = new ArrayList<>(this.tabs.entrySet());
+        list.sort(Comparator.comparingInt((Map.Entry<AdvancementHolder, BetterAdvancementTab> e) -> getTabRank(e.getKey()))
+                .thenComparingInt(e -> e.getValue().customIndex)
                 .thenComparing(e -> orderTabsAlphabetically ? e.getValue().getTitle().getString() : ""));
         this.tabs.clear();
+        int newIndex = 0;
+        int tabW = getTabInternalWidth();
+        int tabH = getTabInternalHeight();
         for (Map.Entry<AdvancementHolder, BetterAdvancementTab> e : list) {
-            this.tabs.put(e.getKey(), e.getValue());
+            BetterAdvancementTab tab = e.getValue();
+            tab.updateIndex(newIndex, tabW - 2 * 30, tabH - 40 - 30);
+            this.tabs.put(e.getKey(), tab);
+            newIndex++;
         }
     }
 
     public int getTabInternalWidth() {
-        return selectedTab != null && selectedTab.customWidth > 0 ? selectedTab.customWidth : this.internalWidth;
+        return selectedTab != null && selectedTab.customWidth > 0 ? selectedTab.customWidth : Math.min(this.internalWidth, 500);
     }
 
     public int getTabInternalHeight() {
-        return selectedTab != null && selectedTab.customHeight > 0 ? selectedTab.customHeight : this.internalHeight;
+        return selectedTab != null && selectedTab.customHeight > 0 ? selectedTab.customHeight : Math.min(this.internalHeight, 350);
     }
 
     public void closeContextMenu() {
