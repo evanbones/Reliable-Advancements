@@ -4,19 +4,15 @@ import com.evandev.better_advancements.gui.AdvancementContextMenu;
 import com.evandev.better_advancements.gui.BetterAdvancementTab;
 import com.evandev.better_advancements.gui.BetterAdvancementTabType;
 import com.evandev.better_advancements.gui.BetterAdvancementWidget;
-import com.evandev.better_advancements.network.EditAdvancementPayload;
+import com.evandev.better_advancements.network.LinkAdvancementPayload;
 import com.evandev.better_advancements.network.RequestAdvancementJsonPayload;
 import com.evandev.better_advancements.platform.Services;
 import com.evandev.better_advancements.reference.Resources;
 import com.evandev.better_advancements.util.PersistentData;
 import com.evandev.better_advancements.util.RenderUtil;
 import com.google.common.collect.Maps;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.serialization.JsonOps;
 import net.minecraft.Util;
-import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.AdvancementProgress;
@@ -228,21 +224,10 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
                 }
 
                 ResourceLocation id = linkingWidget.getAdvancement().holder().id();
-                String parentId = target.getAdvancement().holder().id().toString();
 
-                Advancement adv = linkingWidget.getAdvancement().advancement();
-                JsonObject rootJson = Advancement.CODEC
-                        .encodeStart(JsonOps.INSTANCE, adv)
-                        .result()
-                        .map(JsonElement::getAsJsonObject)
-                        .orElseGet(JsonObject::new);
-
-                rootJson.addProperty("parent", parentId);
-
-                EditAdvancementPayload payload = new EditAdvancementPayload(id, rootJson.toString(), false);
-                if (Services.PLATFORM.canSendAdvancementEdit()) {
-                    Services.PLATFORM.sendAdvancementEdit(payload);
-                }
+                ResourceLocation parentResId = target.getAdvancement().holder().id();
+                LinkAdvancementPayload payload = new LinkAdvancementPayload(id, parentResId);
+                Services.PLATFORM.sendLinkAdvancement(payload);
 
                 if (linkingWidget.getParent() != null) {
                     linkingWidget.getParent().getChildren().remove(linkingWidget);
