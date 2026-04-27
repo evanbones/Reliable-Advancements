@@ -1,6 +1,5 @@
 package com.evandev.better_advancements.datagen;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.advancements.CriterionTrigger;
@@ -13,14 +12,17 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.RecordComponent;
+import java.lang.reflect.Type;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 public class TriggerSchemaProvider implements DataProvider {
     private final PackOutput output;
+    private final JsonObject schemas = new JsonObject();
+    private final Set<String> visited = new HashSet<>();
 
     public TriggerSchemaProvider(PackOutput output) {
         this.output = output;
@@ -29,31 +31,96 @@ public class TriggerSchemaProvider implements DataProvider {
     @Override
     public @NotNull CompletableFuture<?> run(@NotNull CachedOutput cache) {
         JsonObject root = new JsonObject();
+        JsonObject triggers = new JsonObject();
         Map<CriterionTrigger<?>, Class<?>> manualMap = getManualMapping();
 
-        // FIX: Modern registries return Map.Entry<ResourceKey<T>, T>
         for (Map.Entry<ResourceKey<CriterionTrigger<?>>, CriterionTrigger<?>> entry : BuiltInRegistries.TRIGGER_TYPES.entrySet()) {
             ResourceLocation id = entry.getKey().location();
             CriterionTrigger<?> trigger = entry.getValue();
             Class<?> recordClass = manualMap.get(trigger);
 
-            JsonArray params = new JsonArray();
-            if (recordClass != null && recordClass.isRecord()) {
-                for (RecordComponent component : recordClass.getRecordComponents()) {
-                    params.add(component.getName());
-                }
-            } else {
-                params.add("player");
+            if (recordClass != null) {
+                String typeName = getTypeName(recordClass);
+                triggers.addProperty(id.toString(), typeName);
+                processClass(recordClass);
             }
-
-            JsonObject triggerObj = new JsonObject();
-            triggerObj.add("parameters", params);
-            root.add(id.toString(), triggerObj);
         }
+
+        root.add("triggers", triggers);
+        root.add("schemas", schemas);
 
         Path path = this.output.getOutputFolder(PackOutput.Target.RESOURCE_PACK)
                 .resolve("better_advancements/trigger_schemas.json");
         return DataProvider.saveStable(cache, root, path);
+    }
+
+    private void processClass(Class<?> clazz) {
+        String typeName = getTypeName(clazz);
+        if (visited.contains(typeName)) return;
+        visited.add(typeName);
+
+        if (clazz.isRecord()) {
+            JsonObject fields = new JsonObject();
+            for (RecordComponent component : clazz.getRecordComponents()) {
+                Type genericType = component.getGenericType();
+                String fieldType = resolveType(genericType);
+                String jsonKey = getJsonKey(component.getName());
+                fields.addProperty(jsonKey, fieldType);
+            }
+            schemas.add(typeName, fields);
+        }
+    }
+
+    private String getJsonKey(String fieldName) {
+        return switch (fieldName) {
+            case "entityPredicate" -> "entity";
+            case "entityType" -> "type";
+            case "playerPredicate" -> "player";
+            case "locationPredicate" -> "location";
+            case "killingBlow" -> "killing_blow";
+            default -> fieldName.replaceAll("([a-z])([A-Z]+)", "$1_$2").toLowerCase();
+        };
+
+    }
+
+    private String resolveType(Type type) {
+        if (type instanceof Class<?> clazz) {
+            if (clazz.isPrimitive() || clazz == String.class || clazz == Integer.class || clazz == Boolean.class || clazz == Float.class || clazz == Double.class) {
+                return clazz.getSimpleName().toLowerCase();
+            } else if (clazz == ResourceLocation.class) {
+                return "resource_location";
+            } else if (clazz.isEnum()) {
+                return "enum_" + getTypeName(clazz);
+            } else {
+                processClass(clazz);
+                return getTypeName(clazz);
+            }
+        } else if (type instanceof ParameterizedType pType) {
+            Class<?> rawType = (Class<?>) pType.getRawType();
+            Type[] typeArgs = pType.getActualTypeArguments();
+
+            if (rawType == Optional.class && typeArgs.length == 1) {
+                return resolveType(typeArgs[0]);
+            } else if ((rawType == List.class || rawType == Set.class) && typeArgs.length == 1) {
+                return "list[" + resolveType(typeArgs[0]) + "]";
+            } else if (rawType == Map.class && typeArgs.length == 2) {
+                return "map[" + resolveType(typeArgs[1]) + "]";
+            }
+
+            processClass(rawType);
+            return getTypeName(rawType);
+        }
+        return "unknown";
+    }
+
+    private String getTypeName(Class<?> clazz) {
+        String name = clazz.getName();
+        if (name.startsWith("net.minecraft.advancements.critereon."))
+            name = name.replace("net.minecraft.advancements.critereon.", "");
+        else if (name.startsWith("net.minecraft.world.level.storage.loot.predicates."))
+            name = name.replace("net.minecraft.world.level.storage.loot.predicates.", "");
+        else if (name.startsWith("java.lang.")) name = name.replace("java.lang.", "");
+        return name.replace('$', '.');
     }
 
     private Map<CriterionTrigger<?>, Class<?>> getManualMapping() {

@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -15,14 +16,23 @@ public class SuggestingEditBox extends EditBox {
     private final Supplier<List<String>> suggestionSupplier;
     private List<String> currentSuggestions = List.of();
     private int suggestionIndex = -1;
+    private Consumer<String> externalResponder;
 
     public SuggestingEditBox(Font font, int x, int y, int width, int height, Component message, Supplier<List<String>> suggestionSupplier) {
         super(font, x, y, width, height, message);
         this.suggestionSupplier = suggestionSupplier;
-        this.setResponder(this::updateSuggestions);
+        super.setResponder(this::internalResponder);
     }
 
-    private void updateSuggestions(String text) {
+    @Override
+    public void setResponder(@NotNull Consumer<String> responder) {
+        this.externalResponder = responder;
+    }
+
+    private void internalResponder(String text) {
+        if (this.externalResponder != null) {
+            this.externalResponder.accept(text);
+        }
         if (text.isEmpty()) {
             currentSuggestions = List.of();
             suggestionIndex = -1;
@@ -65,7 +75,7 @@ public class SuggestingEditBox extends EditBox {
             int dropH = currentSuggestions.size() * 14 + 4;
 
             gfx.pose().pushPose();
-            gfx.pose().translate(0, 0, 500); // Draw above everything
+            gfx.pose().translate(0, 0, 500);
             gfx.fill(dropX, dropY, dropX + dropW, dropY + dropH, 0xF0101010);
             gfx.renderOutline(dropX, dropY, dropW, dropH, 0xFFC8AA64);
 

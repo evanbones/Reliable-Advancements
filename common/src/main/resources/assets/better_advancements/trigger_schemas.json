@@ -1,362 +1,410 @@
 {
-  "minecraft:allay_drop_item_on_block": {
-    "parameters": [
-      "player",
-      "location"
-    ]
+  "schemas": {
+    "AnyBlockInteractionTrigger.TriggerInstance": {
+      "location": "ContextAwarePredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "BeeNestDestroyedTrigger.TriggerInstance": {
+      "bees_inside": "MinMaxBounds.Ints",
+      "block": "net.minecraft.core.Holder",
+      "item": "ItemPredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "BlockPredicate": {
+      "blocks": "net.minecraft.core.HolderSet",
+      "nbt": "NbtPredicate",
+      "properties": "StatePropertiesPredicate"
+    },
+    "BredAnimalsTrigger.TriggerInstance": {
+      "parent": "ContextAwarePredicate",
+      "child": "ContextAwarePredicate",
+      "partner": "ContextAwarePredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "BrewedPotionTrigger.TriggerInstance": {
+      "player": "ContextAwarePredicate",
+      "potion": "net.minecraft.core.Holder"
+    },
+    "ChangeDimensionTrigger.TriggerInstance": {
+      "from": "net.minecraft.resources.ResourceKey",
+      "player": "ContextAwarePredicate",
+      "to": "net.minecraft.resources.ResourceKey"
+    },
+    "ChanneledLightningTrigger.TriggerInstance": {
+      "player": "ContextAwarePredicate",
+      "victims": "list[ContextAwarePredicate]"
+    },
+    "ConstructBeaconTrigger.TriggerInstance": {
+      "level": "MinMaxBounds.Ints",
+      "player": "ContextAwarePredicate"
+    },
+    "ConsumeItemTrigger.TriggerInstance": {
+      "item": "ItemPredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "CuredZombieVillagerTrigger.TriggerInstance": {
+      "player": "ContextAwarePredicate",
+      "villager": "ContextAwarePredicate",
+      "zombie": "ContextAwarePredicate"
+    },
+    "DamagePredicate": {
+      "type": "DamageSourcePredicate",
+      "blocked": "boolean",
+      "dealt_damage": "MinMaxBounds.Doubles",
+      "source_entity": "EntityPredicate",
+      "taken_damage": "MinMaxBounds.Doubles"
+    },
+    "DamageSourcePredicate": {
+      "direct_entity": "EntityPredicate",
+      "is_direct": "boolean",
+      "source_entity": "EntityPredicate",
+      "tags": "list[TagPredicate]"
+    },
+    "DefaultBlockInteractionTrigger.TriggerInstance": {
+      "location": "ContextAwarePredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "DistancePredicate": {
+      "absolute": "MinMaxBounds.Doubles",
+      "horizontal": "MinMaxBounds.Doubles",
+      "x": "MinMaxBounds.Doubles",
+      "y": "MinMaxBounds.Doubles",
+      "z": "MinMaxBounds.Doubles"
+    },
+    "DistanceTrigger.TriggerInstance": {
+      "distance": "DistancePredicate",
+      "player": "ContextAwarePredicate",
+      "start_position": "LocationPredicate"
+    },
+    "EffectsChangedTrigger.TriggerInstance": {
+      "effects": "MobEffectsPredicate",
+      "player": "ContextAwarePredicate",
+      "source": "ContextAwarePredicate"
+    },
+    "EnchantedItemTrigger.TriggerInstance": {
+      "item": "ItemPredicate",
+      "levels": "MinMaxBounds.Ints",
+      "player": "ContextAwarePredicate"
+    },
+    "EnterBlockTrigger.TriggerInstance": {
+      "block": "net.minecraft.core.Holder",
+      "player": "ContextAwarePredicate",
+      "state": "StatePropertiesPredicate"
+    },
+    "EntityEquipmentPredicate": {
+      "body": "ItemPredicate",
+      "chest": "ItemPredicate",
+      "feet": "ItemPredicate",
+      "head": "ItemPredicate",
+      "legs": "ItemPredicate",
+      "mainhand": "ItemPredicate",
+      "offhand": "ItemPredicate"
+    },
+    "EntityFlagsPredicate": {
+      "is_baby": "boolean",
+      "is_crouching": "boolean",
+      "is_flying": "boolean",
+      "is_on_fire": "boolean",
+      "is_on_ground": "boolean",
+      "is_sprinting": "boolean",
+      "is_swimming": "boolean"
+    },
+    "EntityHurtPlayerTrigger.TriggerInstance": {
+      "damage": "DamagePredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "EntityPredicate": {
+      "type": "EntityTypePredicate",
+      "distance_to_player": "DistancePredicate",
+      "effects": "MobEffectsPredicate",
+      "equipment": "EntityEquipmentPredicate",
+      "flags": "EntityFlagsPredicate",
+      "location": "EntityPredicate.LocationWrapper",
+      "movement": "MovementPredicate",
+      "nbt": "NbtPredicate",
+      "passenger": "EntityPredicate",
+      "periodic_tick": "integer",
+      "slots": "SlotsPredicate",
+      "sub_predicate": "EntitySubPredicate",
+      "targeted_entity": "EntityPredicate",
+      "team": "string",
+      "vehicle": "EntityPredicate"
+    },
+    "EntityPredicate.LocationWrapper": {
+      "affects_movement": "LocationPredicate",
+      "located": "LocationPredicate",
+      "stepping_on": "LocationPredicate"
+    },
+    "EntityTypePredicate": {
+      "types": "net.minecraft.core.HolderSet"
+    },
+    "FallAfterExplosionTrigger.TriggerInstance": {
+      "cause": "ContextAwarePredicate",
+      "distance": "DistancePredicate",
+      "player": "ContextAwarePredicate",
+      "start_position": "LocationPredicate"
+    },
+    "FilledBucketTrigger.TriggerInstance": {
+      "item": "ItemPredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "FishingRodHookedTrigger.TriggerInstance": {
+      "entity": "ContextAwarePredicate",
+      "item": "ItemPredicate",
+      "player": "ContextAwarePredicate",
+      "rod": "ItemPredicate"
+    },
+    "FluidPredicate": {
+      "fluids": "net.minecraft.core.HolderSet",
+      "properties": "StatePropertiesPredicate"
+    },
+    "ImpossibleTrigger.TriggerInstance": {},
+    "InventoryChangeTrigger.TriggerInstance": {
+      "items": "list[ItemPredicate]",
+      "player": "ContextAwarePredicate",
+      "slots": "InventoryChangeTrigger.TriggerInstance.Slots"
+    },
+    "InventoryChangeTrigger.TriggerInstance.Slots": {
+      "empty": "MinMaxBounds.Ints",
+      "full": "MinMaxBounds.Ints",
+      "occupied": "MinMaxBounds.Ints"
+    },
+    "ItemDurabilityTrigger.TriggerInstance": {
+      "delta": "MinMaxBounds.Ints",
+      "durability": "MinMaxBounds.Ints",
+      "item": "ItemPredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "ItemPredicate": {
+      "components": "net.minecraft.core.component.DataComponentPredicate",
+      "count": "MinMaxBounds.Ints",
+      "items": "net.minecraft.core.HolderSet",
+      "sub_predicates": "map[ItemSubPredicate]"
+    },
+    "ItemUsedOnLocationTrigger.TriggerInstance": {
+      "location": "ContextAwarePredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "KilledByCrossbowTrigger.TriggerInstance": {
+      "player": "ContextAwarePredicate",
+      "unique_entity_types": "MinMaxBounds.Ints",
+      "victims": "list[ContextAwarePredicate]"
+    },
+    "KilledTrigger.TriggerInstance": {
+      "entity": "ContextAwarePredicate",
+      "killing_blow": "DamageSourcePredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "LevitationTrigger.TriggerInstance": {
+      "distance": "DistancePredicate",
+      "duration": "MinMaxBounds.Ints",
+      "player": "ContextAwarePredicate"
+    },
+    "LightPredicate": {
+      "composite": "MinMaxBounds.Ints"
+    },
+    "LightningStrikeTrigger.TriggerInstance": {
+      "bystander": "ContextAwarePredicate",
+      "lightning": "ContextAwarePredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "LocationPredicate": {
+      "biomes": "net.minecraft.core.HolderSet",
+      "block": "BlockPredicate",
+      "can_see_sky": "boolean",
+      "dimension": "net.minecraft.resources.ResourceKey",
+      "fluid": "FluidPredicate",
+      "light": "LightPredicate",
+      "position": "LocationPredicate.PositionPredicate",
+      "smokey": "boolean",
+      "structures": "net.minecraft.core.HolderSet"
+    },
+    "LocationPredicate.PositionPredicate": {
+      "x": "MinMaxBounds.Doubles",
+      "y": "MinMaxBounds.Doubles",
+      "z": "MinMaxBounds.Doubles"
+    },
+    "LootTableTrigger.TriggerInstance": {
+      "loot_table": "net.minecraft.resources.ResourceKey",
+      "player": "ContextAwarePredicate"
+    },
+    "MinMaxBounds.Doubles": {
+      "max": "double",
+      "max_sq": "double",
+      "min": "double",
+      "min_sq": "double"
+    },
+    "MinMaxBounds.Ints": {
+      "max": "integer",
+      "max_sq": "Long",
+      "min": "integer",
+      "min_sq": "Long"
+    },
+    "MobEffectsPredicate": {
+      "effect_map": "map[MobEffectsPredicate.MobEffectInstancePredicate]"
+    },
+    "MobEffectsPredicate.MobEffectInstancePredicate": {
+      "ambient": "boolean",
+      "amplifier": "MinMaxBounds.Ints",
+      "duration": "MinMaxBounds.Ints",
+      "visible": "boolean"
+    },
+    "MovementPredicate": {
+      "fall_distance": "MinMaxBounds.Doubles",
+      "horizontal_speed": "MinMaxBounds.Doubles",
+      "speed": "MinMaxBounds.Doubles",
+      "vertical_speed": "MinMaxBounds.Doubles",
+      "x": "MinMaxBounds.Doubles",
+      "y": "MinMaxBounds.Doubles",
+      "z": "MinMaxBounds.Doubles"
+    },
+    "NbtPredicate": {
+      "tag": "net.minecraft.nbt.CompoundTag"
+    },
+    "PickedUpItemTrigger.TriggerInstance": {
+      "entity": "ContextAwarePredicate",
+      "item": "ItemPredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "PlayerHurtEntityTrigger.TriggerInstance": {
+      "damage": "DamagePredicate",
+      "entity": "ContextAwarePredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "PlayerInteractTrigger.TriggerInstance": {
+      "entity": "ContextAwarePredicate",
+      "item": "ItemPredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "PlayerTrigger.TriggerInstance": {
+      "player": "ContextAwarePredicate"
+    },
+    "RecipeCraftedTrigger.TriggerInstance": {
+      "ingredients": "list[ItemPredicate]",
+      "player": "ContextAwarePredicate",
+      "recipe_id": "resource_location"
+    },
+    "RecipeUnlockedTrigger.TriggerInstance": {
+      "player": "ContextAwarePredicate",
+      "recipe": "resource_location"
+    },
+    "ShotCrossbowTrigger.TriggerInstance": {
+      "item": "ItemPredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "SlideDownBlockTrigger.TriggerInstance": {
+      "block": "net.minecraft.core.Holder",
+      "player": "ContextAwarePredicate",
+      "state": "StatePropertiesPredicate"
+    },
+    "SlotsPredicate": {
+      "slots": "map[ItemPredicate]"
+    },
+    "StartRidingTrigger.TriggerInstance": {
+      "player": "ContextAwarePredicate"
+    },
+    "StatePropertiesPredicate": {
+      "properties": "list[StatePropertiesPredicate.PropertyMatcher]"
+    },
+    "StatePropertiesPredicate.PropertyMatcher": {
+      "name": "string",
+      "value_matcher": "StatePropertiesPredicate.ValueMatcher"
+    },
+    "SummonedEntityTrigger.TriggerInstance": {
+      "entity": "ContextAwarePredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "TagPredicate": {
+      "expected": "boolean",
+      "tag": "net.minecraft.tags.TagKey"
+    },
+    "TameAnimalTrigger.TriggerInstance": {
+      "entity": "ContextAwarePredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "TargetBlockTrigger.TriggerInstance": {
+      "player": "ContextAwarePredicate",
+      "projectile": "ContextAwarePredicate",
+      "signal_strength": "MinMaxBounds.Ints"
+    },
+    "TradeTrigger.TriggerInstance": {
+      "item": "ItemPredicate",
+      "player": "ContextAwarePredicate",
+      "villager": "ContextAwarePredicate"
+    },
+    "UsedEnderEyeTrigger.TriggerInstance": {
+      "distance": "MinMaxBounds.Doubles",
+      "player": "ContextAwarePredicate"
+    },
+    "UsedTotemTrigger.TriggerInstance": {
+      "item": "ItemPredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "UsingItemTrigger.TriggerInstance": {
+      "item": "ItemPredicate",
+      "player": "ContextAwarePredicate"
+    },
+    "net.minecraft.tags.TagKey": {
+      "location": "resource_location",
+      "registry": "net.minecraft.resources.ResourceKey"
+    }
   },
-  "minecraft:any_block_use": {
-    "parameters": [
-      "player",
-      "location"
-    ]
-  },
-  "minecraft:avoid_vibration": {
-    "parameters": [
-      "player"
-    ]
-  },
-  "minecraft:bee_nest_destroyed": {
-    "parameters": [
-      "player",
-      "block",
-      "item",
-      "beesInside"
-    ]
-  },
-  "minecraft:bred_animals": {
-    "parameters": [
-      "player",
-      "parent",
-      "partner",
-      "child"
-    ]
-  },
-  "minecraft:brewed_potion": {
-    "parameters": [
-      "player",
-      "potion"
-    ]
-  },
-  "minecraft:changed_dimension": {
-    "parameters": [
-      "player",
-      "from",
-      "to"
-    ]
-  },
-  "minecraft:channeled_lightning": {
-    "parameters": [
-      "player",
-      "victims"
-    ]
-  },
-  "minecraft:construct_beacon": {
-    "parameters": [
-      "player",
-      "level"
-    ]
-  },
-  "minecraft:consume_item": {
-    "parameters": [
-      "player",
-      "item"
-    ]
-  },
-  "minecraft:crafter_recipe_crafted": {
-    "parameters": [
-      "player",
-      "recipeId",
-      "ingredients"
-    ]
-  },
-  "minecraft:cured_zombie_villager": {
-    "parameters": [
-      "player",
-      "zombie",
-      "villager"
-    ]
-  },
-  "minecraft:default_block_use": {
-    "parameters": [
-      "player",
-      "location"
-    ]
-  },
-  "minecraft:effects_changed": {
-    "parameters": [
-      "player",
-      "effects",
-      "source"
-    ]
-  },
-  "minecraft:enchanted_item": {
-    "parameters": [
-      "player",
-      "item",
-      "levels"
-    ]
-  },
-  "minecraft:enter_block": {
-    "parameters": [
-      "player",
-      "block",
-      "state"
-    ]
-  },
-  "minecraft:entity_hurt_player": {
-    "parameters": [
-      "player",
-      "damage"
-    ]
-  },
-  "minecraft:entity_killed_player": {
-    "parameters": [
-      "player",
-      "entityPredicate",
-      "killingBlow"
-    ]
-  },
-  "minecraft:fall_after_explosion": {
-    "parameters": [
-      "player",
-      "startPosition",
-      "distance",
-      "cause"
-    ]
-  },
-  "minecraft:fall_from_height": {
-    "parameters": [
-      "player",
-      "startPosition",
-      "distance"
-    ]
-  },
-  "minecraft:filled_bucket": {
-    "parameters": [
-      "player",
-      "item"
-    ]
-  },
-  "minecraft:fishing_rod_hooked": {
-    "parameters": [
-      "player",
-      "rod",
-      "entity",
-      "item"
-    ]
-  },
-  "minecraft:hero_of_the_village": {
-    "parameters": [
-      "player"
-    ]
-  },
-  "minecraft:impossible": {
-    "parameters": []
-  },
-  "minecraft:inventory_changed": {
-    "parameters": [
-      "player",
-      "slots",
-      "items"
-    ]
-  },
-  "minecraft:item_durability_changed": {
-    "parameters": [
-      "player",
-      "item",
-      "durability",
-      "delta"
-    ]
-  },
-  "minecraft:item_used_on_block": {
-    "parameters": [
-      "player",
-      "location"
-    ]
-  },
-  "minecraft:kill_mob_near_sculk_catalyst": {
-    "parameters": [
-      "player",
-      "entityPredicate",
-      "killingBlow"
-    ]
-  },
-  "minecraft:killed_by_crossbow": {
-    "parameters": [
-      "player",
-      "victims",
-      "uniqueEntityTypes"
-    ]
-  },
-  "minecraft:levitation": {
-    "parameters": [
-      "player",
-      "distance",
-      "duration"
-    ]
-  },
-  "minecraft:lightning_strike": {
-    "parameters": [
-      "player",
-      "lightning",
-      "bystander"
-    ]
-  },
-  "minecraft:location": {
-    "parameters": [
-      "player"
-    ]
-  },
-  "minecraft:nether_travel": {
-    "parameters": [
-      "player",
-      "startPosition",
-      "distance"
-    ]
-  },
-  "minecraft:placed_block": {
-    "parameters": [
-      "player",
-      "location"
-    ]
-  },
-  "minecraft:player_generates_container_loot": {
-    "parameters": [
-      "player",
-      "lootTable"
-    ]
-  },
-  "minecraft:player_hurt_entity": {
-    "parameters": [
-      "player",
-      "damage",
-      "entity"
-    ]
-  },
-  "minecraft:player_interacted_with_entity": {
-    "parameters": [
-      "player",
-      "item",
-      "entity"
-    ]
-  },
-  "minecraft:player_killed_entity": {
-    "parameters": [
-      "player",
-      "entityPredicate",
-      "killingBlow"
-    ]
-  },
-  "minecraft:recipe_crafted": {
-    "parameters": [
-      "player",
-      "recipeId",
-      "ingredients"
-    ]
-  },
-  "minecraft:recipe_unlocked": {
-    "parameters": [
-      "player",
-      "recipe"
-    ]
-  },
-  "minecraft:ride_entity_in_lava": {
-    "parameters": [
-      "player",
-      "startPosition",
-      "distance"
-    ]
-  },
-  "minecraft:shot_crossbow": {
-    "parameters": [
-      "player",
-      "item"
-    ]
-  },
-  "minecraft:slept_in_bed": {
-    "parameters": [
-      "player"
-    ]
-  },
-  "minecraft:slide_down_block": {
-    "parameters": [
-      "player",
-      "block",
-      "state"
-    ]
-  },
-  "minecraft:started_riding": {
-    "parameters": [
-      "player"
-    ]
-  },
-  "minecraft:summoned_entity": {
-    "parameters": [
-      "player",
-      "entity"
-    ]
-  },
-  "minecraft:tame_animal": {
-    "parameters": [
-      "player",
-      "entity"
-    ]
-  },
-  "minecraft:target_hit": {
-    "parameters": [
-      "player",
-      "signalStrength",
-      "projectile"
-    ]
-  },
-  "minecraft:thrown_item_picked_up_by_entity": {
-    "parameters": [
-      "player",
-      "item",
-      "entity"
-    ]
-  },
-  "minecraft:thrown_item_picked_up_by_player": {
-    "parameters": [
-      "player",
-      "item",
-      "entity"
-    ]
-  },
-  "minecraft:tick": {
-    "parameters": [
-      "player"
-    ]
-  },
-  "minecraft:used_ender_eye": {
-    "parameters": [
-      "player",
-      "distance"
-    ]
-  },
-  "minecraft:used_totem": {
-    "parameters": [
-      "player",
-      "item"
-    ]
-  },
-  "minecraft:using_item": {
-    "parameters": [
-      "player",
-      "item"
-    ]
-  },
-  "minecraft:villager_trade": {
-    "parameters": [
-      "player",
-      "villager",
-      "item"
-    ]
-  },
-  "minecraft:voluntary_exile": {
-    "parameters": [
-      "player"
-    ]
+  "triggers": {
+    "minecraft:allay_drop_item_on_block": "ItemUsedOnLocationTrigger.TriggerInstance",
+    "minecraft:any_block_use": "AnyBlockInteractionTrigger.TriggerInstance",
+    "minecraft:avoid_vibration": "PlayerTrigger.TriggerInstance",
+    "minecraft:bee_nest_destroyed": "BeeNestDestroyedTrigger.TriggerInstance",
+    "minecraft:bred_animals": "BredAnimalsTrigger.TriggerInstance",
+    "minecraft:brewed_potion": "BrewedPotionTrigger.TriggerInstance",
+    "minecraft:changed_dimension": "ChangeDimensionTrigger.TriggerInstance",
+    "minecraft:channeled_lightning": "ChanneledLightningTrigger.TriggerInstance",
+    "minecraft:construct_beacon": "ConstructBeaconTrigger.TriggerInstance",
+    "minecraft:consume_item": "ConsumeItemTrigger.TriggerInstance",
+    "minecraft:crafter_recipe_crafted": "RecipeCraftedTrigger.TriggerInstance",
+    "minecraft:cured_zombie_villager": "CuredZombieVillagerTrigger.TriggerInstance",
+    "minecraft:default_block_use": "DefaultBlockInteractionTrigger.TriggerInstance",
+    "minecraft:effects_changed": "EffectsChangedTrigger.TriggerInstance",
+    "minecraft:enchanted_item": "EnchantedItemTrigger.TriggerInstance",
+    "minecraft:enter_block": "EnterBlockTrigger.TriggerInstance",
+    "minecraft:entity_hurt_player": "EntityHurtPlayerTrigger.TriggerInstance",
+    "minecraft:entity_killed_player": "KilledTrigger.TriggerInstance",
+    "minecraft:fall_after_explosion": "FallAfterExplosionTrigger.TriggerInstance",
+    "minecraft:fall_from_height": "DistanceTrigger.TriggerInstance",
+    "minecraft:filled_bucket": "FilledBucketTrigger.TriggerInstance",
+    "minecraft:fishing_rod_hooked": "FishingRodHookedTrigger.TriggerInstance",
+    "minecraft:hero_of_the_village": "PlayerTrigger.TriggerInstance",
+    "minecraft:impossible": "ImpossibleTrigger.TriggerInstance",
+    "minecraft:inventory_changed": "InventoryChangeTrigger.TriggerInstance",
+    "minecraft:item_durability_changed": "ItemDurabilityTrigger.TriggerInstance",
+    "minecraft:item_used_on_block": "ItemUsedOnLocationTrigger.TriggerInstance",
+    "minecraft:kill_mob_near_sculk_catalyst": "KilledTrigger.TriggerInstance",
+    "minecraft:killed_by_crossbow": "KilledByCrossbowTrigger.TriggerInstance",
+    "minecraft:levitation": "LevitationTrigger.TriggerInstance",
+    "minecraft:lightning_strike": "LightningStrikeTrigger.TriggerInstance",
+    "minecraft:location": "PlayerTrigger.TriggerInstance",
+    "minecraft:nether_travel": "DistanceTrigger.TriggerInstance",
+    "minecraft:placed_block": "ItemUsedOnLocationTrigger.TriggerInstance",
+    "minecraft:player_generates_container_loot": "LootTableTrigger.TriggerInstance",
+    "minecraft:player_hurt_entity": "PlayerHurtEntityTrigger.TriggerInstance",
+    "minecraft:player_interacted_with_entity": "PlayerInteractTrigger.TriggerInstance",
+    "minecraft:player_killed_entity": "KilledTrigger.TriggerInstance",
+    "minecraft:recipe_crafted": "RecipeCraftedTrigger.TriggerInstance",
+    "minecraft:recipe_unlocked": "RecipeUnlockedTrigger.TriggerInstance",
+    "minecraft:ride_entity_in_lava": "DistanceTrigger.TriggerInstance",
+    "minecraft:shot_crossbow": "ShotCrossbowTrigger.TriggerInstance",
+    "minecraft:slept_in_bed": "PlayerTrigger.TriggerInstance",
+    "minecraft:slide_down_block": "SlideDownBlockTrigger.TriggerInstance",
+    "minecraft:started_riding": "StartRidingTrigger.TriggerInstance",
+    "minecraft:summoned_entity": "SummonedEntityTrigger.TriggerInstance",
+    "minecraft:tame_animal": "TameAnimalTrigger.TriggerInstance",
+    "minecraft:target_hit": "TargetBlockTrigger.TriggerInstance",
+    "minecraft:thrown_item_picked_up_by_entity": "PickedUpItemTrigger.TriggerInstance",
+    "minecraft:thrown_item_picked_up_by_player": "PickedUpItemTrigger.TriggerInstance",
+    "minecraft:tick": "PlayerTrigger.TriggerInstance",
+    "minecraft:used_ender_eye": "UsedEnderEyeTrigger.TriggerInstance",
+    "minecraft:used_totem": "UsedTotemTrigger.TriggerInstance",
+    "minecraft:using_item": "UsingItemTrigger.TriggerInstance",
+    "minecraft:villager_trade": "TradeTrigger.TriggerInstance",
+    "minecraft:voluntary_exile": "PlayerTrigger.TriggerInstance"
   }
 }
