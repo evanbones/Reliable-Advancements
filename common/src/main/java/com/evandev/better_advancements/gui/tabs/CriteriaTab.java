@@ -68,6 +68,7 @@ public class CriteriaTab implements IEditorTab {
 
         widgets.add(Button.builder(Component.literal("<"), b -> switchCriterion(-1, reinitScreen)).pos(x, y).size(20, 20).build());
         nameBox = new EditBox(font, x + 25, y, width - 105, 20, Component.literal("Name"));
+        nameBox.setMaxLength(256);
         nameBox.setValue(active.name);
         widgets.add(nameBox);
         widgets.add(Button.builder(Component.literal(">"), b -> switchCriterion(1, reinitScreen)).pos(x + width - 75, y).size(20, 20).build());
@@ -76,6 +77,7 @@ public class CriteriaTab implements IEditorTab {
 
         triggerBox = new SuggestingEditBox(font, x, y + 45, width, 20, Component.literal("Trigger"),
                 () -> BuiltInRegistries.TRIGGER_TYPES.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList()));
+        triggerBox.setMaxLength(256);
         triggerBox.setValue(active.trigger);
         widgets.add(triggerBox);
 
@@ -86,9 +88,11 @@ public class CriteriaTab implements IEditorTab {
             ConditionRow row = new ConditionRow();
             row.keyBox = new SuggestingEditBox(font, x, rowY, 100, 20, Component.literal("Key"),
                     () -> TriggerSchemaManager.getParameters(triggerBox.getValue()));
+            row.keyBox.setMaxLength(256);
             row.keyBox.setValue(key);
 
             row.valBox = new EditBox(font, x + 105, rowY, width - 130, 20, Component.literal("Value"));
+            row.valBox.setMaxLength(2048);
             row.valBox.setValue(new Gson().toJson(condObj.get(key)));
 
             Button removeBtn = Button.builder(Component.literal("-"), b -> removeConditionRow(row, reinitScreen))

@@ -46,6 +46,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     public static boolean showDebugCoordinates = false;
     public static boolean orderTabsAlphabetically = false;
     private static int tabPage, maxPages;
+    private static ResourceLocation savedSelectedTab = null;
     private final ClientAdvancements clientAdvancements;
     private final Map<AdvancementHolder, BetterAdvancementTab> tabs = Maps.newLinkedHashMap();
     public BetterAdvancementWidget linkingWidget = null;
@@ -60,7 +61,6 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     private double dragOffsetY = 0.0;
     private String linkingError = null;
     private long linkingErrorTime = 0;
-    private ResourceLocation savedSelectedTab = null;
 
 
     public BetterAdvancementsScreen(ClientAdvancements clientAdvancements) {
@@ -138,7 +138,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     protected void init() {
         if (this.selectedTab != null) {
             this.selectedTab.storeScroll();
-            this.savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+            savedSelectedTab = this.selectedTab.getRootNode().holder().id();
         }
         PersistentData.load();
         this.internalHeight = this.height * uiScaling / 100;
@@ -148,9 +148,9 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         this.selectedTab = null;
         this.clientAdvancements.setListener(this);
 
-        if (this.savedSelectedTab != null) {
+        if (savedSelectedTab != null) {
             for (BetterAdvancementTab tab : this.tabs.values()) {
-                if (tab.getRootNode().holder().id().equals(this.savedSelectedTab)) {
+                if (tab.getRootNode().holder().id().equals(savedSelectedTab)) {
                     this.selectedTab = tab;
                     break;
                 }
@@ -342,6 +342,9 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     public void removed() {
         if (BetterAdvancementsScreen.enableEditMode) {
             PersistentData.save(this.tabs);
+        }
+        if (this.selectedTab != null) {
+            savedSelectedTab = this.selectedTab.getRootNode().holder().id();
         }
         super.removed();
     }
@@ -661,7 +664,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     @Override
     public void onAdvancementsCleared() {
         if (this.selectedTab != null) {
-            this.savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+            savedSelectedTab = this.selectedTab.getRootNode().holder().id();
         }
         this.tabs.clear();
         this.selectedTab = null;
@@ -673,7 +676,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         if (betterAdvancementTabGui != null) {
             this.tabs.put(advancement.holder(), betterAdvancementTabGui);
             sortTabs();
-            if (advancement.holder().id().equals(this.savedSelectedTab)) {
+            if (advancement.holder().id().equals(savedSelectedTab)) {
                 this.selectedTab = betterAdvancementTabGui;
                 this.clientAdvancements.setSelectedTab(advancement.holder(), true);
             } else if (this.selectedTab == null) {

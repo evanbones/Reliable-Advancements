@@ -139,14 +139,13 @@ public class AdvancementEditorScreen extends Screen {
         activeTab.saveState(draft);
         activeTabName = tabName;
         activeTab = tabs.get(tabName);
+        activeTab.loadState(draft);
         scrollOffset = 0;
         this.init();
     }
 
     private void saveAndClose() {
-        for (IEditorTab tab : this.tabs.values()) {
-            tab.saveState(draft);
-        }
+        activeTab.saveState(draft);
 
         String payloadStr = new GsonBuilder().setPrettyPrinting().create().toJson(draft.rootJson);
         EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), payloadStr, false);
