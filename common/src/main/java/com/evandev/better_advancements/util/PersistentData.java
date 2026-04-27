@@ -44,6 +44,8 @@ public class PersistentData {
                 tObj.addProperty("title", tab.customTitle);
                 if (tab.customBackground != null) tObj.addProperty("background", tab.customBackground.toString());
                 tObj.addProperty("static_background", tab.isStaticBackground);
+                tObj.addProperty("bg_width", tab.bgWidth);
+                tObj.addProperty("bg_height", tab.bgHeight);
                 tObj.addProperty("width", tab.customWidth);
                 tObj.addProperty("height", tab.customHeight);
                 tObj.addProperty("index", tab.customIndex);
@@ -93,6 +95,8 @@ public class PersistentData {
                     if (tObj.has("title")) tab.customTitle = tObj.get("title").getAsString();
                     if (tObj.has("background")) tab.customBackground = ResourceLocation.parse(tObj.get("background").getAsString());
                     if (tObj.has("static_background")) tab.isStaticBackground = tObj.get("static_background").getAsBoolean();
+                    if (tObj.has("bg_width")) tab.bgWidth = tObj.get("bg_width").getAsInt();
+                    if (tObj.has("bg_height")) tab.bgHeight = tObj.get("bg_height").getAsInt();
                     if (tObj.has("width")) tab.customWidth = tObj.get("width").getAsInt();
                     if (tObj.has("height")) tab.customHeight = tObj.get("height").getAsInt();
                     if (tObj.has("index")) tab.customIndex = tObj.get("index").getAsInt();

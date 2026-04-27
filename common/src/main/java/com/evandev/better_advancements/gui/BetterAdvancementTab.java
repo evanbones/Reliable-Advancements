@@ -37,6 +37,8 @@ public class BetterAdvancementTab {
     public String customTitle = "";
     public ResourceLocation customBackground = null;
     public boolean isStaticBackground = false;
+    public int bgWidth = 16;
+    public int bgHeight = 16;
     public int customWidth = 0;
     public int customHeight = 0;
     public int customIndex = 0;
@@ -135,19 +137,21 @@ public class BetterAdvancementTab {
 
         ResourceLocation resourcelocation = this.customBackground != null ? this.customBackground : this.display.getBackground().orElse(TextureManager.INTENTIONAL_MISSING_TEXTURE);
 
-        if (this.isStaticBackground) {
+        if (this.isStaticBackground && this.bgWidth == 0 && this.bgHeight == 0) {
             guiGraphics.blit(resourcelocation, 0, 0, 0.0F, 0.0F, scaledWidth, scaledHeight, scaledWidth, scaledHeight);
         } else {
-            int i = this.scrollX % 16;
-            int j = this.scrollY % 16;
+            int texW = this.bgWidth > 0 ? this.bgWidth : 16;
+            int texH = this.bgHeight > 0 ? this.bgHeight : 16;
+
+            int i = this.isStaticBackground ? 0 : this.scrollX % texW;
+            int j = this.isStaticBackground ? 0 : this.scrollY % texH;
 
             int k = -1;
-            for (; k <= 1 + scaledWidth / 16; k++) {
+            for (; k <= 1 + scaledWidth / texW; k++) {
                 int l = -1;
-                for (; l <= scaledHeight / 16; l++) {
-                    guiGraphics.blit(resourcelocation, i + 16 * k, j + 16 * l, 0.0F, 0.0F, 16, 16, 16, 16);
+                for (; l <= scaledHeight / texH; l++) {
+                    guiGraphics.blit(resourcelocation, i + texW * k, j + texH * l, 0.0F, 0.0F, texW, texH, texW, texH);
                 }
-                guiGraphics.blit(resourcelocation, i + 16 * k, j + 16 * l, 0.0F, 0.0F, 16, scaledHeight % 16, 16, 16);
             }
         }
 

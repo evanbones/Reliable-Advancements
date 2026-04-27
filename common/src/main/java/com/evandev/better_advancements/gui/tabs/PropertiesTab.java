@@ -94,6 +94,7 @@ public class PropertiesTab implements IEditorTab {
 
         iconBox = new SuggestingEditBox(font, x, y + 90, width, 20, Component.literal("Icon"),
                 () -> BuiltInRegistries.ITEM.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList()));
+        iconBox.setMaxLength(512);
         iconBox.setValue(icon);
 
         parentBox = new EditBox(font, x, y + 135, width, 20, Component.literal("Parent"));
