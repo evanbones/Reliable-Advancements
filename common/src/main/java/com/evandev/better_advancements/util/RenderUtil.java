@@ -63,17 +63,20 @@ public class RenderUtil {
     }
 
     public static void line(GuiGraphics guiGraphics, int x0, int y0, int x1, int y1, int thickness, int color) {
-        if (x0 > x1) {
-            int temp = x0;
-            x0 = x1;
-            x1 = temp;
-        }
-        if (y0 > y1) {
-            int temp = y0;
-            y0 = y1;
-            y1 = temp;
-        }
-        guiGraphics.fill(RenderType.gui(), x0 - thickness, y0 - thickness, x1 + 1 + thickness, y1 + 1 + thickness, color);
+        float dx = x1 - x0;
+        float dy = y1 - y0;
+        float length = (float) Math.sqrt(dx * dx + dy * dy);
+        float angle = (float) Math.atan2(dy, dx);
+
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(x0, y0, 0);
+        guiGraphics.pose().mulPose(new org.joml.Quaternionf().rotateZ(angle));
+
+        int halfThickness = thickness / 2;
+        int extraThickness = thickness % 2;
+        guiGraphics.fill(RenderType.gui(), 0, -halfThickness, (int) Math.ceil(length), halfThickness + extraThickness, color);
+
+        guiGraphics.pose().popPose();
     }
 
     public static void drawRotatedArrow(GuiGraphics guiGraphics, float x, float y, float angle, int color) {

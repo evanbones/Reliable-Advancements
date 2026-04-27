@@ -51,6 +51,7 @@ public class BetterAdvancementWidget implements IBetterAdvancementEntryGui {
     private CriterionGrid criterionGrid;
     private BetterAdvancementWidget parent;
     private AdvancementProgress advancementProgress;
+    private float hoverAnim = 0.0f;
 
     public BetterAdvancementWidget(BetterAdvancementTab betterAdvancementTabGui, Minecraft mc, AdvancementNode advancementNode, DisplayInfo displayInfo) {
         this.betterAdvancementTabGui = betterAdvancementTabGui;
@@ -279,7 +280,15 @@ public class BetterAdvancementWidget implements IBetterAdvancementEntryGui {
         }
     }
 
-    public void draw(GuiGraphics guiGraphics, int scrollX, int scrollY) {
+    public void draw(GuiGraphics guiGraphics, int scrollX, int scrollY, double unzoomedX, double unzoomedY) {
+        boolean isHovered = BetterAdvancementsScreen.enableEditMode && this.isMouseOver(scrollX, scrollY, unzoomedX, unzoomedY);
+
+        if (isHovered) {
+            hoverAnim = Math.min(1.0f, hoverAnim + 0.15f);
+        } else {
+            hoverAnim = Math.max(0.0f, hoverAnim - 0.15f);
+        }
+
         if (!this.displayInfo.isHidden() || this.advancementProgress != null && this.advancementProgress.isDone()) {
             float f = this.advancementProgress == null ? 0.0F : this.advancementProgress.getPercent();
             AdvancementWidgetType advancementState;
@@ -290,15 +299,42 @@ public class BetterAdvancementWidget implements IBetterAdvancementEntryGui {
                 advancementState = AdvancementWidgetType.UNOBTAINED;
             }
 
-            RenderUtil.setColor(betterDisplayInfo.getIconColor(advancementState));
+            int baseColor = betterDisplayInfo.getIconColor(advancementState);
+
+            if (hoverAnim > 0.0f) {
+                int r = (baseColor >> 16) & 255;
+                int g = (baseColor >> 8) & 255;
+                int b = baseColor & 255;
+
+                // Blend upwards of 40% towards white when fully hovered
+                r = (int) (r + (255 - r) * hoverAnim * 0.4f);
+                g = (int) (g + (255 - g) * hoverAnim * 0.4f);
+                b = (int) (b + (255 - b) * hoverAnim * 0.4f);
+
+                baseColor = 0xFF000000 | (r << 16) | (g << 8) | b;
+            }
+
+            RenderUtil.setColor(baseColor);
             RenderSystem.enableBlend();
+
+            guiGraphics.pose().pushPose();
+            float scale = 1.0f + (hoverAnim * 0.1f);
+            float centerX = scrollX + this.x + 3 + ICON_SIZE / 2.0f;
+            float centerY = scrollY + this.y + ICON_SIZE / 2.0f;
+
+            guiGraphics.pose().translate(centerX, centerY, 0);
+            guiGraphics.pose().scale(scale, scale, 1.0f);
+            guiGraphics.pose().translate(-centerX, -centerY, 0);
+
             guiGraphics.blitSprite(advancementState.frameSprite(this.displayInfo.getType()), scrollX + this.x + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE);
             RenderUtil.setColor(betterDisplayInfo.defaultIconColor());
             guiGraphics.renderFakeItem(this.displayInfo.getIcon(), scrollX + this.x + 8, scrollY + this.y + 5);
+
+            guiGraphics.pose().popPose();
         }
 
         for (BetterAdvancementWidget betterAdvancementWidget : this.children) {
-            betterAdvancementWidget.draw(guiGraphics, scrollX, scrollY);
+            betterAdvancementWidget.draw(guiGraphics, scrollX, scrollY, unzoomedX, unzoomedY);
         }
     }
 

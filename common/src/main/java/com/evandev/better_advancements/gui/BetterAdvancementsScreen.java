@@ -49,6 +49,9 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     private BetterAdvancementWidget advConnectedToMouse = null;
     private AdvancementContextMenu contextMenu = null;
 
+    private double dragOffsetX = 0.0;
+    private double dragOffsetY = 0.0;
+
     public BetterAdvancementsScreen(ClientAdvancements clientAdvancements) {
         super(GameNarrator.NO_TITLE);
         this.clientAdvancements = clientAdvancements;
@@ -117,6 +120,14 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         }
     }
 
+    private boolean isDescendant(BetterAdvancementWidget potentialAncestor, BetterAdvancementWidget potentialDescendant) {
+        if (potentialAncestor == potentialDescendant) return true;
+        for (BetterAdvancementWidget child : potentialAncestor.getChildren()) {
+            if (isDescendant(child, potentialDescendant)) return true;
+        }
+        return false;
+    }
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int modifiers) {
         if (this.contextMenu != null) {
@@ -137,6 +148,13 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         if (this.linkingWidget != null && modifiers == 0) {
             BetterAdvancementWidget target = getHoveredWidget(mouseX, mouseY);
             if (target != null && target != this.linkingWidget) {
+
+                if (isDescendant(this.linkingWidget, target)) {
+                    this.minecraft.player.displayClientMessage(Component.literal("Cannot link: Creates a cyclic dependency!").withStyle(net.minecraft.ChatFormatting.RED), false);
+                    this.linkingWidget = null;
+                    return true;
+                }
+
                 ResourceLocation id = linkingWidget.getAdvancement().holder().id();
                 DisplayInfo display = linkingWidget.getAdvancement().advancement().display().orElse(null);
                 String title = display != null ? display.getTitle().getString() : "Advancement";
@@ -292,25 +310,30 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             if (this.advConnectedToMouse == null) {
                 boolean inGui = mouseX < left + internalWidth - 2 * SIDE - PADDING && mouseX > left + PADDING && mouseY < top + internalHeight - TOP + 1 && mouseY > top + 2 * PADDING;
                 if (this.selectedTab != null && inGui) {
+                    double unzoomedMouseX = (mouseX - left - PADDING) / this.zoom;
+                    double unzoomedMouseY = (mouseY - top - 2 * PADDING) / this.zoom;
+
                     for (BetterAdvancementWidget betterAdvancementEntryScreen : this.selectedTab.getWidgets().values()) {
-                        if (betterAdvancementEntryScreen.isMouseOver(this.selectedTab.scrollX, this.selectedTab.scrollY, (mouseX - left - PADDING) / this.zoom, (mouseY - top - 2 * PADDING) / this.zoom)) {
+                        if (betterAdvancementEntryScreen.isMouseOver(this.selectedTab.scrollX, this.selectedTab.scrollY, unzoomedMouseX, unzoomedMouseY)) {
                             if ((BetterAdvancementsScreen.enableEditMode || betterAdvancementEntryScreen.betterDisplayInfo.allowDragging()) && button == 0) {
                                 this.advConnectedToMouse = betterAdvancementEntryScreen;
+                                this.dragOffsetX = unzoomedMouseX - (this.advConnectedToMouse.getX() + this.selectedTab.scrollX);
+                                this.dragOffsetY = unzoomedMouseY - (this.advConnectedToMouse.getY() + this.selectedTab.scrollY);
                                 break;
                             }
                         }
                     }
                 }
             } else {
-                double unzoomedDeltaX = mouseDeltaX / this.zoom;
-                double unzoomedDeltaY = mouseDeltaY / this.zoom;
+                double unzoomedMouseX = (mouseX - left - PADDING) / this.zoom;
+                double unzoomedMouseY = (mouseY - top - 2 * PADDING) / this.zoom;
 
-                int newPosX = (int) Math.round(this.advConnectedToMouse.getX() + unzoomedDeltaX);
-                int newPosY = (int) Math.round(this.advConnectedToMouse.getY() + unzoomedDeltaY);
+                int newPosX = (int) Math.round(unzoomedMouseX - this.dragOffsetX - this.selectedTab.scrollX);
+                int newPosY = (int) Math.round(unzoomedMouseY - this.dragOffsetY - this.selectedTab.scrollY);
 
                 if (Screen.hasShiftDown()) {
-                    newPosX = 4 * (newPosX / 4);
-                    newPosY = 4 * (newPosY / 4);
+                    newPosX = 4 * Math.round((float)newPosX / 4);
+                    newPosY = 4 * Math.round((float)newPosY / 4);
                 }
 
                 this.advConnectedToMouse.setX(newPosX);
@@ -358,13 +381,6 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         guiGraphics.pose().scale(zoom, zoom, 1.0F);
 
         if (BetterAdvancementsScreen.enableEditMode && this.selectedTab != null) {
-            BetterAdvancementWidget hovered = getHoveredWidget(mouseX, mouseY);
-            if (hovered != null && hovered != this.advConnectedToMouse && this.contextMenu == null) {
-                int hx = hovered.getX() + this.selectedTab.scrollX;
-                int hy = hovered.getY() + this.selectedTab.scrollY;
-                guiGraphics.renderOutline(hx - 1, hy - 1, BetterAdvancementWidget.ADVANCEMENT_SIZE + 2, BetterAdvancementWidget.ADVANCEMENT_SIZE + 2, 0xFFFFFF00);
-            }
-
             if (this.advConnectedToMouse != null) {
                 int ax = this.advConnectedToMouse.getX() + this.selectedTab.scrollX;
                 int ay = this.advConnectedToMouse.getY() + this.selectedTab.scrollY;
@@ -396,12 +412,12 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             guiGraphics.pose().translate(left + PADDING, top + 2 * PADDING, 0);
             guiGraphics.pose().scale(zoom, zoom, 1.0F);
 
-            for (BetterAdvancementWidget betterAdvancementEntryScreen : this.selectedTab.widgets.values()) {
+            for (BetterAdvancementWidget betterAdvancementEntryScreen : this.selectedTab.getWidgets().values()) {
                 if (betterAdvancementEntryScreen != this.advConnectedToMouse) {
-                    int x1 = betterAdvancementEntryScreen.x + this.selectedTab.scrollX + 3;
-                    int x2 = this.advConnectedToMouse.x + this.selectedTab.scrollX + 3;
-                    int y1 = betterAdvancementEntryScreen.y + this.selectedTab.scrollY;
-                    int y2 = this.advConnectedToMouse.y + this.selectedTab.scrollY;
+                    int x1 = betterAdvancementEntryScreen.getX() + this.selectedTab.scrollX + 3;
+                    int x2 = this.advConnectedToMouse.getX() + this.selectedTab.scrollX + 3;
+                    int y1 = betterAdvancementEntryScreen.getY() + this.selectedTab.scrollY;
+                    int y2 = this.advConnectedToMouse.getY() + this.selectedTab.scrollY;
                     int centerX1 = x1 + BetterAdvancementWidget.ADVANCEMENT_SIZE / 2;
                     int centerX2 = x2 + BetterAdvancementWidget.ADVANCEMENT_SIZE / 2;
                     int centerY1 = y1 + BetterAdvancementWidget.ADVANCEMENT_SIZE / 2;
@@ -411,7 +427,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
                         degrees += 360;
                     }
 
-                    if (betterAdvancementEntryScreen.x == this.advConnectedToMouse.x) {
+                    if (betterAdvancementEntryScreen.getX() == this.advConnectedToMouse.getX()) {
                         if (y1 > y2) {
                             RenderUtil.drawRect(guiGraphics, x1, y1 + BetterAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y2, 1, 0x00FF00);
                             RenderUtil.drawRect(guiGraphics, x1 + BetterAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + BetterAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y1 + BetterAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
@@ -428,7 +444,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
                             RenderUtil.drawRect(guiGraphics, x1 + BetterAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + BetterAdvancementWidget.ADVANCEMENT_SIZE - 1, x2 + BetterAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, 1, 0x00FF00);
                         }
                     }
-                    if (betterAdvancementEntryScreen.y == this.advConnectedToMouse.y) {
+                    if (betterAdvancementEntryScreen.getY() == this.advConnectedToMouse.getY()) {
                         if (x1 > x2) {
                             RenderUtil.drawRect(guiGraphics, x2, y1, x1 + BetterAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, 1, 0x00FF00);
                             RenderUtil.drawRect(guiGraphics, x1, y1, x1, y2 + BetterAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
@@ -471,9 +487,9 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
 
         if (BetterAdvancementsScreen.showDebugCoordinates && this.selectedTab != null && mouseX < internalWidth - SIDE - PADDING && mouseX > SIDE + PADDING && mouseY < internalHeight - top + 1 && mouseY > top + PADDING * 2) {
             if (this.advConnectedToMouse != null) {
-                int currentX = (int) ((this.advConnectedToMouse.x + this.selectedTab.scrollX + 4) * zoom) + left + PADDING;
-                int currentY = (int) ((this.advConnectedToMouse.y + this.selectedTab.scrollY) * zoom) + top + 2 * PADDING - font.lineHeight + 1;
-                guiGraphics.drawString(font, this.advConnectedToMouse.x + "," + this.advConnectedToMouse.y, currentX, currentY, 0x000000);
+                int currentX = (int) ((this.advConnectedToMouse.getX() + this.selectedTab.scrollX + 4) * zoom) + left + PADDING;
+                int currentY = (int) ((this.advConnectedToMouse.getY() + this.selectedTab.scrollY) * zoom) + top + 2 * PADDING - font.lineHeight + 1;
+                guiGraphics.drawString(font, this.advConnectedToMouse.getX() + "," + this.advConnectedToMouse.getY(), currentX, currentY, 0x000000);
             } else {
                 int xMouse = (int) ((mouseX - left - PADDING) / zoom);
                 int yMouse = (int) ((mouseY - top - 2 * PADDING) / zoom);
@@ -503,7 +519,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             guiGraphics.drawString(this.font, NO_ADVANCEMENTS_LABEL, boxLeft + (width - this.font.width(NO_ADVANCEMENTS_LABEL)) / 2, boxTop + height / 2 - this.font.lineHeight, -1);
             guiGraphics.drawString(this.font, VERY_SAD_LABEL, boxLeft + (width - this.font.width(VERY_SAD_LABEL)) / 2, boxTop + height / 2 + this.font.lineHeight, -1);
         } else {
-            betterAdvancementTab.drawContents(guiGraphics, boxLeft, boxTop, width, height);
+            betterAdvancementTab.drawContents(guiGraphics, boxLeft, boxTop, width, height, mouseX, mouseY);
         }
     }
 

@@ -8,7 +8,6 @@ import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -87,10 +86,13 @@ public class BetterAdvancementTab {
         this.type.drawIcon(guiGraphics, left, top, width, height, this.index, this.icon);
     }
 
-    public void drawContents(GuiGraphics guiGraphics, int left, int top, int width, int height) {
+    public void drawContents(GuiGraphics guiGraphics, int left, int top, int width, int height, double mouseX, double mouseY) {
         float zoom = this.screen.getZoom();
         int scaledWidth = (int) (width / zoom);
         int scaledHeight = (int) (height / zoom);
+
+        double unzoomedX = (mouseX - left) / zoom;
+        double unzoomedY = (mouseY - top) / zoom;
 
         if (!this.centered) {
             this.scrollX = (scaledWidth / 2) - (this.root.getX() + BetterAdvancementWidget.ADVANCEMENT_SIZE / 2);
@@ -103,7 +105,7 @@ public class BetterAdvancementTab {
         guiGraphics.pose().translate(left, top, 0);
         guiGraphics.pose().scale(zoom, zoom, 1.0F);
 
-        ResourceLocation resourcelocation = this.display.getBackground().orElse(TextureManager.INTENTIONAL_MISSING_TEXTURE);
+        ResourceLocation resourcelocation = this.display.getBackground().orElse(net.minecraft.client.renderer.texture.TextureManager.INTENTIONAL_MISSING_TEXTURE);
 
         int i = this.scrollX % 16;
         int j = this.scrollY % 16;
@@ -119,7 +121,7 @@ public class BetterAdvancementTab {
 
         this.root.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, true);
         this.root.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, false);
-        this.root.draw(guiGraphics, this.scrollX, this.scrollY);
+        this.root.draw(guiGraphics, this.scrollX, this.scrollY, unzoomedX, unzoomedY);
         guiGraphics.pose().popPose();
         guiGraphics.disableScissor();
     }
