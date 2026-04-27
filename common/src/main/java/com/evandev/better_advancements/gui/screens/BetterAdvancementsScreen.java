@@ -84,23 +84,9 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         this.contextMenu = null;
     }
 
-
-    private int getTabRank(AdvancementHolder holder) {
-        String id = holder.id().getNamespace() + ":" + holder.id().getPath();
-        return switch (id) {
-            case "minecraft:story/root" -> 0;
-            case "minecraft:adventure/root" -> 1;
-            case "minecraft:husbandry/root" -> 2;
-            case "minecraft:nether/root" -> 3;
-            case "minecraft:end/root" -> 4;
-            default -> 5;
-        };
-    }
-
     public void sortTabs() {
         List<Map.Entry<AdvancementHolder, BetterAdvancementTab>> list = new ArrayList<>(this.tabs.entrySet());
-        list.sort(Comparator.comparingInt((Map.Entry<AdvancementHolder, BetterAdvancementTab> e) -> getTabRank(e.getKey()))
-                .thenComparingInt(e -> e.getValue().customIndex)
+        list.sort(Comparator.comparingInt((Map.Entry<AdvancementHolder, BetterAdvancementTab> e) -> e.getValue().customIndex)
                 .thenComparing(e -> orderTabsAlphabetically ? e.getValue().getTitle().getString() : ""));
         this.tabs.clear();
         int newIndex = 0;
@@ -154,6 +140,10 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
 
     @Override
     protected void init() {
+        if (this.selectedTab != null) {
+            this.selectedTab.storeScroll();
+            this.savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+        }
         PersistentData.load();
         this.internalHeight = this.height * uiScaling / 100;
         this.internalWidth = this.width * uiScaling / 100;
@@ -162,11 +152,22 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         this.selectedTab = null;
         this.clientAdvancements.setListener(this);
 
+        if (this.savedSelectedTab != null) {
+            for (BetterAdvancementTab tab : this.tabs.values()) {
+                if (tab.getRootNode().holder().id().equals(this.savedSelectedTab)) {
+                    this.selectedTab = tab;
+                    break;
+                }
+            }
+        }
+
         if (this.selectedTab == null && !this.tabs.isEmpty()) {
-            BetterAdvancementTab advancementTab = this.tabs.values().iterator().next();
-            this.clientAdvancements.setSelectedTab(advancementTab.getRootNode().holder(), true);
-        } else {
-            this.clientAdvancements.setSelectedTab(this.selectedTab == null ? null : this.selectedTab.getRootNode().holder(), true);
+            this.selectedTab = this.tabs.values().iterator().next();
+        }
+
+        if (this.selectedTab != null) {
+            this.clientAdvancements.setSelectedTab(this.selectedTab.getRootNode().holder(), true);
+            this.selectedTab.loadScroll();
         }
 
         int tabW = getTabInternalWidth();
@@ -688,8 +689,10 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             this.tabs.put(advancement.holder(), betterAdvancementTabGui);
             sortTabs();
             if (advancement.holder().id().equals(this.savedSelectedTab)) {
+                this.selectedTab = betterAdvancementTabGui;
                 this.clientAdvancements.setSelectedTab(advancement.holder(), true);
             } else if (this.selectedTab == null) {
+                this.selectedTab = betterAdvancementTabGui;
                 this.clientAdvancements.setSelectedTab(advancement.holder(), true);
             }
         }

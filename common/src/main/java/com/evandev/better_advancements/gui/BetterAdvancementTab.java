@@ -47,7 +47,7 @@ public class BetterAdvancementTab {
     private float fade;
     private boolean centered;
 
-    public BetterAdvancementTab(Minecraft mc, BetterAdvancementsScreen betterAdvancementsScreen, BetterAdvancementTabType type, int index, AdvancementNode advancementNode, DisplayInfo displayInfo) {
+    protected BetterAdvancementTab(Minecraft mc, BetterAdvancementsScreen betterAdvancementsScreen, BetterAdvancementTabType type, int index, AdvancementNode advancementNode, DisplayInfo displayInfo) {
         this.minecraft = mc;
         this.screen = betterAdvancementsScreen;
         this.type = type;
@@ -59,6 +59,17 @@ public class BetterAdvancementTab {
         this.betterDisplayInfos = new BetterDisplayInfoRegistry(advancementNode);
         this.root = new BetterAdvancementWidget(this, mc, advancementNode, displayInfo);
         this.addWidget(this.root, advancementNode.holder());
+
+        String id = advancementNode.holder().id().toString();
+        switch (id) {
+            case "minecraft:story/root" -> this.customIndex = 0;
+            case "minecraft:adventure/root" -> this.customIndex = 1;
+            case "minecraft:husbandry/root" -> this.customIndex = 2;
+            case "minecraft:nether/root" -> this.customIndex = 3;
+            case "minecraft:end/root" -> this.customIndex = 4;
+            default -> this.customIndex = 5;
+        }
+
         PersistentData.loadTabProperties(this);
     }
 

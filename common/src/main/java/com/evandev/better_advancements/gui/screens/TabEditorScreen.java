@@ -54,7 +54,7 @@ public class TabEditorScreen extends Screen {
         uiY = (this.height - uiH) / 2;
 
         int startX = uiX + 20;
-        int startY = uiY + 40;
+        int startY = uiY + 55;
 
         String name = tab.customTitle != null ? tab.customTitle : "";
         String bg = tab.customBackground != null ? tab.customBackground.toString() : "";
@@ -166,7 +166,7 @@ public class TabEditorScreen extends Screen {
         gfx.fill(uiX + 20, uiY + 30, uiX + uiW - 20, uiY + 31, 0x55808080);
 
         int startX = uiX + 20;
-        int startY = uiY + 40;
+        int startY = uiY + 55;
 
         gfx.drawString(this.font, "Tab Name", startX, startY - 11, 0xFFA08060, false);
         gfx.drawString(this.font, "Background Texture", startX, startY + 34, 0xFFA08060, false);
