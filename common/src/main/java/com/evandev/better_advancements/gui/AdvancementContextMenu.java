@@ -2,9 +2,11 @@ package com.evandev.better_advancements.gui;
 
 import com.evandev.better_advancements.network.EditAdvancementPayload;
 import com.evandev.better_advancements.platform.Services;
+import com.evandev.better_advancements.util.PersistentData;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
@@ -14,7 +16,7 @@ public class AdvancementContextMenu {
     private final BetterAdvancementsScreen parentScreen;
     private final BetterAdvancementWidget widget;
     private final int x, y;
-    private final int width = 145;
+    private final int width = 160;
     private final int height;
     private final List<ContextOption> options = new ArrayList<>();
 
@@ -27,9 +29,10 @@ public class AdvancementContextMenu {
             this.options.add(new ContextOption("Edit Layout (Pos)", false, () -> openEditor(AdvancementEditorScreen.EditorTab.LAYOUT)));
             this.options.add(new ContextOption("Edit Criteria", false, () -> openEditor(AdvancementEditorScreen.EditorTab.CRITERIA)));
             this.options.add(new ContextOption("Link to Parent...", false, () -> parentScreen.startLinking(widget)));
-            this.options.add(new ContextOption("Delete Advancement", true, this::deleteAdvancement));
+            this.options.add(new ContextOption("Reset to Vanilla", true, this::deleteAdvancement));
         } else {
             this.options.add(new ContextOption("Create New Advancement", false, () -> parentScreen.createNewAdvancement(mouseX, mouseY)));
+            this.options.add(new ContextOption("Reset Entire Tab", true, this::resetEntireTab));
         }
 
         this.height = this.options.size() * 20 + 4;
@@ -43,13 +46,44 @@ public class AdvancementContextMenu {
     }
 
     private void deleteAdvancement() {
-        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), "", "", "", "", true);
+        Minecraft.getInstance().setScreen(new ConfirmScreen(
+                (confirmed) -> {
+                    if (confirmed) {
+                        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), "{}", true);
+                        if (Services.PLATFORM.canSendAdvancementEdit()) {
+                            Services.PLATFORM.sendAdvancementEdit(payload);
+                        }
+                        PersistentData.removePosition(widget.getAdvancement().holder().id());
+                        parentScreen.removeWidgetFromClient(widget);
+                    }
+                    Minecraft.getInstance().setScreen(parentScreen);
+                },
+                Component.literal("Reset Advancement?"),
+                Component.literal("Are you sure you want to reset this advancement to vanilla? This cannot be undone.")
+        ));
+        parentScreen.closeContextMenu();
+    }
 
-        if (Services.PLATFORM.canSendAdvancementEdit()) {
-            Services.PLATFORM.sendAdvancementEdit(payload);
-        }
-
-        parentScreen.removeWidgetFromClient(widget);
+    private void resetEntireTab() {
+        Minecraft.getInstance().setScreen(new ConfirmScreen(
+                (confirmed) -> {
+                    if (confirmed) {
+                        if (parentScreen.selectedTab != null) {
+                            for (BetterAdvancementWidget w : new java.util.ArrayList<>(parentScreen.selectedTab.getWidgets().values())) {
+                                EditAdvancementPayload payload = new EditAdvancementPayload(w.getAdvancement().holder().id(), "{}", true);
+                                if (Services.PLATFORM.canSendAdvancementEdit()) {
+                                    Services.PLATFORM.sendAdvancementEdit(payload);
+                                }
+                                PersistentData.removePosition(w.getAdvancement().holder().id());
+                            }
+                            parentScreen.selectedTab.getWidgets().clear();
+                        }
+                    }
+                    Minecraft.getInstance().setScreen(parentScreen);
+                },
+                Component.literal("Reset Entire Tab?"),
+                Component.literal("Are you sure you want to reset ALL advancements in this tab? This cannot be undone.")
+        ));
         parentScreen.closeContextMenu();
     }
 

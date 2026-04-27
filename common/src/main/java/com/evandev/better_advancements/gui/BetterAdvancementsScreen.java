@@ -6,18 +6,20 @@ import com.evandev.better_advancements.reference.Resources;
 import com.evandev.better_advancements.util.PersistentData;
 import com.evandev.better_advancements.util.RenderUtil;
 import com.google.common.collect.Maps;
+import com.google.gson.JsonObject;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.serialization.JsonOps;
+import net.minecraft.ChatFormatting;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.AdvancementProgress;
-import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.GameNarrator;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientAdvancements;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundSeenAdvancementsPacket;
 import net.minecraft.resources.ResourceLocation;
@@ -43,7 +45,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     private final Map<AdvancementHolder, BetterAdvancementTab> tabs = Maps.newLinkedHashMap();
     public BetterAdvancementWidget linkingWidget = null;
     protected int internalWidth, internalHeight;
-    private BetterAdvancementTab selectedTab;
+    public BetterAdvancementTab selectedTab;
     private float zoom = 1.0F;
     private boolean isScrolling;
     private BetterAdvancementWidget advConnectedToMouse = null;
@@ -51,6 +53,10 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
 
     private double dragOffsetX = 0.0;
     private double dragOffsetY = 0.0;
+
+    private String linkingError = null;
+    private long linkingErrorTime = 0;
+    private ResourceLocation savedSelectedTab = null;
 
     public BetterAdvancementsScreen(ClientAdvancements clientAdvancements) {
         super(GameNarrator.NO_TITLE);
@@ -77,6 +83,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     public void startLinking(BetterAdvancementWidget widget) {
         this.linkingWidget = widget;
         this.contextMenu = null;
+        this.linkingError = null;
     }
 
     public void createNewAdvancement(int mouseX, int mouseY) {
@@ -150,19 +157,25 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             if (target != null && target != this.linkingWidget) {
 
                 if (isDescendant(this.linkingWidget, target)) {
-                    this.minecraft.player.displayClientMessage(Component.literal("Cannot link: Creates a cyclic dependency!").withStyle(net.minecraft.ChatFormatting.RED), false);
+                    this.linkingError = "Cannot link: Creates a cyclic dependency!";
+                    this.linkingErrorTime = net.minecraft.Util.getMillis() + 3000;
                     this.linkingWidget = null;
                     return true;
                 }
 
                 ResourceLocation id = linkingWidget.getAdvancement().holder().id();
-                DisplayInfo display = linkingWidget.getAdvancement().advancement().display().orElse(null);
-                String title = display != null ? display.getTitle().getString() : "Advancement";
-                String desc = display != null ? display.getDescription().getString() : "";
-                String icon = display != null ? BuiltInRegistries.ITEM.getKey(display.getIcon().getItem()).toString() : "minecraft:stone";
                 String parentId = target.getAdvancement().holder().id().toString();
 
-                EditAdvancementPayload payload = new EditAdvancementPayload(id, title, desc, icon, parentId, false);
+                Advancement adv = linkingWidget.getAdvancement().advancement();
+                JsonObject rootJson = Advancement.CODEC
+                        .encodeStart(JsonOps.INSTANCE, adv)
+                        .result()
+                        .map(com.google.gson.JsonElement::getAsJsonObject)
+                        .orElseGet(com.google.gson.JsonObject::new);
+
+                rootJson.addProperty("parent", parentId);
+
+                EditAdvancementPayload payload = new EditAdvancementPayload(id, rootJson.toString(), false);
                 if (Services.PLATFORM.canSendAdvancementEdit()) {
                     Services.PLATFORM.sendAdvancementEdit(payload);
                 }
@@ -296,8 +309,6 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double mouseDeltaX, double mouseDeltaY) {
-        if (this.contextMenu != null) this.contextMenu = null;
-
         int left = SIDE + (width - internalWidth) / 2;
         int top = TOP + (height - internalHeight) / 2;
 
@@ -305,6 +316,8 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             this.isScrolling = false;
             return false;
         }
+
+        if (this.contextMenu != null) this.contextMenu = null;
 
         if (!this.isScrolling) {
             if (this.advConnectedToMouse == null) {
@@ -332,8 +345,8 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
                 int newPosY = (int) Math.round(unzoomedMouseY - this.dragOffsetY - this.selectedTab.scrollY);
 
                 if (Screen.hasShiftDown()) {
-                    newPosX = 4 * Math.round((float)newPosX / 4);
-                    newPosY = 4 * Math.round((float)newPosY / 4);
+                    newPosX = 4 * Math.round((float) newPosX / 4);
+                    newPosY = 4 * Math.round((float) newPosY / 4);
                 }
 
                 this.advConnectedToMouse.setX(newPosX);
@@ -502,6 +515,13 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         if (this.contextMenu != null) {
             this.contextMenu.render(guiGraphics, mouseX, mouseY, partialTicks);
         }
+
+        if (this.linkingError != null && net.minecraft.Util.getMillis() < this.linkingErrorTime) {
+            int errW = this.font.width(this.linkingError);
+            guiGraphics.fill(mouseX + 10, mouseY - 15, mouseX + 16 + errW, mouseY + 1, 0xDD000000);
+            guiGraphics.renderOutline(mouseX + 10, mouseY - 15, errW + 6, 16, 0xFFFF5555);
+            guiGraphics.drawString(this.font, this.linkingError, mouseX + 13, mouseY - 11, 0xFF5555);
+        }
     }
 
     private void renderInside(GuiGraphics guiGraphics, int mouseX, int mouseY, int left, int top, int right, int bottom, int maxTabs, int skip) {
@@ -587,10 +607,24 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     }
 
     @Override
+    public void onAdvancementsCleared() {
+        if (this.selectedTab != null) {
+            this.savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+        }
+        this.tabs.clear();
+        this.selectedTab = null;
+    }
+
+    @Override
     public void onAddAdvancementRoot(@NotNull AdvancementNode advancement) {
         BetterAdvancementTab betterAdvancementTabGui = BetterAdvancementTab.create(this.minecraft, this, this.tabs.size(), advancement, internalWidth - 2 * SIDE, internalHeight - TOP - SIDE);
         if (betterAdvancementTabGui != null) {
             this.tabs.put(advancement.holder(), betterAdvancementTabGui);
+            if (advancement.holder().id().equals(this.savedSelectedTab)) {
+                this.clientAdvancements.setSelectedTab(advancement.holder(), true);
+            } else if (this.selectedTab == null) {
+                this.clientAdvancements.setSelectedTab(advancement.holder(), true);
+            }
         }
     }
 
@@ -627,12 +661,6 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         if (this.selectedTab != null) {
             this.selectedTab.loadScroll();
         }
-    }
-
-    @Override
-    public void onAdvancementsCleared() {
-        this.tabs.clear();
-        this.selectedTab = null;
     }
 
     public BetterAdvancementWidget getAdvancementWidget(AdvancementNode advancement) {

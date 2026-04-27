@@ -75,4 +75,21 @@ public class PersistentData {
             widget.setY(pos[1]);
         }
     }
+
+    public static void removePosition(net.minecraft.resources.ResourceLocation id) {
+        advancementPositions.remove(id.toString());
+        try {
+            if (FILE.exists()) {
+                JsonObject json = GSON.fromJson(new FileReader(FILE), JsonObject.class);
+                if (json != null && json.has("positions")) {
+                    json.getAsJsonObject("positions").remove(id.toString());
+                    try (FileWriter writer = new FileWriter(FILE)) {
+                        GSON.toJson(json, writer);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Constants.LOG.error("Failed to remove persistent data", e);
+        }
+    }
 }
