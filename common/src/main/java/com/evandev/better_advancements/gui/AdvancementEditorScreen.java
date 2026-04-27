@@ -8,6 +8,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -111,7 +112,16 @@ public class AdvancementEditorScreen extends Screen {
 
             parentBox = new EditBox(this.font, contentX, startY + FIELD_SPACING * 3, contentW, 20, Component.literal("Parent"));
             parentBox.setMaxLength(256);
-            parentBox.setValue(rootJson.has("parent") ? rootJson.get("parent").getAsString() : "");
+
+            String parentStr = "";
+            AdvancementNode parentNode = widget.getAdvancement().parent();
+            if (rootJson.has("parent")) {
+                parentStr = rootJson.get("parent").getAsString();
+            } else if (parentNode != null) {
+                parentStr = parentNode.holder().id().toString();
+            }
+            parentBox.setValue(parentStr);
+
             this.addRenderableWidget(parentBox);
 
         } else if (activeTab == EditorTab.LAYOUT) {
@@ -198,14 +208,22 @@ public class AdvancementEditorScreen extends Screen {
             JsonObject crit = new JsonObject();
             crit.addProperty("trigger", entry.trigger);
 
-            if (!entry.conditionValue.isEmpty() && (entry.trigger.contains("inventory_changed") || entry.trigger.contains("recipe_unlocked"))) {
-                JsonObject conds = new JsonObject();
-                JsonArray items = new JsonArray();
-                JsonObject itemObj = new JsonObject();
-                itemObj.addProperty("items", entry.conditionValue);
-                items.add(itemObj);
-                conds.add("items", items);
-                crit.add("conditions", conds);
+            if (!entry.conditionValue.isEmpty()) {
+                if (entry.trigger.contains("inventory_changed") || entry.trigger.contains("recipe_unlocked")) {
+                    JsonObject conds = new JsonObject();
+                    JsonArray items = new JsonArray();
+                    JsonObject itemObj = new JsonObject();
+                    itemObj.addProperty("items", entry.conditionValue);
+                    items.add(itemObj);
+                    conds.add("items", items);
+                    crit.add("conditions", conds);
+                } else if (entry.trigger.contains("changed_dimension")) {
+                    JsonObject conds = new JsonObject();
+                    conds.addProperty("to", entry.conditionValue);
+                    crit.add("conditions", conds);
+                } else if (entry.rawConditions != null) {
+                    crit.add("conditions", entry.rawConditions);
+                }
             } else if (entry.rawConditions != null) {
                 crit.add("conditions", entry.rawConditions);
             }
@@ -230,34 +248,66 @@ public class AdvancementEditorScreen extends Screen {
 
     private void syncRootJsonToCriteriaList() {
         criteriaList.clear();
+        Advancement adv = widget.getAdvancement().advancement();
+        List<String> knownNames = new ArrayList<>();
+
+        for (String req : adv.requirements().names()) {
+            knownNames.add(req);
+        }
+
         if (rootJson.has("criteria") && rootJson.get("criteria").isJsonObject()) {
             JsonObject criteriaObj = rootJson.getAsJsonObject("criteria");
             for (String key : criteriaObj.keySet()) {
                 if (key.equals("dummy")) continue;
-                JsonObject critObj = criteriaObj.getAsJsonObject(key);
-                CriterionEntry entry = new CriterionEntry();
-                entry.name = key;
+                if (!knownNames.contains(key)) knownNames.add(key);
+            }
+        }
 
+        for (String key : knownNames) {
+            CriterionEntry entry = new CriterionEntry();
+            entry.name = key;
+
+            if (rootJson.has("criteria") && rootJson.getAsJsonObject("criteria").has(key)) {
+                JsonObject critObj = rootJson.getAsJsonObject("criteria").getAsJsonObject(key);
                 if (critObj.has("trigger")) {
                     entry.trigger = critObj.get("trigger").getAsString();
                 }
 
                 if (critObj.has("conditions")) {
                     JsonObject conds = critObj.getAsJsonObject("conditions");
-                    entry.rawConditions = conds;
+                    entry.rawConditions = conds.deepCopy();
 
                     if (conds.has("items")) {
-                        JsonArray items = conds.getAsJsonArray("items");
-                        if (!items.isEmpty() && items.get(0).isJsonObject() && items.get(0).getAsJsonObject().has("items")) {
-                            entry.conditionValue = items.get(0).getAsJsonObject().get("items").getAsString();
+                        JsonElement itemsElem = conds.get("items");
+                        if (itemsElem.isJsonArray() && !itemsElem.getAsJsonArray().isEmpty()) {
+                            JsonElement first = itemsElem.getAsJsonArray().get(0);
+                            if (first.isJsonObject() && first.getAsJsonObject().has("items")) {
+                                JsonElement innerItems = first.getAsJsonObject().get("items");
+                                if (innerItems.isJsonPrimitive()) {
+                                    entry.conditionValue = innerItems.getAsString();
+                                } else if (innerItems.isJsonArray() && !innerItems.getAsJsonArray().isEmpty()) {
+                                    entry.conditionValue = innerItems.getAsJsonArray().get(0).getAsString();
+                                }
+                            } else if (first.isJsonPrimitive()) {
+                                entry.conditionValue = first.getAsString();
+                            }
+                        } else if (itemsElem.isJsonPrimitive()) {
+                            entry.conditionValue = itemsElem.getAsString();
                         }
+                    } else if (conds.has("to")) {
+                        entry.conditionValue = conds.get("to").getAsString();
+                    } else {
+                        entry.conditionValue = "";
                     }
                 } else {
                     entry.conditionValue = "";
                 }
-                criteriaList.add(entry);
+            } else {
+                entry.conditionValue = "";
             }
+            criteriaList.add(entry);
         }
+
         if (criteriaList.isEmpty()) criteriaList.add(new CriterionEntry());
         selectedCriterion = 0;
     }

@@ -9,7 +9,7 @@ import com.google.common.collect.Maps;
 import com.google.gson.JsonObject;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
 import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
@@ -44,8 +44,8 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     private final ClientAdvancements clientAdvancements;
     private final Map<AdvancementHolder, BetterAdvancementTab> tabs = Maps.newLinkedHashMap();
     public BetterAdvancementWidget linkingWidget = null;
-    protected int internalWidth, internalHeight;
     public BetterAdvancementTab selectedTab;
+    protected int internalWidth, internalHeight;
     private float zoom = 1.0F;
     private boolean isScrolling;
     private BetterAdvancementWidget advConnectedToMouse = null;
@@ -158,7 +158,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
 
                 if (isDescendant(this.linkingWidget, target)) {
                     this.linkingError = "Cannot link: Creates a cyclic dependency!";
-                    this.linkingErrorTime = net.minecraft.Util.getMillis() + 3000;
+                    this.linkingErrorTime = Util.getMillis() + 3000;
                     this.linkingWidget = null;
                     return true;
                 }
@@ -516,7 +516,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             this.contextMenu.render(guiGraphics, mouseX, mouseY, partialTicks);
         }
 
-        if (this.linkingError != null && net.minecraft.Util.getMillis() < this.linkingErrorTime) {
+        if (this.linkingError != null && Util.getMillis() < this.linkingErrorTime) {
             int errW = this.font.width(this.linkingError);
             guiGraphics.fill(mouseX + 10, mouseY - 15, mouseX + 16 + errW, mouseY + 1, 0xDD000000);
             guiGraphics.renderOutline(mouseX + 10, mouseY - 15, errW + 6, 16, 0xFFFF5555);
