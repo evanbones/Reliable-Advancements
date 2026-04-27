@@ -327,6 +327,17 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             this.selectedTab.loadScroll();
         }
 
+        if (BetterAdvancementsScreen.enableEditMode) {
+            for (AdvancementNode root : this.clientAdvancements.getTree().roots()) {
+                if (!this.tabs.containsKey(root.holder())) {
+                    this.onAddAdvancementRoot(root);
+                }
+                for (AdvancementNode child : root.children()) {
+                    addTree(child);
+                }
+            }
+        }
+
         int tabW = getTabInternalWidth();
         int tabH = getTabInternalHeight();
         int left = SIDE + (width - tabW) / 2;
@@ -343,6 +354,16 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             addRenderableWidget(Button.builder(Component.literal(">"), b -> tabPage = Math.min(tabPage + 1, maxPages)).pos(right - 20, bottom + 4).size(20, 20).build());
             maxPages = this.tabs.size() / maxTabs;
             tabPage = Math.min(tabPage, maxPages);
+        }
+    }
+
+    private void addTree(AdvancementNode node) {
+        BetterAdvancementTab tab = this.getTab(node);
+        if (tab != null && !tab.getWidgets().containsKey(node.holder())) {
+            this.onAddAdvancementTask(node);
+        }
+        for (AdvancementNode child : node.children()) {
+            addTree(child);
         }
     }
 

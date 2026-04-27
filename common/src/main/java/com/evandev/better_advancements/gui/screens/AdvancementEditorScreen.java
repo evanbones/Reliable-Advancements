@@ -1,10 +1,7 @@
 package com.evandev.better_advancements.gui.screens;
 
 import com.evandev.better_advancements.gui.model.AdvancementDraft;
-import com.evandev.better_advancements.gui.tabs.CriteriaTab;
-import com.evandev.better_advancements.gui.tabs.IEditorTab;
-import com.evandev.better_advancements.gui.tabs.LayoutTab;
-import com.evandev.better_advancements.gui.tabs.PropertiesTab;
+import com.evandev.better_advancements.gui.tabs.*;
 import com.evandev.better_advancements.network.EditAdvancementPayload;
 import com.evandev.better_advancements.platform.Services;
 import com.evandev.better_advancements.util.PersistentData;
@@ -64,6 +61,7 @@ public class AdvancementEditorScreen extends Screen {
         this.tabs.put("Properties", new PropertiesTab(Minecraft.getInstance().font));
         this.tabs.put("Layout", new LayoutTab(Minecraft.getInstance().font, posX, posY));
         this.tabs.put("Criteria", new CriteriaTab(Minecraft.getInstance().font));
+        this.tabs.put("Rewards", new RewardsTab(Minecraft.getInstance().font));
 
         for (IEditorTab tab : this.tabs.values()) {
             tab.loadState(this.draft);

@@ -8,6 +8,7 @@ import com.mojang.serialization.JsonOps;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -24,9 +25,12 @@ public class PropertiesTab implements IEditorTab {
     private final Font font;
     private final List<GuiEventListener> widgets = new ArrayList<>();
     private EditBox idBox, titleBox, descriptionBox, parentBox;
-    private SuggestingEditBox iconBox;
+    private SuggestingEditBox iconBox, frameBox;
+    private Button hiddenBtn, telemetryBtn;
 
-    private String id = "", title = "", description = "", icon = "minecraft:stone", parent = "";
+    private String id = "", title = "", description = "", icon = "minecraft:stone", parent = "", frame = "task";
+    private boolean hidden = false;
+    private boolean sendsTelemetryEvent = false;
     private int startX, startY;
 
     public PropertiesTab(Font font) {
@@ -77,6 +81,24 @@ public class PropertiesTab implements IEditorTab {
         } catch (Exception e) {
             this.parent = "";
         }
+
+        try {
+            this.frame = display.has("frame") ? display.get("frame").getAsString() : "task";
+        } catch (Exception e) {
+            this.frame = "task";
+        }
+
+        try {
+            this.hidden = display.has("hidden") && display.get("hidden").getAsBoolean();
+        } catch (Exception e) {
+            this.hidden = false;
+        }
+
+        try {
+            this.sendsTelemetryEvent = draft.rootJson.has("sends_telemetry_event") && draft.rootJson.get("sends_telemetry_event").getAsBoolean();
+        } catch (Exception e) {
+            this.sendsTelemetryEvent = false;
+        }
     }
 
     @Override
@@ -106,7 +128,22 @@ public class PropertiesTab implements IEditorTab {
         parentBox.setMaxLength(256);
         parentBox.setValue(parent);
 
-        widgets.addAll(List.of(idBox, titleBox, descriptionBox, iconBox, parentBox));
+        frameBox = new SuggestingEditBox(font, x, y + 225, width, 20, Component.literal("Frame"),
+                () -> List.of("task", "goal", "challenge"));
+        frameBox.setMaxLength(32);
+        frameBox.setValue(frame);
+
+        hiddenBtn = Button.builder(Component.literal("Hidden: " + hidden), b -> {
+            hidden = !hidden;
+            b.setMessage(Component.literal("Hidden: " + hidden));
+        }).pos(x, y + 270).size(width / 2 - 5, 20).build();
+
+        telemetryBtn = Button.builder(Component.literal("Telemetry: " + sendsTelemetryEvent), b -> {
+            sendsTelemetryEvent = !sendsTelemetryEvent;
+            b.setMessage(Component.literal("Telemetry: " + sendsTelemetryEvent));
+        }).pos(x + width / 2 + 5, y + 270).size(width / 2 - 5, 20).build();
+
+        widgets.addAll(List.of(idBox, titleBox, descriptionBox, iconBox, parentBox, frameBox, hiddenBtn, telemetryBtn));
     }
 
     @Override
@@ -130,7 +167,15 @@ public class PropertiesTab implements IEditorTab {
             iconObj.addProperty("id", iconBox.getValue());
             display.add("icon", iconObj);
         }
+
+        if (frameBox != null) {
+            display.addProperty("frame", frameBox.getValue());
+        }
+        display.addProperty("hidden", hidden);
+
         draft.rootJson.add("display", display);
+
+        draft.rootJson.addProperty("sends_telemetry_event", sendsTelemetryEvent);
 
         if (parentBox != null) {
             if (parentBox.getValue().isEmpty()) {
@@ -148,6 +193,7 @@ public class PropertiesTab implements IEditorTab {
         gfx.drawString(font, "Description", startX, startY + 79, 0xFFA08060, false);
         gfx.drawString(font, "Icon (Item ID)", startX, startY + 124, 0xFFA08060, false);
         gfx.drawString(font, "Parent ID", startX, startY + 169, 0xFFA08060, false);
+        gfx.drawString(font, "Frame", startX, startY + 214, 0xFFA08060, false);
     }
 
     @Override
