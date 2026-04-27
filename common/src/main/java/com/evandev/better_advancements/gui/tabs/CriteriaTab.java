@@ -107,7 +107,8 @@ public class CriteriaTab implements IEditorTab {
     public void saveState(AdvancementDraft draft) {
         if (rootConditionsNode != null && !criteriaList.isEmpty()) {
             CriterionEntry entry = criteriaList.get(selectedCriterion);
-            entry.conditionsJson = new Gson().toJson(rootConditionsNode.toJson());
+            JsonElement serializedConditions = rootConditionsNode.toJson();
+            entry.conditionsJson = serializedConditions != null ? new Gson().toJson(serializedConditions) : "{}";
         }
 
         JsonObject criteriaObj = new JsonObject();
@@ -161,7 +162,8 @@ public class CriteriaTab implements IEditorTab {
     private void saveLocal() {
         if (rootConditionsNode != null) {
             CriterionEntry entry = criteriaList.get(selectedCriterion);
-            entry.conditionsJson = new Gson().toJson(rootConditionsNode.toJson());
+            JsonElement serializedConditions = rootConditionsNode.toJson();
+            entry.conditionsJson = serializedConditions != null ? new Gson().toJson(serializedConditions) : "{}";
         }
     }
 
@@ -237,11 +239,13 @@ public class CriteriaTab implements IEditorTab {
             keyBox.setValue(key);
             keyBox.setResponder(this::onKeyChanged);
 
-            removeBtn = Button.builder(Component.literal("X"), b -> {
-                if (parent instanceof JsonObjectNode obj) obj.children.remove(this);
-                if (parent instanceof JsonArrayNode arr) arr.children.remove(this);
-                reinit.run();
-            }).pos(x + width - 20, y).size(20, 20).build();
+            if (this instanceof JsonPrimitiveNode) {
+                removeBtn = Button.builder(Component.literal("X"), b -> {
+                    if (parent instanceof JsonObjectNode obj) obj.children.remove(this);
+                    if (parent instanceof JsonArrayNode arr) arr.children.remove(this);
+                    reinit.run();
+                }).pos(x + width - 20, y).size(20, 20).build();
+            }
         }
 
         private void onKeyChanged(String s) {
@@ -276,7 +280,7 @@ public class CriteriaTab implements IEditorTab {
             List<GuiEventListener> list = new ArrayList<>();
             if (parent != null) {
                 if (!(parent instanceof JsonArrayNode)) list.add(keyBox);
-                list.add(removeBtn);
+                if (removeBtn != null) list.add(removeBtn);
             }
             return list;
         }
@@ -361,6 +365,8 @@ public class CriteriaTab implements IEditorTab {
 
         @Override
         public JsonElement toJson() {
+            if (valueStr == null || valueStr.trim().isEmpty()) return null;
+
             String type = getExpectedType();
             switch (type) {
                 case "boolean" -> {
@@ -406,14 +412,17 @@ public class CriteriaTab implements IEditorTab {
         public void init(int x, int y, int width) {
             initBase(x, y, width);
             int currentY = y + (parent == null ? 0 : 25);
+            int childX = (parent == null) ? x : x + 10;
+            int childW = (parent == null) ? width : width - 10;
+
             for (JsonNode child : children) {
-                child.init(x + 10, currentY, width - 10);
+                child.init(childX, currentY, childW);
                 currentY += child.getHeight();
             }
             addBtn = Button.builder(Component.literal("+ Add Field"), b -> {
                 children.add(new JsonPrimitiveNode("", "", this, reinit));
                 reinit.run();
-            }).pos(x + 10, currentY).size(80, 20).build();
+            }).pos(childX, currentY).size(80, 20).build();
         }
 
         @Override
@@ -427,7 +436,6 @@ public class CriteriaTab implements IEditorTab {
         public void render(GuiGraphics gfx, int mouseX, int mouseY, float pt) {
             if (parent != null) {
                 gfx.fill(x + 2, y + 22, x + 3, y + getHeight() - 5, 0xFF666666);
-                gfx.drawString(Minecraft.getInstance().font, "(Object)", x + 105, y + 6, 0xFFAAAAAA, false);
             }
             for (JsonNode child : children) child.render(gfx, mouseX, mouseY, pt);
         }
@@ -444,8 +452,12 @@ public class CriteriaTab implements IEditorTab {
         public JsonElement toJson() {
             JsonObject obj = new JsonObject();
             for (JsonNode child : children) {
-                if (!child.key.isEmpty()) obj.add(child.key, child.toJson());
+                if (!child.key.isEmpty()) {
+                    JsonElement childJson = child.toJson();
+                    if (childJson != null) obj.add(child.key, childJson);
+                }
             }
+            if (obj.isEmpty() && parent != null) return null;
             return obj;
         }
 
@@ -499,8 +511,9 @@ public class CriteriaTab implements IEditorTab {
 
         @Override
         public void render(GuiGraphics gfx, int mouseX, int mouseY, float pt) {
-            gfx.fill(x + 2, y + 22, x + 3, y + getHeight() - 5, 0xFF448844);
-            gfx.drawString(Minecraft.getInstance().font, "(List)", x + 105, y + 6, 0xFFAAAAAA, false);
+            if (parent != null) {
+                gfx.fill(x + 2, y + 22, x + 3, y + getHeight() - 5, 0xFF448844);
+            }
             for (JsonNode child : children) child.render(gfx, mouseX, mouseY, pt);
         }
 
@@ -515,7 +528,11 @@ public class CriteriaTab implements IEditorTab {
         @Override
         public JsonElement toJson() {
             JsonArray arr = new JsonArray();
-            for (JsonNode child : children) arr.add(child.toJson());
+            for (JsonNode child : children) {
+                JsonElement childJson = child.toJson();
+                if (childJson != null) arr.add(childJson);
+            }
+            if (arr.isEmpty() && parent != null) return null;
             return arr;
         }
 
