@@ -261,7 +261,7 @@ public class CriteriaTab implements IEditorTab {
             }
         }
 
-        private void replaceSelf(JsonNode newNode) {
+        protected void replaceSelf(JsonNode newNode) {
             if (parent instanceof JsonObjectNode obj) {
                 int idx = obj.children.indexOf(this);
                 if (idx >= 0) obj.children.set(idx, newNode);
@@ -299,18 +299,48 @@ public class CriteriaTab implements IEditorTab {
 
             valBox = new SuggestingEditBox(Minecraft.getInstance().font, valX, y, valW, 20, Component.literal("Value"), () -> {
                 String type = getExpectedType();
-                if (type.equals("resource_location") || type.contains("Item") || type.contains("Block") || type.contains("Fluid")) {
-                    return BuiltInRegistries.ITEM.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
-                } else if (type.contains("Entity") || type.contains("Damage")) {
-                    return BuiltInRegistries.ENTITY_TYPE.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
-                } else if (type.equals("boolean")) {
-                    return List.of("true", "false");
+                String effectiveKey = this.key.toLowerCase();
+
+                if (effectiveKey.isEmpty() && parent instanceof JsonArrayNode arr) {
+                    effectiveKey = arr.key.toLowerCase();
                 }
+
+                if (type.equals("boolean")) return List.of("true", "false");
+
+                if (effectiveKey.equals("dimension") || effectiveKey.equals("to") || effectiveKey.equals("from")) {
+                    return List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end");
+                }
+                if (effectiveKey.contains("potion")) {
+                    return BuiltInRegistries.POTION.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+                }
+                if (effectiveKey.contains("entity") || effectiveKey.contains("vehicle") || type.contains("Entity") || type.contains("Damage")) {
+                    return BuiltInRegistries.ENTITY_TYPE.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+                }
+                if (effectiveKey.contains("block") || effectiveKey.equals("state")) {
+                    return BuiltInRegistries.BLOCK.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+                }
+                if (effectiveKey.contains("fluid")) {
+                    return BuiltInRegistries.FLUID.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+                }
+
+                if (effectiveKey.contains("item") || type.equals("resource_location") || type.contains("Item")) {
+                    return BuiltInRegistries.ITEM.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+                }
+
                 return List.of();
             });
             valBox.setMaxLength(2048);
             valBox.setValue(valueStr);
-            valBox.setResponder(s -> this.valueStr = s);
+
+            valBox.setResponder(s -> {
+                this.valueStr = s;
+                String trimmed = s.trim();
+                if (trimmed.equals("[")) {
+                    replaceSelf(new JsonArrayNode(this.key, parent, reinit));
+                } else if (trimmed.equals("{")) {
+                    replaceSelf(new JsonObjectNode(this.key, parent, reinit));
+                }
+            });
         }
 
         @Override
@@ -332,19 +362,23 @@ public class CriteriaTab implements IEditorTab {
         @Override
         public JsonElement toJson() {
             String type = getExpectedType();
-            if (type.equals("boolean")) return new JsonPrimitive(Boolean.parseBoolean(valueStr));
-            if (type.equals("int") || type.equals("integer")) {
-                try {
-                    return new JsonPrimitive(Integer.parseInt(valueStr));
-                } catch (Exception e) {
-                    return new JsonPrimitive(0);
+            switch (type) {
+                case "boolean" -> {
+                    return new JsonPrimitive(Boolean.parseBoolean(valueStr));
                 }
-            }
-            if (type.equals("double") || type.equals("float")) {
-                try {
-                    return new JsonPrimitive(Double.parseDouble(valueStr));
-                } catch (Exception e) {
-                    return new JsonPrimitive(0.0);
+                case "int", "integer" -> {
+                    try {
+                        return new JsonPrimitive(Integer.parseInt(valueStr));
+                    } catch (Exception e) {
+                        return new JsonPrimitive(0);
+                    }
+                }
+                case "double", "float" -> {
+                    try {
+                        return new JsonPrimitive(Double.parseDouble(valueStr));
+                    } catch (Exception e) {
+                        return new JsonPrimitive(0.0);
+                    }
                 }
             }
             return new JsonPrimitive(valueStr);
@@ -451,7 +485,7 @@ public class CriteriaTab implements IEditorTab {
                 currentY += child.getHeight();
             }
             addBtn = Button.builder(Component.literal("+ Add Item"), b -> {
-                children.add(new JsonObjectNode("", this, reinit));
+                children.add(new JsonPrimitiveNode("", "", this, reinit));
                 reinit.run();
             }).pos(x + 10, currentY).size(80, 20).build();
         }

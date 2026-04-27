@@ -47,11 +47,12 @@ public class TriggerSchemaManager {
         return TRIGGERS.getOrDefault(triggerId, "");
     }
 
-    private static String resolveAlias(String typeName) {
+    public static String resolveAlias(String typeName) {
         if (typeName == null) return "string";
         if (typeName.equals("ContextAwarePredicate")) return "EntityPredicate";
-        if (typeName.startsWith("net.minecraft.core.Holder") || typeName.startsWith("net.minecraft.resources.ResourceKey"))
+        if (typeName.startsWith("net.minecraft.core.Holder") || typeName.startsWith("net.minecraft.resources.ResourceKey") || typeName.startsWith("net.minecraft.tags.TagKey")) {
             return "resource_location";
+        }
         return typeName;
     }
 
