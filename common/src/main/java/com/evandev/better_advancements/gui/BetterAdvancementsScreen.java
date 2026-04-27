@@ -34,7 +34,6 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     private static final int WIDTH = 252, HEIGHT = 140, CORNER_SIZE = 30;
     private static final int SIDE = 30, TOP = 40, BOTTOM = 30, PADDING = 9;
     private static final float MIN_ZOOM = 0.25F, MAX_ZOOM = 2.0F, ZOOM_STEP = 0.15F;
-    public static boolean freeformLayoutEditing = false;
     public static boolean enableEditMode = false;
     public static int uiScaling = 100;
     public static boolean showDebugCoordinates = false;
@@ -231,7 +230,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         if (this.advConnectedToMouse != null) {
             Services.PLATFORM.getEventHelper().postAdvancementMovementEvent(this.advConnectedToMouse);
             this.advConnectedToMouse = null;
-            if (BetterAdvancementsScreen.freeformLayoutEditing) {
+            if (BetterAdvancementsScreen.enableEditMode) {
                 PersistentData.save(this.tabs);
             }
         }
@@ -241,7 +240,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
 
     @Override
     public void removed() {
-        if (BetterAdvancementsScreen.freeformLayoutEditing) {
+        if (BetterAdvancementsScreen.enableEditMode) {
             PersistentData.save(this.tabs);
         }
         super.removed();
@@ -275,7 +274,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
                 if (this.selectedTab != null && inGui) {
                     for (BetterAdvancementWidget betterAdvancementEntryScreen : this.selectedTab.getWidgets().values()) {
                         if (betterAdvancementEntryScreen.isMouseOver(this.selectedTab.scrollX, this.selectedTab.scrollY, (mouseX - left - PADDING) / this.zoom, (mouseY - top - 2 * PADDING) / this.zoom)) {
-                            if ((BetterAdvancementsScreen.freeformLayoutEditing || betterAdvancementEntryScreen.betterDisplayInfo.allowDragging()) && button == 0) {
+                            if ((BetterAdvancementsScreen.enableEditMode || betterAdvancementEntryScreen.betterDisplayInfo.allowDragging()) && button == 0) {
                                 this.advConnectedToMouse = betterAdvancementEntryScreen;
                                 break;
                             }

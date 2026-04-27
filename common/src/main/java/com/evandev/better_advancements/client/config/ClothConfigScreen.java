@@ -77,12 +77,6 @@ public class ClothConfigScreen {
 
         ConfigCategory editing = builder.getOrCreateCategory(Component.translatable("config.better_advancements.category.editing"));
 
-        editing.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.better_advancements.freeformLayoutEditing"), BetterAdvancementsScreen.freeformLayoutEditing)
-                .setDefaultValue(defaults.freeformLayoutEditing)
-                .setTooltip(Component.translatable("config.better_advancements.freeformLayoutEditing.tooltip"))
-                .setSaveConsumer(newValue -> BetterAdvancementsScreen.freeformLayoutEditing = newValue)
-                .build());
-
         editing.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.better_advancements.enableEditMode"), BetterAdvancementsScreen.enableEditMode)
                 .setDefaultValue(defaults.enableEditMode)
                 .setTooltip(Component.translatable("config.better_advancements.enableEditMode.tooltip"))

@@ -31,7 +31,6 @@ public class ModConfig {
     public boolean onlyUseAboveAdvancementTabs = false;
 
     // --- Editing ---
-    public boolean freeformLayoutEditing = false;
     public boolean enableEditMode = false;
 
     // --- Visuals ---
@@ -92,7 +91,6 @@ public class ModConfig {
         BetterAdvancementTabType.onlyUseAbove = INSTANCE.onlyUseAboveAdvancementTabs;
 
         // Editing
-        BetterAdvancementsScreen.freeformLayoutEditing = INSTANCE.freeformLayoutEditing;
         BetterAdvancementsScreen.enableEditMode = INSTANCE.enableEditMode;
 
         // Visuals
@@ -121,7 +119,6 @@ public class ModConfig {
         INSTANCE.onlyUseAboveAdvancementTabs = BetterAdvancementTabType.onlyUseAbove;
 
         // Editing
-        INSTANCE.freeformLayoutEditing = BetterAdvancementsScreen.freeformLayoutEditing;
         INSTANCE.enableEditMode = BetterAdvancementsScreen.enableEditMode;
 
         // Visuals

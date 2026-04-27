@@ -27,10 +27,8 @@
   "config.better_advancements.onlyUseAboveAdvancementTabs.tooltip": "Restricts tabs to only the top edge instead of wrapping around the screen.",
 
   "config.better_advancements.category.editing": "Editing",
-  "config.better_advancements.freeformLayoutEditing": "Freeform Layout Editing",
-  "config.better_advancements.freeformLayoutEditing.tooltip": "Allows dragging advancements around to rearrange them locally.",
   "config.better_advancements.enableEditMode": "Enable Edit Mode",
-  "config.better_advancements.enableEditMode.tooltip": "Right click advancements to edit their properties (Requires OP status to sync to server).",
+  "config.better_advancements.enableEditMode.tooltip": "Right click advancements to edit their properties and rearrange them (Requires OP to sync).",
 
   "config.better_advancements.category.visuals": "Visuals",
   "config.better_advancements.drawArrows": "Draw Connection Arrows",
