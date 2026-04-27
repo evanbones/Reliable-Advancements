@@ -149,7 +149,7 @@ public class BetterAdvancementTab {
             int k = -1;
             for (; k <= 1 + scaledWidth / texW; k++) {
                 int l = -1;
-                for (; l <= scaledHeight / texH; l++) {
+                for (; l <= 1 + scaledHeight / texH; l++) {
                     guiGraphics.blit(resourcelocation, i + texW * k, j + texH * l, 0.0F, 0.0F, texW, texH, texW, texH);
                 }
             }
