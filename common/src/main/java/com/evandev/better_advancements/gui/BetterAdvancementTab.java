@@ -3,12 +3,14 @@ package com.evandev.better_advancements.gui;
 import com.evandev.better_advancements.advancements.BetterDisplayInfo;
 import com.evandev.better_advancements.advancements.BetterDisplayInfoRegistry;
 import com.evandev.better_advancements.gui.screens.BetterAdvancementsScreen;
+import com.evandev.better_advancements.util.PersistentData;
 import com.google.common.collect.Maps;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -35,6 +37,12 @@ public class BetterAdvancementTab {
 
     public int scrollX;
     public int scrollY;
+    public String customTitle = "";
+    public ResourceLocation customBackground = null;
+    public boolean isStaticBackground = false;
+    public int customWidth = 0;
+    public int customHeight = 0;
+    public int customIndex = 0;
     private int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
     private int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
     private float fade;
@@ -52,6 +60,7 @@ public class BetterAdvancementTab {
         this.betterDisplayInfos = new BetterDisplayInfoRegistry(advancementNode);
         this.root = new BetterAdvancementWidget(this, mc, advancementNode, displayInfo);
         this.addWidget(this.root, advancementNode.holder());
+        PersistentData.loadTabProperties(this);
     }
 
     public static BetterAdvancementTab create(Minecraft mc, BetterAdvancementsScreen betterAdvancementsScreen, int index, AdvancementNode advancementNode, int width, int height) {
@@ -77,6 +86,7 @@ public class BetterAdvancementTab {
     }
 
     public Component getTitle() {
+        if (this.customTitle != null && !this.customTitle.isEmpty()) return Component.literal(this.customTitle);
         return this.title;
     }
 
@@ -107,18 +117,22 @@ public class BetterAdvancementTab {
         guiGraphics.pose().translate(left, top, 0);
         guiGraphics.pose().scale(zoom, zoom, 1.0F);
 
-        ResourceLocation resourcelocation = this.display.getBackground().orElse(net.minecraft.client.renderer.texture.TextureManager.INTENTIONAL_MISSING_TEXTURE);
+        ResourceLocation resourcelocation = this.customBackground != null ? this.customBackground : this.display.getBackground().orElse(TextureManager.INTENTIONAL_MISSING_TEXTURE);
 
-        int i = this.scrollX % 16;
-        int j = this.scrollY % 16;
+        if (this.isStaticBackground) {
+            guiGraphics.blit(resourcelocation, 0, 0, 0.0F, 0.0F, scaledWidth, scaledHeight, scaledWidth, scaledHeight);
+        } else {
+            int i = this.scrollX % 16;
+            int j = this.scrollY % 16;
 
-        int k = -1;
-        for (; k <= 1 + scaledWidth / 16; k++) {
-            int l = -1;
-            for (; l <= scaledHeight / 16; l++) {
-                guiGraphics.blit(resourcelocation, i + 16 * k, j + 16 * l, 0.0F, 0.0F, 16, 16, 16, 16);
+            int k = -1;
+            for (; k <= 1 + scaledWidth / 16; k++) {
+                int l = -1;
+                for (; l <= scaledHeight / 16; l++) {
+                    guiGraphics.blit(resourcelocation, i + 16 * k, j + 16 * l, 0.0F, 0.0F, 16, 16, 16, 16);
+                }
+                guiGraphics.blit(resourcelocation, i + 16 * k, j + 16 * l, 0.0F, 0.0F, 16, scaledHeight % 16, 16, 16);
             }
-            guiGraphics.blit(resourcelocation, i + 16 * k, j + 16 * l, 0.0F, 0.0F, 16, scaledHeight % 16, 16, 16);
         }
 
         this.root.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, true);

@@ -5,11 +5,13 @@ import com.evandev.better_advancements.gui.BetterAdvancementTab;
 import com.evandev.better_advancements.gui.BetterAdvancementTabType;
 import com.evandev.better_advancements.gui.BetterAdvancementWidget;
 import com.evandev.better_advancements.network.EditAdvancementPayload;
+import com.evandev.better_advancements.network.RequestAdvancementJsonPayload;
 import com.evandev.better_advancements.platform.Services;
 import com.evandev.better_advancements.reference.Resources;
 import com.evandev.better_advancements.util.PersistentData;
 import com.evandev.better_advancements.util.RenderUtil;
 import com.google.common.collect.Maps;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.serialization.JsonOps;
@@ -55,17 +57,46 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     private boolean isScrolling;
     private BetterAdvancementWidget advConnectedToMouse = null;
     private AdvancementContextMenu contextMenu = null;
-
     private double dragOffsetX = 0.0;
     private double dragOffsetY = 0.0;
-
     private String linkingError = null;
     private long linkingErrorTime = 0;
     private ResourceLocation savedSelectedTab = null;
 
+
     public BetterAdvancementsScreen(ClientAdvancements clientAdvancements) {
         super(GameNarrator.NO_TITLE);
         this.clientAdvancements = clientAdvancements;
+    }
+
+    public Map<AdvancementHolder, BetterAdvancementTab> getTabs() {
+        return this.tabs;
+    }
+
+    public void editTabProperties() {
+        if (this.selectedTab != null) {
+            ResourceLocation id = this.selectedTab.getRootNode().holder().id();
+            Services.PLATFORM.sendAdvancementJsonRequest(new RequestAdvancementJsonPayload(id, "TabProperties"));
+        }
+        this.contextMenu = null;
+    }
+
+    public void sortTabs() {
+        java.util.List<Map.Entry<AdvancementHolder, BetterAdvancementTab>> list = new java.util.ArrayList<>(this.tabs.entrySet());
+        list.sort(java.util.Comparator.comparingInt((Map.Entry<AdvancementHolder, BetterAdvancementTab> e) -> e.getValue().customIndex)
+                .thenComparing(e -> orderTabsAlphabetically ? e.getValue().getTitle().getString() : ""));
+        this.tabs.clear();
+        for (Map.Entry<AdvancementHolder, BetterAdvancementTab> e : list) {
+            this.tabs.put(e.getKey(), e.getValue());
+        }
+    }
+
+    public int getTabInternalWidth() {
+        return selectedTab != null && selectedTab.customWidth > 0 ? selectedTab.customWidth : this.internalWidth;
+    }
+
+    public int getTabInternalHeight() {
+        return selectedTab != null && selectedTab.customHeight > 0 ? selectedTab.customHeight : this.internalHeight;
     }
 
     public void closeContextMenu() {
@@ -115,10 +146,12 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             this.clientAdvancements.setSelectedTab(this.selectedTab == null ? null : this.selectedTab.getRootNode().holder(), true);
         }
 
-        int left = SIDE + (width - internalWidth) / 2;
-        int top = TOP + (height - internalHeight) / 2;
-        int right = internalWidth - SIDE + (width - internalWidth) / 2;
-        int bottom = internalHeight - SIDE + (height - internalHeight) / 2;
+        int tabW = getTabInternalWidth();
+        int tabH = getTabInternalHeight();
+        int left = SIDE + (width - tabW) / 2;
+        int top = TOP + (height - tabH) / 2;
+        int right = tabW - SIDE + (width - tabW) / 2;
+        int bottom = tabH - SIDE + (height - tabH) / 2;
         int width = right - left;
         int height = bottom - top;
 
@@ -150,10 +183,12 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             }
         }
 
-        int left = SIDE + (width - internalWidth) / 2;
-        int top = TOP + (height - internalHeight) / 2;
-        int right = internalWidth - SIDE + (width - internalWidth) / 2;
-        int bottom = internalHeight - SIDE + (height - internalHeight) / 2;
+        int tabW = getTabInternalWidth();
+        int tabH = getTabInternalHeight();
+        int left = SIDE + (width - tabW) / 2;
+        int top = TOP + (height - tabH) / 2;
+        int right = tabW - SIDE + (width - tabW) / 2;
+        int bottom = tabH - SIDE + (height - tabH) / 2;
         int width = right - left;
         int height = bottom - top;
 
@@ -175,8 +210,8 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
                 JsonObject rootJson = Advancement.CODEC
                         .encodeStart(JsonOps.INSTANCE, adv)
                         .result()
-                        .map(com.google.gson.JsonElement::getAsJsonObject)
-                        .orElseGet(com.google.gson.JsonObject::new);
+                        .map(JsonElement::getAsJsonObject)
+                        .orElseGet(JsonObject::new);
 
                 rootJson.addProperty("parent", parentId);
 
@@ -204,7 +239,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             int skip = tabPage * maxTabs;
 
             for (BetterAdvancementTab tab : this.tabs.values().stream().skip(skip).limit(maxTabs).toList()) {
-                if (tab.isMouseOver(left, top, internalWidth - 2 * SIDE, internalHeight - top - BOTTOM, mouseX, mouseY)) {
+                if (tab.isMouseOver(left, top, getTabInternalWidth() - 2 * SIDE, getTabInternalHeight() - top - BOTTOM, mouseX, mouseY)) {
                     this.clientAdvancements.setSelectedTab(tab.getRootNode().holder(), true);
                     break;
                 }
@@ -224,8 +259,8 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     private BetterAdvancementWidget getHoveredWidget(double mouseX, double mouseY) {
         if (this.selectedTab == null) return null;
 
-        int left = SIDE + (width - internalWidth) / 2;
-        int top = TOP + (height - internalHeight) / 2;
+        int left = SIDE + (width - getTabInternalWidth()) / 2;
+        int top = TOP + (height - getTabInternalHeight()) / 2;
 
         double unzoomedX = (mouseX - left - PADDING) / this.zoom;
         double unzoomedY = (mouseY - top - 2 * PADDING) / this.zoom;
@@ -256,12 +291,12 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
                 if (this.zoom != oldZoom) {
                     double shiftX = (relMouseX / this.zoom) - (relMouseX / oldZoom);
                     double shiftY = (relMouseY / this.zoom) - (relMouseY / oldZoom);
-                    this.selectedTab.scroll(shiftX, shiftY, internalWidth - 2 * SIDE - 3 * PADDING, internalHeight - TOP - BOTTOM - 3 * PADDING);
+                    this.selectedTab.scroll(shiftX, shiftY, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
                 }
             } else if (Screen.hasShiftDown()) {
-                this.selectedTab.scroll(scrollY * 16.0 / this.zoom, 0, internalWidth - 2 * SIDE - 3 * PADDING, internalHeight - TOP - BOTTOM - 3 * PADDING);
+                this.selectedTab.scroll(scrollY * 16.0 / this.zoom, 0, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
             } else {
-                this.selectedTab.scroll(scrollX * 16.0 / this.zoom, scrollY * 16.0 / this.zoom, internalWidth - 2 * SIDE - 3 * PADDING, internalHeight - TOP - BOTTOM - 3 * PADDING);
+                this.selectedTab.scroll(scrollX * 16.0 / this.zoom, scrollY * 16.0 / this.zoom, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
             }
             return true;
         }
@@ -314,8 +349,8 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double mouseDeltaX, double mouseDeltaY) {
-        int left = SIDE + (width - internalWidth) / 2;
-        int top = TOP + (height - internalHeight) / 2;
+        int left = SIDE + (width - getTabInternalWidth()) / 2;
+        int top = TOP + (height - getTabInternalHeight()) / 2;
 
         if (button != 0 && button != 2) {
             this.isScrolling = false;
@@ -326,7 +361,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
 
         if (!this.isScrolling) {
             if (this.advConnectedToMouse == null) {
-                boolean inGui = mouseX < left + internalWidth - 2 * SIDE - PADDING && mouseX > left + PADDING && mouseY < top + internalHeight - TOP + 1 && mouseY > top + 2 * PADDING;
+                boolean inGui = mouseX < left + getTabInternalWidth() - 2 * SIDE - PADDING && mouseX > left + PADDING && mouseY < top + getTabInternalHeight() - TOP + 1 && mouseY > top + 2 * PADDING;
                 if (this.selectedTab != null && inGui) {
                     double unzoomedMouseX = (mouseX - left - PADDING) / this.zoom;
                     double unzoomedMouseY = (mouseY - top - 2 * PADDING) / this.zoom;
@@ -368,17 +403,19 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             if (!this.isScrolling) {
                 this.isScrolling = true;
             } else if (this.selectedTab != null) {
-                this.selectedTab.scroll(mouseDeltaX / this.zoom, mouseDeltaY / this.zoom, internalWidth - 2 * SIDE - 3 * PADDING, internalHeight - TOP - BOTTOM - 3 * PADDING);
+                this.selectedTab.scroll(mouseDeltaX / this.zoom, mouseDeltaY / this.zoom, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
             }
         }
         return true;
     }
 
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        int left = SIDE + (width - internalWidth) / 2;
-        int top = TOP + (height - internalHeight) / 2;
-        int right = internalWidth - SIDE + (width - internalWidth) / 2;
-        int bottom = internalHeight - SIDE + (height - internalHeight) / 2;
+        int tabW = getTabInternalWidth();
+        int tabH = getTabInternalHeight();
+        int left = SIDE + (width - tabW) / 2;
+        int top = TOP + (height - tabH) / 2;
+        int right = tabW - SIDE + (width - tabW) / 2;
+        int bottom = tabH - SIDE + (height - tabH) / 2;
         int width = right - left;
         int height = bottom - top;
         int maxTabs = BetterAdvancementTabType.getMaxTabs(width, height);
@@ -388,7 +425,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         if (maxPages != 0) {
             Component page = Component.literal(String.format("%d / %d", tabPage + 1, maxPages + 1));
             int textWidth = this.font.width(page);
-            guiGraphics.drawString(this.font, page.getVisualOrderText(), left + (internalWidth - textWidth) / 2 - textWidth, bottom + 8, -1);
+            guiGraphics.drawString(this.font, page.getVisualOrderText(), left + (tabW - textWidth) / 2 - textWidth, bottom + 8, -1);
             super.render(guiGraphics, mouseX, mouseY, partialTicks);
         }
 
@@ -503,7 +540,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             guiGraphics.pose().popPose();
         }
 
-        if (BetterAdvancementsScreen.showDebugCoordinates && this.selectedTab != null && mouseX < internalWidth - SIDE - PADDING && mouseX > SIDE + PADDING && mouseY < internalHeight - top + 1 && mouseY > top + PADDING * 2) {
+        if (BetterAdvancementsScreen.showDebugCoordinates && this.selectedTab != null && mouseX < getTabInternalWidth() - SIDE - PADDING && mouseX > SIDE + PADDING && mouseY < getTabInternalHeight() - top + 1 && mouseY > top + PADDING * 2) {
             if (this.advConnectedToMouse != null) {
                 int currentX = (int) ((this.advConnectedToMouse.getX() + this.selectedTab.scrollX + 4) * zoom) + left + PADDING;
                 int currentY = (int) ((this.advConnectedToMouse.getY() + this.selectedTab.scrollY) * zoom) + top + 2 * PADDING - font.lineHeight + 1;
@@ -551,12 +588,13 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     public void renderWindow(GuiGraphics guiGraphics, int left, int top, int right, int bottom, int maxTabs, int skip) {
         RenderSystem.enableBlend();
         guiGraphics.blit(Resources.Gui.WINDOW, left, top, 0, 0, CORNER_SIZE, CORNER_SIZE);
-        RenderUtil.renderRepeating(Resources.Gui.WINDOW, guiGraphics, left + CORNER_SIZE, top, internalWidth - CORNER_SIZE - 2 * SIDE - CORNER_SIZE, CORNER_SIZE, CORNER_SIZE, 0, WIDTH - CORNER_SIZE - CORNER_SIZE, CORNER_SIZE);
+        int tabW = getTabInternalWidth();
+        RenderUtil.renderRepeating(Resources.Gui.WINDOW, guiGraphics, left + CORNER_SIZE, top, tabW - CORNER_SIZE - 2 * SIDE - CORNER_SIZE, CORNER_SIZE, CORNER_SIZE, 0, WIDTH - CORNER_SIZE - CORNER_SIZE, CORNER_SIZE);
         guiGraphics.blit(Resources.Gui.WINDOW, right - CORNER_SIZE, top, WIDTH - CORNER_SIZE, 0, CORNER_SIZE, CORNER_SIZE);
         RenderUtil.renderRepeating(Resources.Gui.WINDOW, guiGraphics, left, top + CORNER_SIZE, CORNER_SIZE, bottom - top - 2 * CORNER_SIZE, 0, CORNER_SIZE, CORNER_SIZE, HEIGHT - CORNER_SIZE - CORNER_SIZE);
         RenderUtil.renderRepeating(Resources.Gui.WINDOW, guiGraphics, right - CORNER_SIZE, top + CORNER_SIZE, CORNER_SIZE, bottom - top - 2 * CORNER_SIZE, WIDTH - CORNER_SIZE, CORNER_SIZE, CORNER_SIZE, HEIGHT - CORNER_SIZE - CORNER_SIZE);
         guiGraphics.blit(Resources.Gui.WINDOW, left, bottom - CORNER_SIZE, 0, HEIGHT - CORNER_SIZE, CORNER_SIZE, CORNER_SIZE);
-        RenderUtil.renderRepeating(Resources.Gui.WINDOW, guiGraphics, left + CORNER_SIZE, bottom - CORNER_SIZE, internalWidth - CORNER_SIZE - 2 * SIDE - CORNER_SIZE, CORNER_SIZE, CORNER_SIZE, HEIGHT - CORNER_SIZE, WIDTH - CORNER_SIZE - CORNER_SIZE, CORNER_SIZE);
+        RenderUtil.renderRepeating(Resources.Gui.WINDOW, guiGraphics, left + CORNER_SIZE, bottom - CORNER_SIZE, tabW - CORNER_SIZE - 2 * SIDE - CORNER_SIZE, CORNER_SIZE, CORNER_SIZE, HEIGHT - CORNER_SIZE, WIDTH - CORNER_SIZE - CORNER_SIZE, CORNER_SIZE);
         guiGraphics.blit(Resources.Gui.WINDOW, right - CORNER_SIZE, bottom - CORNER_SIZE, WIDTH - CORNER_SIZE, HEIGHT - CORNER_SIZE, CORNER_SIZE, CORNER_SIZE);
 
         int width = right - left;
@@ -625,6 +663,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         BetterAdvancementTab betterAdvancementTabGui = BetterAdvancementTab.create(this.minecraft, this, this.tabs.size(), advancement, internalWidth - 2 * SIDE, internalHeight - TOP - SIDE);
         if (betterAdvancementTabGui != null) {
             this.tabs.put(advancement.holder(), betterAdvancementTabGui);
+            sortTabs();
             if (advancement.holder().id().equals(this.savedSelectedTab)) {
                 this.clientAdvancements.setSelectedTab(advancement.holder(), true);
             } else if (this.selectedTab == null) {

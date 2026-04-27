@@ -35,6 +35,7 @@ public class AdvancementContextMenu {
             this.options.add(new ContextOption("Reset to Vanilla", true, this::deleteAdvancement));
         } else {
             this.options.add(new ContextOption("Create New Advancement", false, () -> parentScreen.createNewAdvancement(mouseX, mouseY)));
+            this.options.add(new ContextOption("Edit Tab Properties", false, parentScreen::editTabProperties));
             this.options.add(new ContextOption("Reset Entire Tab", true, this::resetEntireTab));
         }
 

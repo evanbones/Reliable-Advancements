@@ -26,6 +26,8 @@ public class PersistentData {
             JsonObject json = new JsonObject();
             JsonObject positions = (previousContents != null && previousContents.has("positions"))
                     ? previousContents.getAsJsonObject("positions") : new JsonObject();
+            JsonObject tabProperties = (previousContents != null && previousContents.has("tab_properties"))
+                    ? previousContents.getAsJsonObject("tab_properties") : new JsonObject();
 
             for (BetterAdvancementTab tab : tabs.values()) {
                 for (Map.Entry<AdvancementHolder, BetterAdvancementWidget> entry : tab.getWidgets().entrySet()) {
@@ -35,8 +37,18 @@ public class PersistentData {
                     arr.add(widget.getY());
                     positions.add(entry.getKey().id().toString(), arr);
                 }
+
+                JsonObject tObj = new JsonObject();
+                tObj.addProperty("title", tab.customTitle);
+                if (tab.customBackground != null) tObj.addProperty("background", tab.customBackground.toString());
+                tObj.addProperty("static_background", tab.isStaticBackground);
+                tObj.addProperty("width", tab.customWidth);
+                tObj.addProperty("height", tab.customHeight);
+                tObj.addProperty("index", tab.customIndex);
+                tabProperties.add(tab.getRootNode().holder().id().toString(), tObj);
             }
             json.add("positions", positions);
+            json.add("tab_properties", tabProperties);
 
             FileWriter writer = new FileWriter(FILE);
             GSON.toJson(json, writer);
@@ -64,6 +76,28 @@ public class PersistentData {
             }
         } catch (Exception e) {
             Constants.LOG.error("Failed to parse persistent data", e);
+        }
+    }
+
+    public static void loadTabProperties(BetterAdvancementTab tab) {
+        String id = tab.getRootNode().holder().id().toString();
+        try {
+            if (!FILE.exists()) return;
+            JsonObject json = GSON.fromJson(new FileReader(FILE), JsonObject.class);
+            if (json != null && GsonHelper.isObjectNode(json, "tab_properties")) {
+                JsonObject tabProperties = json.getAsJsonObject("tab_properties");
+                if (tabProperties.has(id)) {
+                    JsonObject tObj = tabProperties.getAsJsonObject(id);
+                    if (tObj.has("title")) tab.customTitle = tObj.get("title").getAsString();
+                    if (tObj.has("background")) tab.customBackground = net.minecraft.resources.ResourceLocation.parse(tObj.get("background").getAsString());
+                    if (tObj.has("static_background")) tab.isStaticBackground = tObj.get("static_background").getAsBoolean();
+                    if (tObj.has("width")) tab.customWidth = tObj.get("width").getAsInt();
+                    if (tObj.has("height")) tab.customHeight = tObj.get("height").getAsInt();
+                    if (tObj.has("index")) tab.customIndex = tObj.get("index").getAsInt();
+                }
+            }
+        } catch (Exception e) {
+            Constants.LOG.error("Failed to load tab properties", e);
         }
     }
 
