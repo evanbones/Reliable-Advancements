@@ -4,30 +4,38 @@ import com.evandev.better_advancements.gui.model.AdvancementDraft;
 import com.evandev.better_advancements.gui.widgets.SuggestingEditBox;
 import com.evandev.better_advancements.util.TriggerSchemaManager;
 import com.google.gson.*;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.MultiLineEditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class CriteriaTab implements IEditorTab {
 
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
     private final Font font;
     private final List<GuiEventListener> widgets = new ArrayList<>();
     private final List<CriterionEntry> criteriaList = new ArrayList<>();
+    private final List<ConditionRow> conditionRows = new ArrayList<>();
     private int selectedCriterion = 0;
     private int startX, startY, width;
     private EditBox nameBox;
     private SuggestingEditBox triggerBox;
-    private JsonObjectNode rootConditionsNode;
+    private Button addConditionBtn;
 
     public CriteriaTab(Font font) {
         this.font = font;
@@ -45,7 +53,20 @@ public class CriteriaTab implements IEditorTab {
                     JsonObject critObj = criteriaObj.getAsJsonObject(key);
                     if (critObj.has("trigger")) entry.trigger = critObj.get("trigger").getAsString();
                     if (critObj.has("conditions")) {
-                        entry.conditionsJson = new Gson().toJson(critObj.getAsJsonObject("conditions"));
+                        JsonObject conds = critObj.getAsJsonObject("conditions");
+                        for (Map.Entry<String, JsonElement> cond : conds.entrySet()) {
+                            String valStr;
+
+                            if (cond.getValue().isJsonPrimitive() && cond.getValue().getAsJsonPrimitive().isString()) {
+                                valStr = "\"" + cond.getValue().getAsString() + "\"";
+                            } else if (cond.getValue().isJsonPrimitive()) {
+                                valStr = cond.getValue().getAsString();
+                            } else {
+                                valStr = GSON.toJson(cond.getValue());
+                            }
+
+                            entry.conditions.add(new ConditionData(cond.getKey(), valStr));
+                        }
                     }
                     criteriaList.add(entry);
                 }
@@ -55,12 +76,12 @@ public class CriteriaTab implements IEditorTab {
 
         if (criteriaList.isEmpty()) criteriaList.add(new CriterionEntry());
         selectedCriterion = Math.max(0, Math.min(selectedCriterion, criteriaList.size() - 1));
-        rootConditionsNode = null;
     }
 
     @Override
     public void init(int x, int y, int width, int height, Runnable reinitScreen) {
         this.widgets.clear();
+        this.conditionRows.clear();
         this.startX = x;
         this.startY = y;
         this.width = width;
@@ -84,42 +105,46 @@ public class CriteriaTab implements IEditorTab {
         triggerBox.setResponder(s -> active.trigger = s);
         widgets.add(triggerBox);
 
-        if (rootConditionsNode == null) {
-            rootConditionsNode = new JsonObjectNode("conditions", null, reinitScreen) {
-                @Override
-                public String getExpectedType() {
-                    return TriggerSchemaManager.getRootType(active.trigger);
-                }
-            };
-            try {
-                JsonObject condObj = JsonParser.parseString(active.conditionsJson).getAsJsonObject();
-                rootConditionsNode.fromJson(condObj, reinitScreen);
-            } catch (Exception ignored) {
-            }
+        int currentY = y + 90;
+
+        for (int i = 0; i < active.conditions.size(); i++) {
+            ConditionData data = active.conditions.get(i);
+            ConditionRow row = new ConditionRow(data, x, currentY, width, active.trigger, () -> {
+                syncActiveConditions();
+                active.conditions.remove(data);
+                reinitScreen.run();
+            });
+            conditionRows.add(row);
+            widgets.addAll(row.getWidgets());
+            currentY += 155;
         }
 
-        int currentY = y + 90;
-        rootConditionsNode.init(x, currentY, width);
-        widgets.addAll(rootConditionsNode.getWidgets());
+        addConditionBtn = Button.builder(Component.literal("+ Add Condition"), b -> {
+            syncActiveConditions();
+            active.conditions.add(new ConditionData("", ""));
+            reinitScreen.run();
+        }).pos(x, currentY).size(120, 20).build();
+        widgets.add(addConditionBtn);
     }
 
     @Override
     public void saveState(AdvancementDraft draft) {
-        if (rootConditionsNode != null && !criteriaList.isEmpty()) {
-            CriterionEntry entry = criteriaList.get(selectedCriterion);
-            JsonElement serializedConditions = rootConditionsNode.toJson();
-            entry.conditionsJson = serializedConditions != null ? new Gson().toJson(serializedConditions) : "{}";
-        }
+        syncActiveConditions();
 
         JsonObject criteriaObj = new JsonObject();
         JsonArray requirementsObj = new JsonArray();
         for (CriterionEntry entry : criteriaList) {
             JsonObject crit = new JsonObject();
             crit.addProperty("trigger", entry.trigger);
-            try {
-                JsonObject parsedConds = JsonParser.parseString(entry.conditionsJson).getAsJsonObject();
-                if (!parsedConds.isEmpty()) crit.add("conditions", parsedConds);
-            } catch (Exception ignored) {
+
+            JsonObject conds = new JsonObject();
+            for (ConditionData data : entry.conditions) {
+                if (data.key.isEmpty()) continue;
+                conds.add(data.key, parseValue(data.value));
+            }
+
+            if (!conds.isEmpty()) {
+                crit.add("conditions", conds);
             }
 
             criteriaObj.add(entry.name, crit);
@@ -132,50 +157,56 @@ public class CriteriaTab implements IEditorTab {
         draft.rootJson.add("requirements", requirementsObj);
     }
 
+    private JsonElement parseValue(String val) {
+        String trimmed = val.trim();
+        try {
+            return JsonParser.parseString(trimmed);
+        } catch (Exception e) {
+            return new JsonPrimitive(trimmed);
+        }
+    }
+
+    private void syncActiveConditions() {
+        if (criteriaList.isEmpty()) return;
+        CriterionEntry active = criteriaList.get(selectedCriterion);
+        for (int i = 0; i < conditionRows.size(); i++) {
+            if (i < active.conditions.size()) {
+                ConditionRow row = conditionRows.get(i);
+                active.conditions.get(i).key = row.keyBox.getValue();
+                active.conditions.get(i).value = row.valBox.getValue();
+            }
+        }
+    }
+
     private void switchCriterion(int dir, Runnable reinitScreen) {
-        saveLocal();
+        syncActiveConditions();
         selectedCriterion = (selectedCriterion + dir + criteriaList.size()) % criteriaList.size();
-        rootConditionsNode = null;
         reinitScreen.run();
     }
 
     private void addCriterion(Runnable reinitScreen) {
-        saveLocal();
+        syncActiveConditions();
         CriterionEntry newEntry = new CriterionEntry();
         newEntry.name = "new_criterion_" + criteriaList.size();
         criteriaList.add(newEntry);
         selectedCriterion = criteriaList.size() - 1;
-        rootConditionsNode = null;
         reinitScreen.run();
     }
 
     private void removeCriterion(Runnable reinitScreen) {
-        saveLocal();
+        syncActiveConditions();
         if (criteriaList.size() > 1) {
             criteriaList.remove(selectedCriterion);
             selectedCriterion = Math.max(0, selectedCriterion - 1);
         }
-        rootConditionsNode = null;
         reinitScreen.run();
-    }
-
-    private void saveLocal() {
-        if (rootConditionsNode != null) {
-            CriterionEntry entry = criteriaList.get(selectedCriterion);
-            JsonElement serializedConditions = rootConditionsNode.toJson();
-            entry.conditionsJson = serializedConditions != null ? new Gson().toJson(serializedConditions) : "{}";
-        }
     }
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
         gfx.drawString(font, "Criteria " + (selectedCriterion + 1) + "/" + criteriaList.size(), startX, startY - 11, 0xFFA08060, false);
         gfx.drawString(font, "Trigger", startX, startY + 34, 0xFFA08060, false);
-        gfx.drawString(font, "Conditions", startX, startY + 79, 0xFF55FF55, false);
-
-        if (rootConditionsNode != null) {
-            rootConditionsNode.render(gfx, mouseX, mouseY, partialTicks);
-        }
+        gfx.drawString(font, "Conditions (Key top | Value bottom)", startX, startY + 79, 0xFF55FF55, false);
     }
 
     @Override
@@ -186,471 +217,80 @@ public class CriteriaTab implements IEditorTab {
     private static class CriterionEntry {
         String name = "my_criterion";
         String trigger = "minecraft:inventory_changed";
-        String conditionsJson = "{}";
+        List<ConditionData> conditions = new ArrayList<>();
     }
 
-    abstract static class JsonNode {
-        public String key;
-        public JsonNode parent;
-        public Runnable reinit;
+    private static class ConditionData {
+        String key;
+        String value;
 
-        public SuggestingEditBox keyBox;
-        public Button removeBtn;
-
-        public int x, y, width;
-
-        public JsonNode(String key, JsonNode parent, Runnable reinit) {
+        ConditionData(String key, String value) {
             this.key = key;
-            this.parent = parent;
-            this.reinit = reinit;
-        }
-
-        public String getExpectedType() {
-            if (parent instanceof JsonObjectNode objParent) {
-                String parentType = objParent.getExpectedType();
-
-                String conditionId = objParent.getChildValue("condition");
-                if (conditionId != null && !conditionId.isEmpty()) parentType = conditionId;
-
-                String type = TriggerSchemaManager.getFieldType(parentType, this.key);
-
-                if (type.equals("string") || type.equals("unknown")) {
-                    switch (this.key) {
-                        case "predicate", "entity" -> {
-                            return "EntityPredicate";
-                        }
-                        case "location" -> {
-                            return "LocationPredicate";
-                        }
-                        case "block" -> {
-                            return "BlockPredicate";
-                        }
-                        case "item", "tool" -> {
-                            return "ItemPredicate";
-                        }
-                        case "damage" -> {
-                            return "DamagePredicate";
-                        }
-                        case "properties", "state", "slots" -> {
-                            return "map[string]";
-                        }
-                    }
-                }
-                return type;
-            } else if (parent instanceof JsonArrayNode arrParent) {
-                return TriggerSchemaManager.getListInnerType(arrParent.getExpectedType());
-            }
-            return "string";
-        }
-
-        public abstract void init(int x, int y, int width);
-
-        public abstract int getHeight();
-
-        public abstract void render(GuiGraphics gfx, int mouseX, int mouseY, float pt);
-
-        public abstract List<GuiEventListener> getWidgets();
-
-        public abstract JsonElement toJson();
-
-        public abstract void fromJson(JsonElement el, Runnable reinit);
-
-        protected void initBase(int x, int y, int width) {
-            this.x = x;
-            this.y = y;
-            this.width = width;
-            keyBox = new SuggestingEditBox(Minecraft.getInstance().font, x, y, 100, 20, Component.literal("Key"), () -> {
-                if (parent instanceof JsonObjectNode objParent) {
-                    String parentType = objParent.getExpectedType();
-
-                    String conditionId = objParent.getChildValue("condition");
-                    if (conditionId != null && !conditionId.isEmpty()) parentType = conditionId;
-
-                    List<String> fields = TriggerSchemaManager.getFields(parentType);
-
-                    if (fields.isEmpty() && conditionId != null) {
-                        switch (conditionId) {
-                            case "minecraft:location_check" -> {
-                                return List.of("predicate", "offsetX", "offsetY", "offsetZ");
-                            }
-                            case "minecraft:entity_properties" -> {
-                                return List.of("entity", "predicate");
-                            }
-                            case "minecraft:match_tool" -> {
-                                return List.of("predicate");
-                            }
-                            case "minecraft:block_state_property" -> {
-                                return List.of("block", "properties");
-                            }
-                            case "minecraft:any_of", "minecraft:all_of" -> {
-                                return List.of("terms");
-                            }
-                        }
-                    }
-                    return fields;
-                }
-                return List.of();
-            });
-            keyBox.setValue(key);
-            keyBox.setResponder(this::onKeyChanged);
-
-            if (this instanceof JsonPrimitiveNode) {
-                removeBtn = Button.builder(Component.literal("X"), b -> {
-                    if (parent instanceof JsonObjectNode obj) obj.children.remove(this);
-                    if (parent instanceof JsonArrayNode arr) arr.children.remove(this);
-                    reinit.run();
-                }).pos(x + width - 20, y).size(20, 20).build();
-            }
-        }
-
-        private void onKeyChanged(String s) {
-            this.key = s;
-            if (parent == null) return;
-
-            String expectedType = getExpectedType();
-            boolean isObj = TriggerSchemaManager.isObject(expectedType);
-            boolean isList = TriggerSchemaManager.isList(expectedType);
-
-            if (isObj && !(this instanceof JsonObjectNode)) {
-                replaceSelf(new JsonObjectNode(s, parent, reinit));
-            } else if (isList && !(this instanceof JsonArrayNode)) {
-                replaceSelf(new JsonArrayNode(s, parent, reinit));
-            } else if (!isObj && !isList && !(this instanceof JsonPrimitiveNode)) {
-                replaceSelf(new JsonPrimitiveNode(s, "", parent, reinit));
-            }
-        }
-
-        protected void replaceSelf(JsonNode newNode) {
-            if (parent instanceof JsonObjectNode obj) {
-                int idx = obj.children.indexOf(this);
-                if (idx >= 0) obj.children.set(idx, newNode);
-            } else if (parent instanceof JsonArrayNode arr) {
-                int idx = arr.children.indexOf(this);
-                if (idx >= 0) arr.children.set(idx, newNode);
-            }
-            reinit.run();
-        }
-
-        protected List<GuiEventListener> getBaseWidgets() {
-            List<GuiEventListener> list = new ArrayList<>();
-            if (parent != null) {
-                if (!(parent instanceof JsonArrayNode)) list.add(keyBox);
-                if (removeBtn != null) list.add(removeBtn);
-            }
-            return list;
+            this.value = value;
         }
     }
 
-    static class JsonPrimitiveNode extends JsonNode {
-        public SuggestingEditBox valBox;
-        public String valueStr;
+    private static class ConditionRow {
+        SuggestingEditBox keyBox;
+        JsonMultiLineEditBox valBox;
+        Button removeBtn;
 
-        public JsonPrimitiveNode(String key, String valueStr, JsonNode parent, Runnable reinit) {
-            super(key, parent, reinit);
-            this.valueStr = valueStr;
-        }
-
-        @Override
-        public void init(int x, int y, int width) {
-            initBase(x, y, width);
-            int valX = (parent instanceof JsonArrayNode) ? x : x + 105;
-            int valW = (parent instanceof JsonArrayNode) ? width - 25 : width - 130;
-
-            valBox = new SuggestingEditBox(Minecraft.getInstance().font, valX, y, valW, 20, Component.literal("Value"), () -> {
-                String type = getExpectedType();
-                String effectiveKey = this.key.toLowerCase();
-
-                if (effectiveKey.isEmpty() && parent instanceof JsonArrayNode arr) {
-                    effectiveKey = arr.key.toLowerCase();
-                }
-
-                if (type.equals("boolean") || effectiveKey.startsWith("is_") || effectiveKey.startsWith("can_") || effectiveKey.equals("expected")) {
-                    return List.of("true", "false");
-                }
-                if (effectiveKey.equals("condition")) {
-                    return List.of("minecraft:entity_properties", "minecraft:location_check", "minecraft:match_tool", "minecraft:block_state_property", "minecraft:damage_source_properties", "minecraft:any_of", "minecraft:all_of");
-                }
-                if (effectiveKey.equals("dimension") || effectiveKey.equals("to") || effectiveKey.equals("from")) {
-                    return List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end");
-                }
-                if (effectiveKey.contains("potion")) {
-                    return BuiltInRegistries.POTION.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
-                }
-                if (effectiveKey.equals("type") || effectiveKey.contains("entity") || effectiveKey.contains("vehicle") || type.contains("Entity") || type.contains("Damage")) {
-                    List<String> list = BuiltInRegistries.ENTITY_TYPE.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
-                    BuiltInRegistries.ENTITY_TYPE.getTagNames().map(t -> "#" + t.location()).forEach(list::add);
-                    return list;
-                }
-                if (effectiveKey.contains("block") || effectiveKey.equals("state")) {
-                    List<String> list = BuiltInRegistries.BLOCK.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
-                    BuiltInRegistries.BLOCK.getTagNames().map(t -> "#" + t.location()).forEach(list::add);
-                    return list;
-                }
-                if (effectiveKey.contains("fluid")) {
-                    List<String> list = BuiltInRegistries.FLUID.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
-                    BuiltInRegistries.FLUID.getTagNames().map(t -> "#" + t.location()).forEach(list::add);
-                    return list;
-                }
-                if (effectiveKey.contains("item") || type.equals("resource_location") || type.contains("Item")) {
-                    List<String> list = BuiltInRegistries.ITEM.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
-                    BuiltInRegistries.ITEM.getTagNames().map(t -> "#" + t.location()).forEach(list::add);
-                    return list;
-                }
-
-                return List.of();
+        ConditionRow(ConditionData data, int x, int y, int width, String trigger, Runnable onRemove) {
+            keyBox = new SuggestingEditBox(Minecraft.getInstance().font, x, y, width - 25, 20, Component.literal("Key"), () -> {
+                String parentType = TriggerSchemaManager.getRootType(trigger);
+                return TriggerSchemaManager.getFields(parentType);
             });
-            valBox.setMaxLength(2048);
-            valBox.setValue(valueStr);
+            keyBox.setValue(data.key);
 
-            valBox.setResponder(s -> {
-                this.valueStr = s;
-                String trimmed = s.trim();
-                if (trimmed.equals("[")) {
-                    replaceSelf(new JsonArrayNode(this.key, parent, reinit));
-                } else if (trimmed.equals("{")) {
-                    replaceSelf(new JsonObjectNode(this.key, parent, reinit));
-                }
-            });
+            valBox = new JsonMultiLineEditBox(Minecraft.getInstance().font, x, y + 25, width, 120, Component.literal("Value"));
+            valBox.setValue(data.value);
+
+            removeBtn = Button.builder(Component.literal("X"), b -> onRemove.run())
+                    .pos(x + width - 20, y).size(20, 20).build();
         }
 
-        @Override
-        public int getHeight() {
-            return 22;
-        }
-
-        @Override
-        public void render(GuiGraphics gfx, int mouseX, int mouseY, float pt) {
-        }
-
-        @Override
-        public List<GuiEventListener> getWidgets() {
-            List<GuiEventListener> list = getBaseWidgets();
-            list.add(valBox);
-            return list;
-        }
-
-        @Override
-        public JsonElement toJson() {
-            if (valueStr == null || valueStr.trim().isEmpty()) return null;
-
-            String type = getExpectedType();
-            String lowerVal = valueStr.trim().toLowerCase();
-
-            if (type.equals("boolean") || lowerVal.equals("true") || lowerVal.equals("false")) {
-                return new JsonPrimitive(Boolean.parseBoolean(valueStr));
-            }
-            if (type.equals("int") || type.equals("integer")) {
-                try {
-                    return new JsonPrimitive(Integer.parseInt(valueStr));
-                } catch (Exception e) {
-                    return new JsonPrimitive(0);
-                }
-            }
-            if (type.equals("double") || type.equals("float")) {
-                try {
-                    return new JsonPrimitive(Double.parseDouble(valueStr));
-                } catch (Exception e) {
-                    return new JsonPrimitive(0.0);
-                }
-            }
-            return new JsonPrimitive(valueStr);
-        }
-
-        @Override
-        public void fromJson(JsonElement el, Runnable reinit) {
-            if (el.isJsonPrimitive()) {
-                this.valueStr = el.getAsString();
-            } else {
-                this.valueStr = el.toString();
-            }
+        List<GuiEventListener> getWidgets() {
+            return List.of(keyBox, valBox, removeBtn);
         }
     }
 
-    static class JsonObjectNode extends JsonNode {
-        public List<JsonNode> children = new ArrayList<>();
-        public Button addBtn;
+    private static class JsonMultiLineEditBox extends MultiLineEditBox {
+        private String lastText = null;
+        private boolean isValid = true;
 
-        public JsonObjectNode(String key, JsonNode parent, Runnable reinit) {
-            super(key, parent, reinit);
-        }
-
-        public String getChildValue(String searchKey) {
-            for (JsonNode child : children) {
-                if (child.key.equals(searchKey) && child instanceof JsonPrimitiveNode prim) {
-                    return prim.valueStr.replace("\"", "").trim();
-                }
-            }
-            return null;
+        public JsonMultiLineEditBox(Font font, int x, int y, int width, int height, Component title) {
+            super(font, x, y, width, height, title, Component.empty());
         }
 
         @Override
-        public void init(int x, int y, int width) {
-            initBase(x, y, width);
-
-            int headerHeight = (parent == null || parent instanceof JsonArrayNode) ? 0 : 22;
-            int currentY = y + headerHeight;
-
-            int childX = (parent == null) ? x : x + 10;
-            int childW = (parent == null) ? width : width - 10;
-
-            for (JsonNode child : children) {
-                child.init(childX, currentY, childW);
-                currentY += child.getHeight();
+        public void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
+            String currentText = this.getValue();
+            if (lastText == null || !lastText.equals(currentText)) {
+                lastText = currentText;
+                validate(currentText);
             }
 
-            addBtn = Button.builder(Component.literal("+ Add Field"), b -> {
-                children.add(new JsonPrimitiveNode("", "", this, reinit));
-                reinit.run();
-            }).pos(childX, currentY).size(80, 16).build();
+            super.renderWidget(gfx, mouseX, mouseY, partialTicks);
 
-            if (parent instanceof JsonArrayNode) {
-                removeBtn = Button.builder(Component.literal("X"), b -> {
-                    if (parent instanceof JsonArrayNode arr) arr.children.remove(this);
-                    reinit.run();
-                }).pos(childX + 85, currentY).size(16, 16).build();
+            int outlineColor = isValid ? 0xFF00FF00 : 0xFFFF0000;
+            gfx.renderOutline(getX() - 1, getY() - 1, getWidth() + 2, getHeight() + 2, outlineColor);
+        }
+
+        private void validate(String text) {
+            String trimmed = text.trim();
+            if (trimmed.isEmpty()) {
+                isValid = true;
+                this.setTooltip(null);
+                return;
             }
-        }
-
-        @Override
-        public int getHeight() {
-            int headerHeight = (parent == null || parent instanceof JsonArrayNode) ? 0 : 22;
-            int h = headerHeight + 18;
-            for (JsonNode child : children) h += child.getHeight();
-            return h;
-        }
-
-        @Override
-        public void render(GuiGraphics gfx, int mouseX, int mouseY, float pt) {
-            if (parent != null) {
-                int headerHeight = (parent instanceof JsonArrayNode) ? 0 : 22;
-                gfx.fill(x + 2, y + headerHeight, x + 3, y + getHeight() - 5, 0xFF666666);
-            }
-            for (JsonNode child : children) child.render(gfx, mouseX, mouseY, pt);
-        }
-
-        @Override
-        public List<GuiEventListener> getWidgets() {
-            List<GuiEventListener> list = getBaseWidgets();
-            for (JsonNode child : children) list.addAll(child.getWidgets());
-            list.add(addBtn);
-            return list;
-        }
-
-        @Override
-        public JsonElement toJson() {
-            JsonObject obj = new JsonObject();
-            for (JsonNode child : children) {
-                if (!child.key.isEmpty()) {
-                    JsonElement childJson = child.toJson();
-                    if (childJson != null) obj.add(child.key, childJson);
-                }
-            }
-            if (obj.isEmpty() && parent != null) return null;
-            return obj;
-        }
-
-        @Override
-        public void fromJson(JsonElement el, Runnable reinit) {
-            if (el.isJsonObject()) {
-                JsonObject obj = el.getAsJsonObject();
-                for (String k : obj.keySet()) {
-                    JsonElement val = obj.get(k);
-                    JsonNode child;
-
-                    if (val.isJsonObject()) child = new JsonObjectNode(k, this, reinit);
-                    else if (val.isJsonArray()) child = new JsonArrayNode(k, this, reinit);
-                    else child = new JsonPrimitiveNode(k, "", this, reinit);
-
-                    child.fromJson(val, reinit);
-                    children.add(child);
-                }
-            }
-        }
-    }
-
-    static class JsonArrayNode extends JsonNode {
-        public List<JsonNode> children = new ArrayList<>();
-        public Button addBtn;
-
-        public JsonArrayNode(String key, JsonNode parent, Runnable reinit) {
-            super(key, parent, reinit);
-        }
-
-        @Override
-        public void init(int x, int y, int width) {
-            initBase(x, y, width);
-
-            int headerHeight = (parent == null || parent instanceof JsonArrayNode) ? 0 : 22;
-            int currentY = y + headerHeight;
-
-            for (JsonNode child : children) {
-                child.init(x + 10, currentY, width - 10);
-                currentY += child.getHeight();
-            }
-
-            addBtn = Button.builder(Component.literal("+ Add Item"), b -> {
-                children.add(new JsonPrimitiveNode("", "", this, reinit));
-                reinit.run();
-            }).pos(x + 10, currentY).size(80, 16).build();
-
-            if (parent instanceof JsonArrayNode) {
-                removeBtn = Button.builder(Component.literal("X"), b -> {
-                    if (parent instanceof JsonArrayNode arr) arr.children.remove(this);
-                    reinit.run();
-                }).pos(x + 95, currentY).size(16, 16).build();
-            }
-        }
-
-        @Override
-        public int getHeight() {
-            int headerHeight = (parent == null || parent instanceof JsonArrayNode) ? 0 : 22;
-            int h = headerHeight + 18;
-            for (JsonNode child : children) h += child.getHeight();
-            return h;
-        }
-
-        @Override
-        public void render(GuiGraphics gfx, int mouseX, int mouseY, float pt) {
-            if (parent != null) {
-                int headerHeight = (parent instanceof JsonArrayNode) ? 0 : 22;
-                gfx.fill(x + 2, y + headerHeight, x + 3, y + getHeight() - 5, 0xFF448844);
-            }
-            for (JsonNode child : children) child.render(gfx, mouseX, mouseY, pt);
-        }
-
-        @Override
-        public List<GuiEventListener> getWidgets() {
-            List<GuiEventListener> list = getBaseWidgets();
-            for (JsonNode child : children) list.addAll(child.getWidgets());
-            list.add(addBtn);
-            return list;
-        }
-
-        @Override
-        public JsonElement toJson() {
-            JsonArray arr = new JsonArray();
-            for (JsonNode child : children) {
-                JsonElement childJson = child.toJson();
-                if (childJson != null) arr.add(childJson);
-            }
-            if (arr.isEmpty() && parent != null) return null;
-            return arr;
-        }
-
-        @Override
-        public void fromJson(JsonElement el, Runnable reinit) {
-            if (el.isJsonArray()) {
-                JsonArray arr = el.getAsJsonArray();
-                for (JsonElement val : arr) {
-                    JsonNode child;
-
-                    if (val.isJsonObject()) child = new JsonObjectNode("", this, reinit);
-                    else if (val.isJsonArray()) child = new JsonArrayNode("", this, reinit);
-                    else child = new JsonPrimitiveNode("", "", this, reinit);
-
-                    child.fromJson(val, reinit);
-                    children.add(child);
-                }
+            try {
+                JsonParser.parseString(trimmed);
+                isValid = true;
+                this.setTooltip(null);
+            } catch (JsonSyntaxException e) {
+                isValid = false;
+                String errorMsg = e.getMessage();
+                this.setTooltip(Tooltip.create(Component.literal("Invalid JSON: " + errorMsg).withStyle(ChatFormatting.RED)));
             }
         }
     }

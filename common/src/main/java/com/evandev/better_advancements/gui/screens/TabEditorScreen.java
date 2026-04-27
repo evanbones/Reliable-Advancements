@@ -13,11 +13,11 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class TabEditorScreen extends Screen {
@@ -49,7 +49,7 @@ public class TabEditorScreen extends Screen {
     @Override
     protected void init() {
         uiW = 240;
-        uiH = 270;
+        uiH = 290;
         uiX = (this.width - uiW) / 2;
         uiY = (this.height - uiH) / 2;
 
@@ -74,13 +74,19 @@ public class TabEditorScreen extends Screen {
         }
 
         nameBox = new EditBox(this.font, startX, startY, 200, 20, Component.literal("Tab Name"));
+        nameBox.setMaxLength(256);
         nameBox.setValue(name);
         this.addRenderableWidget(nameBox);
 
+        List<String> textureSuggestions = this.minecraft.getResourceManager()
+                .listResources("textures", loc -> loc.getPath().endsWith(".png"))
+                .keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+
         bgBox = new SuggestingEditBox(this.font, startX, startY + 45, 200, 20, Component.literal("Background Texture"),
-                () -> BuiltInRegistries.BLOCK.keySet().stream().map(id -> id.getNamespace() + ":textures/block/" + id.getPath() + ".png").collect(Collectors.toList()));
+                () -> textureSuggestions);
+        bgBox.setMaxLength(256);
         bgBox.setValue(bg);
-        bgBox.setTooltip(Tooltip.create(Component.literal("Format: namespace:textures/block/block_name.png\nExample: minecraft:textures/block/stone.png")));
+        bgBox.setTooltip(Tooltip.create(Component.literal("Format: namespace:textures/...\nExample: minecraft:textures/gui/advancements/backgrounds/stone.png")));
         this.addRenderableWidget(bgBox);
 
         staticBgBtn = Button.builder(Component.literal("Static Background: " + isStaticBg), b -> {

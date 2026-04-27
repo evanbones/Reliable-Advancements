@@ -21,8 +21,6 @@ import java.util.concurrent.CompletableFuture;
 
 public class TriggerSchemaProvider implements DataProvider {
     private final PackOutput output;
-    private final JsonObject schemas = new JsonObject();
-    private final Set<String> visited = new HashSet<>();
 
     public TriggerSchemaProvider(PackOutput output) {
         this.output = output;
@@ -32,43 +30,29 @@ public class TriggerSchemaProvider implements DataProvider {
     public @NotNull CompletableFuture<?> run(@NotNull CachedOutput cache) {
         JsonObject root = new JsonObject();
         JsonObject triggers = new JsonObject();
-        Map<CriterionTrigger<?>, Class<?>> manualMap = getManualMapping();
 
+        Map<CriterionTrigger<?>, Class<?>> manualMap = getManualMapping();
         for (Map.Entry<ResourceKey<CriterionTrigger<?>>, CriterionTrigger<?>> entry : BuiltInRegistries.TRIGGER_TYPES.entrySet()) {
             ResourceLocation id = entry.getKey().location();
             CriterionTrigger<?> trigger = entry.getValue();
             Class<?> recordClass = manualMap.get(trigger);
 
-            if (recordClass != null) {
-                String typeName = getTypeName(recordClass);
-                triggers.addProperty(id.toString(), typeName);
-                processClass(recordClass);
+            if (recordClass != null && recordClass.isRecord()) {
+                JsonObject fields = new JsonObject();
+                for (RecordComponent component : recordClass.getRecordComponents()) {
+                    String fieldType = simplifyType(component.getGenericType());
+                    String jsonKey = getJsonKey(component.getName());
+                    fields.addProperty(jsonKey, fieldType);
+                }
+                triggers.add(id.toString(), fields);
             }
         }
 
         root.add("triggers", triggers);
-        root.add("schemas", schemas);
 
         Path path = this.output.getOutputFolder(PackOutput.Target.RESOURCE_PACK)
                 .resolve("better_advancements/trigger_schemas.json");
         return DataProvider.saveStable(cache, root, path);
-    }
-
-    private void processClass(Class<?> clazz) {
-        String typeName = getTypeName(clazz);
-        if (visited.contains(typeName)) return;
-        visited.add(typeName);
-
-        if (clazz.isRecord()) {
-            JsonObject fields = new JsonObject();
-            for (RecordComponent component : clazz.getRecordComponents()) {
-                Type genericType = component.getGenericType();
-                String fieldType = resolveType(genericType);
-                String jsonKey = getJsonKey(component.getName());
-                fields.addProperty(jsonKey, fieldType);
-            }
-            schemas.add(typeName, fields);
-        }
     }
 
     private String getJsonKey(String fieldName) {
@@ -82,47 +66,25 @@ public class TriggerSchemaProvider implements DataProvider {
         };
     }
 
-    private String resolveType(Type type) {
+    private String simplifyType(Type type) {
         if (type instanceof Class<?> clazz) {
-            if (clazz == StatePropertiesPredicate.class) return "map[string]";
-            if (clazz == SlotsPredicate.class) return "map[ItemPredicate]";
-
-            if (clazz.isPrimitive() || clazz == String.class || clazz == Integer.class || clazz == Boolean.class || clazz == Float.class || clazz == Double.class) {
-                return clazz.getSimpleName().toLowerCase();
-            } else if (clazz == ResourceLocation.class) {
-                return "resource_location";
-            } else if (clazz.isEnum()) {
-                return "enum_" + getTypeName(clazz);
-            } else {
-                processClass(clazz);
-                return getTypeName(clazz);
-            }
+            if (clazz == String.class) return "string";
+            if (clazz == Integer.class || clazz == int.class) return "integer";
+            if (clazz == Boolean.class || clazz == boolean.class) return "boolean";
+            if (clazz == Float.class || clazz == float.class || clazz == Double.class || clazz == double.class) return "float";
+            if (clazz == ResourceLocation.class) return "resource_location";
+            return "object";
         } else if (type instanceof ParameterizedType pType) {
             Class<?> rawType = (Class<?>) pType.getRawType();
-            Type[] typeArgs = pType.getActualTypeArguments();
-
-            if (rawType == Optional.class && typeArgs.length == 1) {
-                return resolveType(typeArgs[0]);
-            } else if ((rawType == List.class || rawType == Set.class) && typeArgs.length == 1) {
-                return "list[" + resolveType(typeArgs[0]) + "]";
-            } else if (rawType == Map.class && typeArgs.length == 2) {
-                return "map[" + resolveType(typeArgs[1]) + "]";
+            if (rawType == Optional.class) {
+                return simplifyType(pType.getActualTypeArguments()[0]);
+            } else if (rawType == List.class || rawType == Set.class) {
+                return "list";
+            } else if (rawType == Map.class) {
+                return "object";
             }
-
-            processClass(rawType);
-            return getTypeName(rawType);
         }
-        return "unknown";
-    }
-
-    private String getTypeName(Class<?> clazz) {
-        String name = clazz.getName();
-        if (name.startsWith("net.minecraft.advancements.critereon."))
-            name = name.replace("net.minecraft.advancements.critereon.", "");
-        else if (name.startsWith("net.minecraft.world.level.storage.loot.predicates."))
-            name = name.replace("net.minecraft.world.level.storage.loot.predicates.", "");
-        else if (name.startsWith("java.lang.")) name = name.replace("java.lang.", "");
-        return name.replace('$', '.');
+        return "object";
     }
 
     private Map<CriterionTrigger<?>, Class<?>> getManualMapping() {
