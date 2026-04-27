@@ -1,22 +1,26 @@
 package com.evandev.better_advancements.gui;
 
+import com.evandev.better_advancements.network.EditAdvancementPayload;
+import com.evandev.better_advancements.platform.Services;
 import com.evandev.better_advancements.reference.Resources;
 import com.evandev.better_advancements.util.PersistentData;
 import com.evandev.better_advancements.util.RenderUtil;
-import com.evandev.better_advancements.platform.Services;
 import com.google.common.collect.Maps;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.AdvancementProgress;
+import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.GameNarrator;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientAdvancements;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundSeenAdvancementsPacket;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.NotNull;
@@ -30,16 +34,15 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     private static final int WIDTH = 252, HEIGHT = 140, CORNER_SIZE = 30;
     private static final int SIDE = 30, TOP = 40, BOTTOM = 30, PADDING = 9;
     private static final float MIN_ZOOM = 0.25F, MAX_ZOOM = 2.0F, ZOOM_STEP = 0.15F;
-
     public static boolean freeformLayoutEditing = false;
     public static boolean enableEditMode = false;
     public static int uiScaling = 100;
     public static boolean showDebugCoordinates = false;
     public static boolean orderTabsAlphabetically = false;
-
     private static int tabPage, maxPages;
     private final ClientAdvancements clientAdvancements;
     private final Map<AdvancementHolder, BetterAdvancementTab> tabs = Maps.newLinkedHashMap();
+    public BetterAdvancementWidget linkingWidget = null;
     protected int internalWidth, internalHeight;
     private BetterAdvancementTab selectedTab;
     private float zoom = 1.0F;
@@ -54,6 +57,18 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
 
     public float getZoom() {
         return this.zoom;
+    }
+
+    public void startLinking(BetterAdvancementWidget widget) {
+        this.linkingWidget = widget;
+        this.contextMenu = null;
+    }
+
+    public void createNewAdvancement(int mouseX, int mouseY) {
+        this.minecraft.player.displayClientMessage(
+                Component.literal("Creating brand new advancements will be fully implemented in a future server-side update. Visually mocked for now."), false
+        );
+        this.contextMenu = null;
     }
 
     @Override
@@ -107,6 +122,28 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         int width = right - left;
         int height = bottom - top;
 
+        if (this.linkingWidget != null && modifiers == 0) {
+            BetterAdvancementWidget target = getHoveredWidget(mouseX, mouseY);
+            if (target != null && target != this.linkingWidget) {
+                ResourceLocation id = linkingWidget.getAdvancement().holder().id();
+                DisplayInfo display = linkingWidget.getAdvancement().advancement().display().orElse(null);
+                String title = display != null ? display.getTitle().getString() : "Advancement";
+                String desc = display != null ? display.getDescription().getString() : "";
+                String icon = display != null ? BuiltInRegistries.ITEM.getKey(display.getIcon().getItem()).toString() : "minecraft:stone";
+                String parentId = target.getAdvancement().holder().id().toString();
+
+                EditAdvancementPayload payload = new EditAdvancementPayload(id, title, desc, icon, parentId);
+                if (Services.PLATFORM.canSendAdvancementEdit()) {
+                    Services.PLATFORM.sendAdvancementEdit(payload);
+                }
+                this.linkingWidget = null;
+                return true;
+            } else if (target == null) {
+                this.linkingWidget = null;
+                return true;
+            }
+        }
+
         if (modifiers == 0) {
             int maxTabs = BetterAdvancementTabType.getMaxTabs(width, height);
             int skip = tabPage * maxTabs;
@@ -122,10 +159,8 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
 
             if (inGui) {
                 BetterAdvancementWidget hoveredWidget = getHoveredWidget(mouseX, mouseY);
-                if (hoveredWidget != null) {
-                    this.contextMenu = new AdvancementContextMenu(this, hoveredWidget, (int) mouseX, (int) mouseY);
-                    return true;
-                }
+                this.contextMenu = new AdvancementContextMenu(this, hoveredWidget, (int) mouseX, (int) mouseY);
+                return true;
             }
         }
         return super.mouseClicked(mouseX, mouseY, modifiers);
@@ -300,6 +335,18 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             super.render(guiGraphics, mouseX, mouseY, partialTicks);
         }
         this.renderInside(guiGraphics, mouseX, mouseY, left, top, right, bottom, maxTabs, skip);
+
+        if (this.linkingWidget != null) {
+            int startX = (int) ((this.linkingWidget.getX() + this.selectedTab.scrollX + (float) BetterAdvancementWidget.ADVANCEMENT_SIZE / 2) * zoom) + left + PADDING;
+            int startY = (int) ((this.linkingWidget.getY() + this.selectedTab.scrollY + (float) BetterAdvancementWidget.ADVANCEMENT_SIZE / 2) * zoom) + top + 2 * PADDING;
+
+            RenderSystem.disableDepthTest();
+            RenderUtil.line(guiGraphics, startX, startY, mouseX, mouseY, 2, 0xFF00FF00);
+            RenderSystem.enableDepthTest();
+
+            guiGraphics.drawString(this.font, "Select parent to link...", mouseX + 15, mouseY + 10, 0x00FF00);
+        }
+
         this.renderWindow(guiGraphics, left, top, right, bottom, maxTabs, skip);
 
         if (this.advConnectedToMouse == null && this.contextMenu == null) {

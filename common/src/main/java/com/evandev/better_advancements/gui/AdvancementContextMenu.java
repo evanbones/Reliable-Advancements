@@ -12,7 +12,7 @@ public class AdvancementContextMenu {
     private final BetterAdvancementsScreen parentScreen;
     private final BetterAdvancementWidget widget;
     private final int x, y;
-    private final int width = 140;
+    private final int width = 145;
     private final int height;
     private final List<ContextOption> options = new ArrayList<>();
 
@@ -20,10 +20,15 @@ public class AdvancementContextMenu {
         this.parentScreen = parentScreen;
         this.widget = widget;
 
-        this.options.add(new ContextOption("Edit Properties", false, () -> openEditor(AdvancementEditorScreen.EditorTab.PROPERTIES)));
-        this.options.add(new ContextOption("Edit Layout (Pos)", false, () -> openEditor(AdvancementEditorScreen.EditorTab.LAYOUT)));
-        this.options.add(new ContextOption("Edit Criteria", false, () -> openEditor(AdvancementEditorScreen.EditorTab.CRITERIA)));
-        this.options.add(new ContextOption("Delete Advancement", true, this::deleteAdvancement));
+        if (widget != null) {
+            this.options.add(new ContextOption("Edit Properties", false, () -> openEditor(AdvancementEditorScreen.EditorTab.PROPERTIES)));
+            this.options.add(new ContextOption("Edit Layout (Pos)", false, () -> openEditor(AdvancementEditorScreen.EditorTab.LAYOUT)));
+            this.options.add(new ContextOption("Edit Criteria", false, () -> openEditor(AdvancementEditorScreen.EditorTab.CRITERIA)));
+            this.options.add(new ContextOption("Link to Parent...", false, () -> parentScreen.startLinking(widget)));
+            this.options.add(new ContextOption("Delete Advancement", true, this::deleteAdvancement));
+        } else {
+            this.options.add(new ContextOption("Create New Advancement", false, () -> parentScreen.createNewAdvancement(mouseX, mouseY)));
+        }
 
         this.height = this.options.size() * 20 + 4;
 
@@ -36,7 +41,6 @@ public class AdvancementContextMenu {
     }
 
     private void deleteAdvancement() {
-        // TODO: Send a network payload to delete the advancement from the datapack, also make this translatable
         Minecraft.getInstance().player.displayClientMessage(
                 Component.literal("Delete advancement payload coming in next phase: " + widget.getAdvancement().holder().id()), false
         );
@@ -45,7 +49,7 @@ public class AdvancementContextMenu {
 
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 1000); // Render heavily on top
+        guiGraphics.pose().translate(0, 0, 1000);
 
         guiGraphics.fillGradient(x, y, x + width, y + height, 0xF0101010, 0xF0101010);
         guiGraphics.renderOutline(x, y, width, height, 0xFF505050);
@@ -57,7 +61,7 @@ public class AdvancementContextMenu {
             boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= optY && mouseY < optY + 20;
 
             if (hovered) {
-                guiGraphics.fill(x + 1, optY, x + width - 1, optY + 20, option.isDestructive ? 0x80AA3333 : 0x80505050); // Hover overlay
+                guiGraphics.fill(x + 1, optY, x + width - 1, optY + 20, option.isDestructive ? 0x80AA3333 : 0x80505050);
             }
 
             int textColor = hovered ? (option.isDestructive ? 0xFF5555 : 0xFFFFAA) : 0xFFFFFF;

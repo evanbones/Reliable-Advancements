@@ -2,6 +2,7 @@ package com.evandev.better_advancements.gui;
 
 import com.evandev.better_advancements.network.EditAdvancementPayload;
 import com.evandev.better_advancements.platform.Services;
+import com.evandev.better_advancements.reference.Constants;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.gui.GuiGraphics;
@@ -11,7 +12,9 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class AdvancementEditorScreen extends Screen {
 
@@ -36,15 +39,13 @@ public class AdvancementEditorScreen extends Screen {
     private EditorTab activeTab;
     private int uiX, uiY, uiW, uiH;
 
-    private EditBox titleBox;
-    private EditBox descriptionBox;
-    private EditBox iconBox;
-    private EditBox parentBox;
-    private EditBox xPosBox;
-    private EditBox yPosBox;
+    private EditBox titleBox, descriptionBox, iconBox, parentBox, xPosBox, yPosBox;
+    private EditBox critNameBox, critTriggerBox, critItemBox;
+    private List<String> suggestions = List.of();
+    private int suggestionIndex = -1;
 
     public AdvancementEditorScreen(BetterAdvancementsScreen parentScreen, BetterAdvancementWidget widget, EditorTab initialTab) {
-        super(Component.literal("Edit Advancement: " + widget.getAdvancement().holder().id()));
+        super(Component.literal("Edit Advancement: " + widget.getAdvancement().holder().id().toString()));
         this.parentScreen = parentScreen;
         this.widget = widget;
         this.activeTab = initialTab;
@@ -108,7 +109,33 @@ public class AdvancementEditorScreen extends Screen {
             yPosBox = new EditBox(this.font, contentX, startY + FIELD_SPACING, 100, 20, Component.literal("Y Position"));
             yPosBox.setValue(String.valueOf(widget.getY()));
             this.addRenderableWidget(yPosBox);
+        } else if (activeTab == EditorTab.CRITERIA) {
+            critNameBox = new EditBox(this.font, contentX, startY, contentW, 20, Component.literal("Criterion Name"));
+            critNameBox.setValue("has_item");
+            this.addRenderableWidget(critNameBox);
+
+            critTriggerBox = new EditBox(this.font, contentX, startY + FIELD_SPACING, contentW, 20, Component.literal("Trigger"));
+            critTriggerBox.setValue("minecraft:inventory_changed");
+            this.addRenderableWidget(critTriggerBox);
+
+            critItemBox = new EditBox(this.font, contentX, startY + FIELD_SPACING * 2, contentW, 20, Component.literal("Required Item (Autocomplete)"));
+            critItemBox.setResponder(this::updateSuggestions);
+            this.addRenderableWidget(critItemBox);
         }
+    }
+
+    private void updateSuggestions(String text) {
+        if (text.isEmpty()) {
+            suggestions = List.of();
+            suggestionIndex = -1;
+            return;
+        }
+        suggestions = BuiltInRegistries.ITEM.keySet().stream()
+                .map(ResourceLocation::toString)
+                .filter(id -> id.contains(text.toLowerCase()))
+                .limit(6)
+                .collect(Collectors.toList());
+        suggestionIndex = suggestions.isEmpty() ? -1 : 0;
     }
 
     private void saveAndClose() {
@@ -125,6 +152,9 @@ public class AdvancementEditorScreen extends Screen {
 
         if (Services.PLATFORM.canSendAdvancementEdit()) {
             Services.PLATFORM.sendAdvancementEdit(payload);
+            if (activeTab == EditorTab.CRITERIA) {
+                Constants.LOG.info("Criteria parameters captured ({} / {}) but full backend schema is not ready yet.", critNameBox.getValue(), critItemBox.getValue());
+            }
         } else {
             this.minecraft.player.displayClientMessage(
                     Component.translatable("message.betteradvancements.no_server_support").withStyle(net.minecraft.ChatFormatting.RED), false
@@ -135,7 +165,7 @@ public class AdvancementEditorScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
     }
 
     @Override
@@ -178,11 +208,33 @@ public class AdvancementEditorScreen extends Screen {
             gfx.drawString(this.font, "X Position", contentX, startY - 11, COL_TEXT_FAINT, false);
             gfx.drawString(this.font, "Y Position", contentX, startY + FIELD_SPACING - 11, COL_TEXT_FAINT, false);
         } else if (activeTab == EditorTab.CRITERIA) {
-            gfx.drawString(this.font, "Criteria auto-complete editor", contentX, startY + 20, COL_GOLD, false);
-            gfx.drawString(this.font, "coming in next phase...", contentX, startY + 35, COL_TEXT_FAINT, false);
+            gfx.drawString(this.font, "Criterion Name", contentX, startY - 11, COL_TEXT_FAINT, false);
+            gfx.drawString(this.font, "Trigger", contentX, startY + FIELD_SPACING - 11, COL_TEXT_FAINT, false);
+            gfx.drawString(this.font, "Required Item", contentX, startY + FIELD_SPACING * 2 - 11, COL_TEXT_FAINT, false);
         }
 
         super.render(gfx, mouseX, mouseY, partialTicks);
+
+        if (activeTab == EditorTab.CRITERIA && critItemBox != null && critItemBox.isFocused() && !suggestions.isEmpty()) {
+            int dropX = critItemBox.getX();
+            int dropY = critItemBox.getY() + 20;
+            int dropW = critItemBox.getWidth();
+            int dropH = suggestions.size() * 14 + 4;
+
+            gfx.pose().pushPose();
+            gfx.pose().translate(0, 0, 500);
+            gfx.fill(dropX, dropY, dropX + dropW, dropY + dropH, 0xF0101010);
+            gfx.renderOutline(dropX, dropY, dropW, dropH, COL_GOLD);
+
+            for (int i = 0; i < suggestions.size(); i++) {
+                int color = (i == suggestionIndex) ? COL_SEL_TEXT : COL_TEXT_FAINT;
+                if (i == suggestionIndex) {
+                    gfx.fill(dropX + 1, dropY + 2 + i * 14, dropX + dropW - 1, dropY + 2 + (i + 1) * 14, COL_GOLD);
+                }
+                gfx.drawString(font, suggestions.get(i), dropX + 4, dropY + 5 + i * 14, color, false);
+            }
+            gfx.pose().popPose();
+        }
     }
 
     @Override
@@ -207,6 +259,21 @@ public class AdvancementEditorScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (activeTab == EditorTab.CRITERIA && critItemBox != null && critItemBox.isFocused() && !suggestions.isEmpty()) {
+            if (keyCode == 264) {
+                suggestionIndex = (suggestionIndex + 1) % suggestions.size();
+                return true;
+            } else if (keyCode == 265) {
+                suggestionIndex = (suggestionIndex - 1 + suggestions.size()) % suggestions.size();
+                return true;
+            } else if (keyCode == 257 || keyCode == 335) {
+                critItemBox.setValue(suggestions.get(suggestionIndex));
+                critItemBox.moveCursorToEnd(false);
+                updateSuggestions("");
+                return true;
+            }
+        }
+
         if (keyCode == 256) {
             this.minecraft.setScreen(parentScreen);
             return true;
