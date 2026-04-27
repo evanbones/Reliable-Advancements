@@ -129,7 +129,7 @@ public class BetterAdvancementWidget implements IBetterAdvancementEntryGui {
 
     public void drawConnectivity(GuiGraphics guiGraphics, int scrollX, int scrollY, boolean drawInside) {
         //Check if connections should be drawn at all
-        if (!this.betterDisplayInfo.hideLines()) {
+        if (BetterAdvancementsScreen.enableEditMode || !this.betterDisplayInfo.hideLines()) {
             //Draw connection to parent
             if (this.parent != null) {
 
@@ -289,7 +289,7 @@ public class BetterAdvancementWidget implements IBetterAdvancementEntryGui {
             hoverAnim = Math.max(0.0f, hoverAnim - 0.15f);
         }
 
-        if (!this.displayInfo.isHidden() || this.advancementProgress != null && this.advancementProgress.isDone()) {
+        if (BetterAdvancementsScreen.enableEditMode || !this.displayInfo.isHidden() || this.advancementProgress != null && this.advancementProgress.isDone()) {
             float f = this.advancementProgress == null ? 0.0F : this.advancementProgress.getPercent();
             AdvancementWidgetType advancementState;
 
@@ -502,7 +502,7 @@ public class BetterAdvancementWidget implements IBetterAdvancementEntryGui {
     }
 
     public boolean isMouseOver(double scrollX, double scrollY, double mouseX, double mouseY) {
-        if (!this.displayInfo.isHidden() || this.advancementProgress != null && this.advancementProgress.isDone()) {
+        if (BetterAdvancementsScreen.enableEditMode || !this.displayInfo.isHidden() || this.advancementProgress != null && this.advancementProgress.isDone()) {
             double left = scrollX + this.x + 3;
             double right = left + ADVANCEMENT_SIZE;
             double top = scrollY + this.y;

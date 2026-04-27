@@ -101,6 +101,14 @@ public class TabEditorScreen extends Screen {
                 return true;
             }
         }
+        
+        if (my > uiY + uiH - 40 && my < uiY + uiH) {
+            if (saveBtn != null && saveBtn.isMouseOver(mx, my)) return saveBtn.mouseClicked(mx, my, button);
+            if (cancelBtn != null && cancelBtn.isMouseOver(mx, my)) return cancelBtn.mouseClicked(mx, my, button);
+            return false;
+        }
+        if (my < uiY + 32) return false;
+
         return super.mouseClicked(mx, my, button);
     }
 

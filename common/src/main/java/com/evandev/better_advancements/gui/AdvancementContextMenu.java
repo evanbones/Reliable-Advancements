@@ -29,14 +29,13 @@ public class AdvancementContextMenu {
 
         if (widget != null) {
             this.options.add(new ContextOption("Edit Properties", false, () -> openEditor("Properties")));
-            this.options.add(new ContextOption("Edit Layout (Pos)", false, () -> openEditor("Layout")));
-            this.options.add(new ContextOption("Edit Criteria", false, () -> openEditor("Criteria")));
             this.options.add(new ContextOption("Copy (Ctrl+C)", false, () -> {
                 parentScreen.copyAdvancement(widget);
                 parentScreen.closeContextMenu();
             }));
             this.options.add(new ContextOption("Link to Parent...", false, () -> parentScreen.startLinking(widget)));
-            this.options.add(new ContextOption("Reset to Vanilla", true, this::deleteAdvancement));
+            this.options.add(new ContextOption("Reset to Vanilla", true, () -> parentScreen.resetAdvancement(widget)));
+            this.options.add(new ContextOption("Delete from Game", true, () -> parentScreen.deleteAdvancement(widget)));
         } else {
             this.options.add(new ContextOption("Create New Advancement", false, () -> parentScreen.createNewAdvancement(mouseX, mouseY)));
             this.options.add(new ContextOption("Paste (Ctrl+V)", false, () -> {
@@ -59,28 +58,6 @@ public class AdvancementContextMenu {
 
         Services.PLATFORM.sendAdvancementJsonRequest(request);
 
-        parentScreen.closeContextMenu();
-    }
-
-    private void deleteAdvancement() {
-        Minecraft.getInstance().setScreen(new ConfirmScreen(
-                (confirmed) -> {
-                    if (confirmed) {
-                        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), "{}", true);
-                        if (Services.PLATFORM.canSendAdvancementEdit()) {
-                            Services.PLATFORM.sendAdvancementEdit(payload);
-                        }
-                        PersistentData.removePosition(widget.getAdvancement().holder().id());
-                        if (parentScreen.selectedTab != null && widget.getAdvancement().holder().id().equals(parentScreen.selectedTab.getRootNode().holder().id())) {
-                            PersistentData.removeTabProperties(parentScreen.selectedTab.getRootNode().holder().id());
-                        }
-                        parentScreen.removeWidgetFromClient(widget);
-                    }
-                    Minecraft.getInstance().setScreen(parentScreen);
-                },
-                Component.literal("Reset Advancement?"),
-                Component.literal("Are you sure you want to reset this advancement to vanilla? This cannot be undone.")
-        ));
         parentScreen.closeContextMenu();
     }
 

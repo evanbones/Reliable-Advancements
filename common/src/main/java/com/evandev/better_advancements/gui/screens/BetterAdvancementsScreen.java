@@ -1,4 +1,3 @@
-// better_advancements/gui/screens/BetterAdvancementsScreen.java
 package com.evandev.better_advancements.gui.screens;
 
 import com.evandev.better_advancements.gui.AdvancementContextMenu;
@@ -70,10 +69,14 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     private String linkingError = null;
     private long linkingErrorTime = 0;
 
-
     public BetterAdvancementsScreen(ClientAdvancements clientAdvancements) {
         super(GameNarrator.NO_TITLE);
         this.clientAdvancements = clientAdvancements;
+    }
+
+    @Override
+    public boolean isPauseScreen() {
+        return !BetterAdvancementsScreen.enableEditMode;
     }
 
     public Map<AdvancementHolder, BetterAdvancementTab> getTabs() {
@@ -135,10 +138,53 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         this.linkingError = null;
     }
 
-
     public void copyAdvancement(BetterAdvancementWidget widget) {
         ResourceLocation id = widget.getAdvancement().holder().id();
         Services.PLATFORM.sendAdvancementJsonRequest(new RequestAdvancementJsonPayload(id, "Copy"));
+    }
+
+    public void deleteAdvancement(BetterAdvancementWidget widget) {
+        this.minecraft.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
+                (confirmed) -> {
+                    if (confirmed) {
+                        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), "{\"criteria\":{}}", false);
+                        if (Services.PLATFORM.canSendAdvancementEdit()) {
+                            Services.PLATFORM.sendAdvancementEdit(payload);
+                        }
+                        PersistentData.removePosition(widget.getAdvancement().holder().id());
+                        if (this.selectedTab != null && widget.getAdvancement().holder().id().equals(this.selectedTab.getRootNode().holder().id())) {
+                            PersistentData.removeTabProperties(this.selectedTab.getRootNode().holder().id());
+                        }
+                        removeWidgetFromClient(widget);
+                    }
+                    this.minecraft.setScreen(this);
+                },
+                Component.literal("Delete Advancement?"),
+                Component.literal("Are you sure you want to delete this advancement from the game? This cannot be undone.")
+        ));
+        this.contextMenu = null;
+    }
+
+    public void resetAdvancement(BetterAdvancementWidget widget) {
+        this.minecraft.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
+                (confirmed) -> {
+                    if (confirmed) {
+                        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), "{}", true);
+                        if (Services.PLATFORM.canSendAdvancementEdit()) {
+                            Services.PLATFORM.sendAdvancementEdit(payload);
+                        }
+                        PersistentData.removePosition(widget.getAdvancement().holder().id());
+                        if (this.selectedTab != null && widget.getAdvancement().holder().id().equals(this.selectedTab.getRootNode().holder().id())) {
+                            PersistentData.removeTabProperties(this.selectedTab.getRootNode().holder().id());
+                        }
+                        removeWidgetFromClient(widget);
+                    }
+                    this.minecraft.setScreen(this);
+                },
+                Component.literal("Reset Advancement?"),
+                Component.literal("Are you sure you want to reset this advancement to its vanilla state? Any edits will be lost.")
+        ));
+        this.contextMenu = null;
     }
 
     public void pasteAdvancement(int mouseX, int mouseY) {
@@ -459,6 +505,15 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
                 double mouseY = this.minecraft.mouseHandler.ypos() * (double) this.height / (double) this.minecraft.getWindow().getScreenHeight();
                 pasteAdvancement((int) mouseX, (int) mouseY);
                 return true;
+            } else if (keyCode == 261 || keyCode == 259) { // Delete / backspace
+                double mouseX = this.minecraft.mouseHandler.xpos() * (double) this.width / (double) this.minecraft.getWindow().getScreenWidth();
+                double mouseY = this.minecraft.mouseHandler.ypos() * (double) this.height / (double) this.minecraft.getWindow().getScreenHeight();
+                BetterAdvancementWidget target = selectedWidget;
+                if (target == null) target = getHoveredWidget(mouseX, mouseY);
+                if (target != null) {
+                    deleteAdvancement(target);
+                    return true;
+                }
             }
         }
 
@@ -811,6 +866,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     public void onAdvancementsCleared() {
         if (this.selectedTab != null) {
             savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+            this.selectedTab.storeScroll();
         }
         this.tabs.clear();
         this.selectedTab = null;
@@ -825,9 +881,11 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
             if (advancement.holder().id().equals(savedSelectedTab)) {
                 this.selectedTab = betterAdvancementTabGui;
                 this.clientAdvancements.setSelectedTab(advancement.holder(), true);
+                this.selectedTab.loadScroll();
             } else if (this.selectedTab == null) {
                 this.selectedTab = betterAdvancementTabGui;
                 this.clientAdvancements.setSelectedTab(advancement.holder(), true);
+                this.selectedTab.loadScroll();
             }
         }
     }

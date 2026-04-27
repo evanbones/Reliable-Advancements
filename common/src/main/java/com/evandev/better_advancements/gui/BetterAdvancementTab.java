@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 
 public class BetterAdvancementTab {
-    public static final Map<AdvancementHolder, Tuple<Integer, Integer>> scrollHistory = Maps.newLinkedHashMap();
+    public static final Map<ResourceLocation, Tuple<Integer, Integer>> scrollHistory = Maps.newLinkedHashMap();
     public static boolean doFade = false;
     protected final Map<AdvancementHolder, BetterAdvancementWidget> widgets = Maps.newLinkedHashMap();
     private final Minecraft minecraft;
@@ -254,12 +254,12 @@ public class BetterAdvancementTab {
 
     public void storeScroll() {
         if (this.centered) {
-            scrollHistory.put(this.rootNode.holder(), new Tuple<>(scrollX, scrollY));
+            scrollHistory.put(this.rootNode.holder().id(), new Tuple<>(scrollX, scrollY));
         }
     }
 
     public void loadScroll() {
-        Tuple<Integer, Integer> scroll = scrollHistory.get(this.rootNode.holder());
+        Tuple<Integer, Integer> scroll = scrollHistory.get(this.rootNode.holder().id());
         if (scroll != null) {
             this.centered = true;
             this.scrollX = scroll.getA();

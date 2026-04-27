@@ -265,8 +265,8 @@ public class AdvancementEditorScreen extends Screen {
         if (x > uiX + SIDEBAR_WIDTH && x < uiX + uiW) {
             if (y > uiY && y < uiY + 32) return false;
             if (y > uiY + uiH - 40 && y < uiY + uiH) {
-                if (saveBtn != null && saveBtn.isMouseOver(mx, my)) return super.mouseClicked(mx, my, button);
-                if (cancelBtn != null && cancelBtn.isMouseOver(mx, my)) return super.mouseClicked(mx, my, button);
+                if (saveBtn != null && saveBtn.isMouseOver(mx, my)) return saveBtn.mouseClicked(mx, my, button);
+                if (cancelBtn != null && cancelBtn.isMouseOver(mx, my)) return cancelBtn.mouseClicked(mx, my, button);
                 return false;
             }
         }
