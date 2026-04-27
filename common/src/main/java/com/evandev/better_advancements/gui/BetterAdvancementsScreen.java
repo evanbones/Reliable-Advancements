@@ -19,6 +19,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundSeenAdvancementsPacket;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
 
@@ -30,7 +31,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     private static final int SIDE = 30, TOP = 40, BOTTOM = 30, PADDING = 9;
     private static final float MIN_ZOOM = 0.25F, MAX_ZOOM = 2.0F, ZOOM_STEP = 0.15F;
 
-    public static boolean freeformLayoutEditing = true;
+    public static boolean freeformLayoutEditing = false;
     public static boolean enableEditMode = false;
     public static int uiScaling = 100;
     public static boolean showDebugCoordinates = false;
@@ -278,7 +279,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
         return true;
     }
 
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
+    public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         int left = SIDE + (width - internalWidth) / 2;
         int top = TOP + (height - internalHeight) / 2;
 
@@ -485,7 +486,7 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     }
 
     @Override
-    public void onAddAdvancementRoot(AdvancementNode advancement) {
+    public void onAddAdvancementRoot(@NotNull AdvancementNode advancement) {
         BetterAdvancementTab betterAdvancementTabGui = BetterAdvancementTab.create(this.minecraft, this, this.tabs.size(), advancement, internalWidth - 2 * SIDE, internalHeight - TOP - SIDE);
         if (betterAdvancementTabGui != null) {
             this.tabs.put(advancement.holder(), betterAdvancementTabGui);
@@ -493,11 +494,11 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     }
 
     @Override
-    public void onRemoveAdvancementRoot(AdvancementNode advancement) {
+    public void onRemoveAdvancementRoot(@NotNull AdvancementNode advancement) {
     }
 
     @Override
-    public void onAddAdvancementTask(AdvancementNode advancement) {
+    public void onAddAdvancementTask(@NotNull AdvancementNode advancement) {
         BetterAdvancementTab betterAdvancementTabGui = this.getTab(advancement);
         if (betterAdvancementTabGui != null) {
             betterAdvancementTabGui.addAdvancement(advancement);
@@ -505,11 +506,11 @@ public class BetterAdvancementsScreen extends Screen implements ClientAdvancemen
     }
 
     @Override
-    public void onRemoveAdvancementTask(AdvancementNode advancement) {
+    public void onRemoveAdvancementTask(@NotNull AdvancementNode advancement) {
     }
 
     @Override
-    public void onUpdateAdvancementProgress(AdvancementNode advancement, AdvancementProgress advancementProgress) {
+    public void onUpdateAdvancementProgress(@NotNull AdvancementNode advancement, @NotNull AdvancementProgress advancementProgress) {
         BetterAdvancementWidget betterAdvancementEntryScreen = this.getAdvancementWidget(advancement);
         if (betterAdvancementEntryScreen != null) {
             betterAdvancementEntryScreen.getAdvancementProgress(advancementProgress);

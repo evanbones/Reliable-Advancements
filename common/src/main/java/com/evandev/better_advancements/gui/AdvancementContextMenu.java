@@ -3,6 +3,7 @@ package com.evandev.better_advancements.gui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,9 +20,10 @@ public class AdvancementContextMenu {
         this.parentScreen = parentScreen;
         this.widget = widget;
 
-        this.options.add(new ContextOption("Edit Properties", () -> openEditor(AdvancementEditorScreen.EditorTab.PROPERTIES)));
-        this.options.add(new ContextOption("Edit Layout (Pos)", () -> openEditor(AdvancementEditorScreen.EditorTab.LAYOUT)));
-        this.options.add(new ContextOption("Edit Criteria", () -> openEditor(AdvancementEditorScreen.EditorTab.CRITERIA)));
+        this.options.add(new ContextOption("Edit Properties", false, () -> openEditor(AdvancementEditorScreen.EditorTab.PROPERTIES)));
+        this.options.add(new ContextOption("Edit Layout (Pos)", false, () -> openEditor(AdvancementEditorScreen.EditorTab.LAYOUT)));
+        this.options.add(new ContextOption("Edit Criteria", false, () -> openEditor(AdvancementEditorScreen.EditorTab.CRITERIA)));
+        this.options.add(new ContextOption("Delete Advancement", true, this::deleteAdvancement));
 
         this.height = this.options.size() * 20 + 4;
 
@@ -31,6 +33,14 @@ public class AdvancementContextMenu {
 
     private void openEditor(AdvancementEditorScreen.EditorTab tab) {
         Minecraft.getInstance().setScreen(new AdvancementEditorScreen(this.parentScreen, this.widget, tab));
+    }
+
+    private void deleteAdvancement() {
+        // TODO: Send a network payload to delete the advancement from the datapack, also make this translatable
+        Minecraft.getInstance().player.displayClientMessage(
+                Component.literal("Delete advancement payload coming in next phase: " + widget.getAdvancement().holder().id()), false
+        );
+        Minecraft.getInstance().setScreen(parentScreen);
     }
 
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
@@ -47,10 +57,11 @@ public class AdvancementContextMenu {
             boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= optY && mouseY < optY + 20;
 
             if (hovered) {
-                guiGraphics.fill(x + 1, optY, x + width - 1, optY + 20, 0x80505050); // Hover overlay
+                guiGraphics.fill(x + 1, optY, x + width - 1, optY + 20, option.isDestructive ? 0x80AA3333 : 0x80505050); // Hover overlay
             }
 
-            guiGraphics.drawString(font, option.label, x + 6, optY + 6, hovered ? 0xFFFFAA : 0xFFFFFF);
+            int textColor = hovered ? (option.isDestructive ? 0xFF5555 : 0xFFFFAA) : 0xFFFFFF;
+            guiGraphics.drawString(font, option.label, x + 6, optY + 6, textColor);
         }
 
         guiGraphics.pose().popPose();
@@ -69,6 +80,6 @@ public class AdvancementContextMenu {
         return false;
     }
 
-    private record ContextOption(String label, Runnable action) {
+    private record ContextOption(String label, boolean isDestructive, Runnable action) {
     }
 }
