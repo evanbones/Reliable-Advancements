@@ -25,7 +25,7 @@ screen, provides quality-of-life improvements, extensive customization, and in-g
 
 ### UI Improvements
 
-* Configurable Advancement window UI size ().
+* Configurable Advancement window UI size (much larger than the vanilla one, by default).
 * Additional control options in the Advancement Window!
     * Middle mouse drag to freely pan.
     * Shift-scroll to scroll left and right.
