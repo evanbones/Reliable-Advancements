@@ -50,19 +50,4 @@ public class TriggerSchemaManager {
         if (schema != null) return new ArrayList<>(schema.keySet());
         return List.of();
     }
-
-    public static String getFieldType(String triggerId, String fieldName) {
-        if (TRIGGERS.isEmpty()) load();
-        JsonObject schema = TRIGGERS.get(triggerId);
-        if (schema != null && schema.has(fieldName)) return schema.get(fieldName).getAsString();
-        return "string";
-    }
-
-    public static boolean isObject(String type) {
-        return "object".equals(type);
-    }
-
-    public static boolean isList(String type) {
-        return "list".equals(type);
-    }
 }
