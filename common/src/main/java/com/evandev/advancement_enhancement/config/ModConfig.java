@@ -73,8 +73,8 @@ public class ModConfig {
             INSTANCE = new ModConfig();
         }
 
-        save();
         pushToStatics();
+        save();
     }
 
     public static void save() {
