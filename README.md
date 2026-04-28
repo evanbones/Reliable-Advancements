@@ -9,23 +9,10 @@ screen, provides quality-of-life improvements, extensive customization, and in-g
 
 ## Features
 
-### UI Improvements
+### Advancement Customization
 
-* Access your advancements **directly from the inventory screen**. Includes options to customize the
-  button style, texture, and X/Y offsets.
-* View in-depth criteria for each advancement directly in the UI.
-* Options to sort advancement tabs alphabetically or by IDs.
-* Freely adjust the scale of the Advancements screen to fit your monitor and preferences.
-
-*TODO: add an image showcasing the UI improvements and inventory button*
-
-![UI Enhancements Example](images/ui_preview.png)
-
-![Inventory Button Example](images/inventory_button.png)
-
-### Advancement Connection Customization
-
-* **Choose how advancements connect**. You can toggle connection arrows, use direct straight
+* **Freely move advancements around**, to wherever you'd like! They'll even save their positions.
+* **Choose how advancements connect**! You can toggle connection arrows, use direct straight
   lines, or hide the lines entirely.
 
 * **Fully customize the colors** for a personalized look:
@@ -33,18 +20,32 @@ screen, provides quality-of-life improvements, extensive customization, and in-g
     * Completed and uncompleted icons
     * Completed and uncompleted titles
 
-*TODO: showcase custom colors and connection lines*
+![Advancement Config Example](images/ftb_advancements.png)
+![Context Menu](images/context_menu.png)
 
-![Visual Customization Example](images/visuals_preview.png)
+### UI Improvements
 
-### Advancement Editing Mode
+* Configurable Advancement window UI size ().
+* Additional control options in the Advancement Window!
+    * Middle mouse drag to freely pan.
+    * Shift-scroll to scroll left and right.
+    * Control-scroll to zoom out and in.
+* Open the advancements tab directly from the inventory screen! Includes options to customize the
+  button style, texture, and position.
+* View detailed criteria for each advancement directly in the UI.
+* Option to sort advancement tabs alphabetically or by IDs.
 
-* **Edit Mode:** A powerful built-in editor allowing you to tweak and modify advancement layouts natively in-game.
-* **Debug Coordinates:** Toggleable debug coordinates to help you perfectly position your custom advancements.
+![Edit Tab Properties](images/tab_properties.png)
+![Advancement Tab](images/advancement_tab.png)
 
-*TODO: showcase edit mode*
+### Editing Mode
 
-![Edit Mode Example](images/editor_preview.png)
+* Comes with a powerful built-in editor allowing you to modify advancement layouts and advancement properties natively
+  in-game.
+* You can freely add, modify, or remove advancements directly from the Advancement screen!
+
+![Edit Mode Example](images/edit_advancements.png)
+![Debug Coordinates](images/debug_coordinates.png)
 
 ---
 
