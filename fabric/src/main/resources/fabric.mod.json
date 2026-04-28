@@ -4,6 +4,7 @@
   "version": "${version}",
   "name": "${mod_name}",
   "description": "${description}",
+  "accessWidener": "${mod_id}.accesswidener",
   "authors": [
     "${mod_author}"
   ],

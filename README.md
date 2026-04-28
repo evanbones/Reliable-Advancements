@@ -35,7 +35,7 @@ screen, provides quality-of-life improvements, extensive customization, and in-g
 
 *TODO: showcase custom colors and connection lines*
 
-![Visual Customization Example](mages/visuals_preview.png)
+![Visual Customization Example](images/visuals_preview.png)
 
 ### Advancement Editing Mode
 
