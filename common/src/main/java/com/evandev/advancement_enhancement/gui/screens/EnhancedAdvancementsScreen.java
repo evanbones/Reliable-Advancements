@@ -779,13 +779,13 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             if (this.advConnectedToMouse != null) {
                 int currentX = (int) ((this.advConnectedToMouse.getX() + this.selectedTab.scrollX + 4) * zoom) + left + PADDING;
                 int currentY = (int) ((this.advConnectedToMouse.getY() + this.selectedTab.scrollY) * zoom) + top + 2 * PADDING - font.lineHeight + 1;
-                guiGraphics.drawString(font, this.advConnectedToMouse.getX() + "," + this.advConnectedToMouse.getY(), currentX, currentY, 0x000000);
+                guiGraphics.drawString(font, this.advConnectedToMouse.getX() + "," + this.advConnectedToMouse.getY(), currentX, currentY, 0xFFFFFF);
             } else {
                 int xMouse = (int) ((mouseX - left - PADDING) / zoom);
                 int yMouse = (int) ((mouseY - top - 2 * PADDING) / zoom);
                 int currentX = xMouse - this.selectedTab.scrollX - 4;
                 int currentY = yMouse - this.selectedTab.scrollY - 1;
-                guiGraphics.drawString(font, currentX + "," + currentY, mouseX, mouseY - font.lineHeight, 0x000000);
+                guiGraphics.drawString(font, currentX + "," + currentY, mouseX, mouseY - font.lineHeight, 0xFFFFFF);
             }
         }
 

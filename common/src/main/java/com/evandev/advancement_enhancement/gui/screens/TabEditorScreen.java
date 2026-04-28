@@ -117,7 +117,8 @@ public class TabEditorScreen extends Screen {
         this.clearWidgets();
 
         uiW = 240;
-        uiH = 290;
+        uiH = Math.max(120, Math.min(290, this.height - 40));
+
         uiX = (this.width - uiW) / 2;
         uiY = (this.height - uiH) / 2;
 

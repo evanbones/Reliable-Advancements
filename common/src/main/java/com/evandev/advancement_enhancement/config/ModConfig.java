@@ -32,7 +32,7 @@ public class ModConfig {
     public boolean onlyUseAboveAdvancementTabs = false;
 
     // --- Inventory Button ---
-    public InventoryButtonStyle inventoryButtonStyle = InventoryButtonStyle.BUTTON;
+    public InventoryButtonStyle inventoryButtonStyle = InventoryButtonStyle.TAB;
     public int inventoryButtonOffsetX = 0;
     public int inventoryButtonOffsetY = 0;
     public String customInventoryButtonTexture = "";
