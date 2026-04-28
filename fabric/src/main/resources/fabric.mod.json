@@ -16,13 +16,13 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.evandev.better_advancements.BetterAdvancements"
+      "com.evandev.advancement_enhancement.AdvancementEnhancement"
     ],
     "client": [
-      "com.evandev.better_advancements.client.BetterAdvancementsClient"
+      "com.evandev.advancement_enhancement.client.AdvancementEnhancementClient"
     ],
     "modmenu": [
-      "com.evandev.better_advancements.config.BetterAdvancementsModMenu"
+      "com.evandev.advancement_enhancement.config.AdvancementEnhancementModMenu"
     ]
   },
   "mixins": [
