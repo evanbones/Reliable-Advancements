@@ -1,3 +1,7 @@
+### Added
+
+- Added keyboard control for microadjustments to advancement layouts.
+
 ### Fixed
 
-- Fixed dedicated server crash on NeoForge.
+- Added additional server permissions checks before editing advancements.

@@ -3,6 +3,7 @@ package com.evandev.advancement_enhancement.network;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.server.level.ServerPlayer;
 
 public class FabricNetworkHandler {
     public static void registerPayloads() {
@@ -12,7 +13,7 @@ public class FabricNetworkHandler {
         PayloadTypeRegistry.playS2C().register(AdvancementJsonPayload.TYPE, AdvancementJsonPayload.STREAM_CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(EditAdvancementPayload.TYPE, (payload, context) -> {
-            context.server().execute(() -> ServerAdvancementEditor.saveAdvancementEdit(context.server(), payload));
+            context.server().execute(() -> ServerAdvancementEditor.saveAdvancementEdit(context.server(), context.player(), payload));
         });
 
         ServerPlayNetworking.registerGlobalReceiver(RequestAdvancementJsonPayload.TYPE, (payload, context) -> {
@@ -20,7 +21,7 @@ public class FabricNetworkHandler {
         });
 
         ServerPlayNetworking.registerGlobalReceiver(LinkAdvancementPayload.TYPE, (payload, context) -> {
-            context.server().execute(() -> ServerAdvancementEditor.handleLinkAdvancement(context.server(), payload));
+            context.server().execute(() -> ServerAdvancementEditor.handleLinkAdvancement(context.server(), context.player(), payload));
         });
     }
 

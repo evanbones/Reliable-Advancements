@@ -10,7 +10,7 @@ public class NeoForgeNetworkHandler {
         PayloadRegistrar registrar = event.registrar(Constants.MOD_ID).optional();
 
         registrar.playToServer(EditAdvancementPayload.TYPE, EditAdvancementPayload.STREAM_CODEC, (payload, context) -> {
-            context.enqueueWork(() -> ServerAdvancementEditor.saveAdvancementEdit(context.player().getServer(), payload));
+            context.enqueueWork(() -> ServerAdvancementEditor.saveAdvancementEdit(context.player().getServer(), (ServerPlayer) context.player(), payload));
         });
 
         registrar.playToServer(RequestAdvancementJsonPayload.TYPE, RequestAdvancementJsonPayload.STREAM_CODEC, (payload, context) -> {
@@ -18,7 +18,7 @@ public class NeoForgeNetworkHandler {
         });
 
         registrar.playToServer(LinkAdvancementPayload.TYPE, LinkAdvancementPayload.STREAM_CODEC, (payload, context) -> {
-            context.enqueueWork(() -> ServerAdvancementEditor.handleLinkAdvancement(context.player().getServer(), payload));
+            context.enqueueWork(() -> ServerAdvancementEditor.handleLinkAdvancement(context.player().getServer(), (ServerPlayer) context.player(), payload));
         });
 
         registrar.playToClient(AdvancementJsonPayload.TYPE, AdvancementJsonPayload.STREAM_CODEC, (payload, context) -> {

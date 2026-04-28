@@ -74,9 +74,13 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         this.clientAdvancements = clientAdvancements;
     }
 
+    public static boolean canEdit() {
+        return enableEditMode && Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasPermissions(2);
+    }
+
     @Override
     public boolean isPauseScreen() {
-        return !EnhancedAdvancementsScreen.enableEditMode;
+        return !EnhancedAdvancementsScreen.canEdit();
     }
 
     public Map<AdvancementHolder, EnhancedAdvancementTab> getTabs() {
@@ -327,7 +331,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             this.selectedTab.loadScroll();
         }
 
-        if (EnhancedAdvancementsScreen.enableEditMode) {
+        if (EnhancedAdvancementsScreen.canEdit()) {
             for (AdvancementNode root : this.clientAdvancements.getTree().roots()) {
                 if (!this.tabs.containsKey(root.holder())) {
                     this.onAddAdvancementRoot(root);
@@ -377,7 +381,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (EnhancedAdvancementsScreen.enableEditMode && button == 0 && this.contextMenu == null) {
+        if (EnhancedAdvancementsScreen.canEdit() && button == 0 && this.contextMenu == null) {
             EnhancedAdvancementWidget hovered = getHoveredWidget(mouseX, mouseY);
             if (hovered != null) {
                 selectedWidget = hovered;
@@ -448,7 +452,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     break;
                 }
             }
-        } else if (button == 1 && EnhancedAdvancementsScreen.enableEditMode) {
+        } else if (button == 1 && EnhancedAdvancementsScreen.canEdit()) {
             boolean inGui = mouseX < left + internalWidth - 2 * SIDE - PADDING && mouseX > left + PADDING && mouseY < top + internalHeight - TOP + 1 && mouseY > top + 2 * PADDING;
 
             if (inGui) {
@@ -511,7 +515,32 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (this.contextMenu != null) this.contextMenu = null;
 
-        if (EnhancedAdvancementsScreen.enableEditMode) {
+        if (EnhancedAdvancementsScreen.canEdit()) {
+            if (selectedWidget != null) {
+                int shift = Screen.hasShiftDown() ? 4 : 1;
+                boolean moved = false;
+                if (keyCode == 265) { // Up
+                    selectedWidget.setY(selectedWidget.getY() - shift);
+                    moved = true;
+                } else if (keyCode == 264) { // Down
+                    selectedWidget.setY(selectedWidget.getY() + shift);
+                    moved = true;
+                } else if (keyCode == 263) { // Left
+                    selectedWidget.setX(selectedWidget.getX() - shift);
+                    moved = true;
+                } else if (keyCode == 262) { // Right
+                    selectedWidget.setX(selectedWidget.getX() + shift);
+                    moved = true;
+                }
+
+                if (moved) {
+                    Services.PLATFORM.getEventHelper().postAdvancementMovementEvent(selectedWidget);
+                    PersistentData.setMemoryPosition(selectedWidget.getAdvancement().holder().id(), selectedWidget.getX(), selectedWidget.getY());
+                    PersistentData.save(this.tabs);
+                    return true;
+                }
+            }
+
             if (Screen.hasControlDown() && keyCode == 67) { // C
                 double mouseX = this.minecraft.mouseHandler.xpos() * (double) this.width / (double) this.minecraft.getWindow().getScreenWidth();
                 double mouseY = this.minecraft.mouseHandler.ypos() * (double) this.height / (double) this.minecraft.getWindow().getScreenHeight();
@@ -553,7 +582,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             Services.PLATFORM.getEventHelper().postAdvancementMovementEvent(this.advConnectedToMouse);
             PersistentData.setMemoryPosition(this.advConnectedToMouse.getAdvancement().holder().id(), this.advConnectedToMouse.getX(), this.advConnectedToMouse.getY());
             this.advConnectedToMouse = null;
-            if (EnhancedAdvancementsScreen.enableEditMode) {
+            if (EnhancedAdvancementsScreen.canEdit()) {
                 PersistentData.save(this.tabs);
             }
         }
@@ -563,7 +592,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     @Override
     public void removed() {
-        if (EnhancedAdvancementsScreen.enableEditMode) {
+        if (EnhancedAdvancementsScreen.canEdit()) {
             PersistentData.save(this.tabs);
         }
         if (this.selectedTab != null) {
@@ -603,7 +632,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
                     for (EnhancedAdvancementWidget betterAdvancementEntryScreen : this.selectedTab.getWidgets().values()) {
                         if (betterAdvancementEntryScreen.isMouseOver(this.selectedTab.scrollX, this.selectedTab.scrollY, unzoomedMouseX, unzoomedMouseY)) {
-                            if ((EnhancedAdvancementsScreen.enableEditMode || betterAdvancementEntryScreen.enhancedDisplayInfo.allowDragging()) && button == 0) {
+                            if ((EnhancedAdvancementsScreen.canEdit() || betterAdvancementEntryScreen.enhancedDisplayInfo.allowDragging()) && button == 0) {
                                 this.advConnectedToMouse = betterAdvancementEntryScreen;
                                 this.dragOffsetX = unzoomedMouseX - (this.advConnectedToMouse.getX() + this.selectedTab.scrollX);
                                 this.dragOffsetY = unzoomedMouseY - (this.advConnectedToMouse.getY() + this.selectedTab.scrollY);
@@ -670,7 +699,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         guiGraphics.pose().translate(left + PADDING, top + 2 * PADDING, 0);
         guiGraphics.pose().scale(zoom, zoom, 1.0F);
 
-        if (EnhancedAdvancementsScreen.enableEditMode && this.selectedTab != null) {
+        if (EnhancedAdvancementsScreen.canEdit() && this.selectedTab != null) {
             if (this.advConnectedToMouse != null) {
                 int ax = this.advConnectedToMouse.getX() + this.selectedTab.scrollX;
                 int ay = this.advConnectedToMouse.getY() + this.selectedTab.scrollY;

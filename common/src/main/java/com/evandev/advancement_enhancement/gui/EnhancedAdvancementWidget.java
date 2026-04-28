@@ -133,7 +133,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
 
     public void drawConnectivity(GuiGraphics guiGraphics, int scrollX, int scrollY, boolean drawInside) {
         //Check if connections should be drawn at all
-        if (EnhancedAdvancementsScreen.enableEditMode || !this.enhancedDisplayInfo.hideLines()) {
+        if (EnhancedAdvancementsScreen.canEdit() || !this.enhancedDisplayInfo.hideLines()) {
             //Draw connection to parent
             if (this.parent != null) {
 
@@ -285,7 +285,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     }
 
     public void draw(GuiGraphics guiGraphics, int scrollX, int scrollY, double unzoomedX, double unzoomedY) {
-        boolean isHovered = EnhancedAdvancementsScreen.enableEditMode && this.isMouseOver(scrollX, scrollY, unzoomedX, unzoomedY);
+        boolean isHovered = EnhancedAdvancementsScreen.canEdit() && this.isMouseOver(scrollX, scrollY, unzoomedX, unzoomedY);
 
         if (isHovered) {
             hoverAnim = Math.min(1.0f, hoverAnim + 0.15f);
@@ -293,7 +293,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             hoverAnim = Math.max(0.0f, hoverAnim - 0.15f);
         }
 
-        if (EnhancedAdvancementsScreen.enableEditMode || !this.displayInfo.isHidden() || this.advancementProgress != null && this.advancementProgress.isDone()) {
+        if (EnhancedAdvancementsScreen.canEdit() || !this.displayInfo.isHidden() || this.advancementProgress != null && this.advancementProgress.isDone()) {
             float f = this.advancementProgress == null ? 0.0F : this.advancementProgress.getPercent();
             AdvancementWidgetType advancementState;
 
@@ -352,7 +352,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     }
 
     public void drawHover(GuiGraphics guiGraphics, int scrollX, int scrollY, int left, int top) {
-        if (EnhancedAdvancementsScreen.enableEditMode) {
+        if (EnhancedAdvancementsScreen.canEdit()) {
             return;
         }
 
@@ -506,7 +506,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     }
 
     public boolean isMouseOver(double scrollX, double scrollY, double mouseX, double mouseY) {
-        if (EnhancedAdvancementsScreen.enableEditMode || !this.displayInfo.isHidden() || this.advancementProgress != null && this.advancementProgress.isDone()) {
+        if (EnhancedAdvancementsScreen.canEdit() || !this.displayInfo.isHidden() || this.advancementProgress != null && this.advancementProgress.isDone()) {
             double left = scrollX + this.x + 3;
             double right = left + ADVANCEMENT_SIZE;
             double top = scrollY + this.y;

@@ -20,6 +20,8 @@ import java.io.FileWriter;
 public class ServerAdvancementEditor {
 
     public static void handleJsonRequest(MinecraftServer server, ServerPlayer player, RequestAdvancementJsonPayload payload) {
+        if (player != null && !player.hasPermissions(2)) return;
+
         AdvancementHolder holder = server.getAdvancements().get(payload.advancementId());
         if (holder != null) {
             RegistryOps<JsonElement> ops = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
@@ -33,7 +35,9 @@ public class ServerAdvancementEditor {
         }
     }
 
-    public static void handleLinkAdvancement(MinecraftServer server, LinkAdvancementPayload payload) {
+    public static void handleLinkAdvancement(MinecraftServer server, ServerPlayer player, LinkAdvancementPayload payload) {
+        if (player != null && !player.hasPermissions(2)) return;
+
         AdvancementHolder holder = server.getAdvancements().get(payload.childId());
         if (holder != null) {
             RegistryOps<JsonElement> ops = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
@@ -43,11 +47,13 @@ public class ServerAdvancementEditor {
                     .getAsJsonObject();
 
             json.addProperty("parent", payload.parentId().toString());
-            saveAdvancementEdit(server, new EditAdvancementPayload(payload.childId(), json.toString(), false));
+            saveAdvancementEdit(server, player, new EditAdvancementPayload(payload.childId(), json.toString(), false));
         }
     }
 
-    public static void saveAdvancementEdit(MinecraftServer server, EditAdvancementPayload payload) {
+    public static void saveAdvancementEdit(MinecraftServer server, ServerPlayer player, EditAdvancementPayload payload) {
+        if (player != null && !player.hasPermissions(2)) return;
+
         try {
             File datapackDir = new File(server.getWorldPath(LevelResource.DATAPACK_DIR).toFile(), Constants.MOD_ID + "_edits");
             File dataDir = new File(datapackDir, "data/" + payload.advancementId().getNamespace() + "/advancement");
