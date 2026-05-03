@@ -119,6 +119,12 @@ public class ClothConfigScreen {
                 .setSaveConsumer(newValue -> EnhancedAdvancementsScreen.discoveryMode = newValue)
                 .build());
 
+        general.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.advancement_enhancement.requireRewardClaiming"), EnhancedAdvancementsScreen.requireRewardClaiming)
+                .setDefaultValue(defaults.requireRewardClaiming)
+                .setTooltip(Component.translatable("config.advancement_enhancement.requireRewardClaiming.tooltip"))
+                .setSaveConsumer(newValue -> EnhancedAdvancementsScreen.requireRewardClaiming = newValue)
+                .build());
+
         ConfigCategory editing = builder.getOrCreateCategory(Component.translatable("config.advancement_enhancement.category.editing"));
 
         editing.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.advancement_enhancement.enableEditMode"), EnhancedAdvancementsScreen.enableEditMode)

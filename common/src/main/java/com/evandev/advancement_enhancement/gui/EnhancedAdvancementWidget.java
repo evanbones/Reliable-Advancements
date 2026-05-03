@@ -1,5 +1,6 @@
 package com.evandev.advancement_enhancement.gui;
 
+import com.evandev.advancement_enhancement.client.ClientRewardTracker;
 import com.evandev.advancement_enhancement.advancements.AdvancementDisplayInfo;
 import com.evandev.advancement_enhancement.api.IAdvancementEntryGui;
 import com.evandev.advancement_enhancement.api.event.IAdvancementDrawConnectionsEvent;
@@ -51,7 +52,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     private List<FormattedCharSequence> description;
     private CriterionGrid criterionGrid;
     private EnhancedAdvancementWidget parent;
-    private AdvancementProgress advancementProgress;
+    public AdvancementProgress advancementProgress;
     private float hoverAnim = 0.0f;
 
     public EnhancedAdvancementWidget(EnhancedAdvancementTab advancementTabGui, Minecraft mc, AdvancementNode advancementNode, DisplayInfo displayInfo) {
@@ -132,22 +133,18 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     }
 
     public boolean shouldRender() {
-        // Always render in edit mode or if complete
         if (EnhancedAdvancementsScreen.canEdit()) return true;
         if (this.advancementProgress != null && this.advancementProgress.isDone()) return true;
-
-        // Vanilla hidden behavior: Hide until completed
         if (this.displayInfo.isHidden()) return false;
 
-        // Discovery mode logic
         if (EnhancedAdvancementsScreen.discoveryMode) {
-            // Root advancements have no parent, so they are always revealed
             if (this.parent == null) return true;
-            // Child advancements only show if the parent is completed
-            return this.parent.advancementProgress != null && this.parent.advancementProgress.isDone();
-        }
+            boolean parentCompleted = this.parent.advancementProgress != null && this.parent.advancementProgress.isDone();
 
-        // Default vanilla behavior
+            boolean parentClaimed = !EnhancedAdvancementsScreen.requireRewardClaiming || ClientRewardTracker.isClaimed(this.parent.getAdvancement().holder().id());
+
+            return parentCompleted && parentClaimed;
+        }
         return true;
     }
 
@@ -178,8 +175,28 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
      * Draws connection line between this advancement and the advancement supplied in parent.
      */
     public void drawConnection(GuiGraphics guiGraphics, EnhancedAdvancementWidget parent, int scrollX, int scrollY, boolean drawInside) {
-        int innerLineColor = this.advancementProgress != null && this.advancementProgress.isDone() ? enhancedDisplayInfo.getCompletedLineColor() : enhancedDisplayInfo.getUnCompletedLineColor();
+        boolean parentCompleted = parent.advancementProgress != null && parent.advancementProgress.isDone();
+        boolean parentClaimed = !EnhancedAdvancementsScreen.requireRewardClaiming || ClientRewardTracker.isClaimed(parent.getAdvancement().holder().id());
+
+        boolean thisCompleted = this.advancementProgress != null && this.advancementProgress.isDone();
+        boolean thisClaimed = !EnhancedAdvancementsScreen.requireRewardClaiming || ClientRewardTracker.isClaimed(this.advancementNode.holder().id());
+
+        int innerLineColor;
         int borderLineColor = 0xFF000000;
+
+        if (EnhancedAdvancementsScreen.requireRewardClaiming) {
+            if (parentClaimed) {
+                if (thisClaimed) {
+                    innerLineColor = enhancedDisplayInfo.getCompletedLineColor();
+                } else {
+                    innerLineColor = 0xFF00FF00;
+                }
+            } else {
+                innerLineColor = 0xFF444444;
+            }
+        } else {
+            innerLineColor = thisCompleted ? enhancedDisplayInfo.getCompletedLineColor() : enhancedDisplayInfo.getUnCompletedLineColor();
+        }
 
         if (this.enhancedDisplayInfo.drawDirectLines()) {
             int x1 = Math.round(scrollX + this.x + ADVANCEMENT_SIZE / 2.0F + 3.0F);
@@ -309,13 +326,25 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         }
 
         if (this.shouldRender()) {
-            float f = this.advancementProgress == null ? 0.0F : this.advancementProgress.getPercent();
+            boolean isCompleted = this.advancementProgress != null && this.advancementProgress.isDone();
+            boolean isClaimed = !EnhancedAdvancementsScreen.requireRewardClaiming || ClientRewardTracker.isClaimed(this.advancementNode.holder().id());
+
             AdvancementWidgetType advancementState;
-            if (f >= 1.0F) {
-                advancementState = AdvancementWidgetType.OBTAINED;
+            boolean isDimmed = false;
+
+            if (EnhancedAdvancementsScreen.requireRewardClaiming) {
+                if (isCompleted && !isClaimed) {
+                    advancementState = AdvancementWidgetType.OBTAINED;
+                } else if (isCompleted && isClaimed) {
+                    advancementState = AdvancementWidgetType.UNOBTAINED;
+                } else {
+                    advancementState = AdvancementWidgetType.UNOBTAINED;
+                    isDimmed = true;
+                }
             } else {
-                advancementState = AdvancementWidgetType.UNOBTAINED;
+                advancementState = isCompleted ? AdvancementWidgetType.OBTAINED : AdvancementWidgetType.UNOBTAINED;
             }
+
             int baseColor = enhancedDisplayInfo.getIconColor(advancementState);
             if (hoverAnim > 0.0f) {
                 int r = (baseColor >> 16) & 255;
@@ -332,15 +361,29 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             RenderUtil.setColor(baseColor);
             RenderSystem.enableBlend();
             guiGraphics.pose().pushPose();
+
+            if (isDimmed) {
+                RenderSystem.setShaderColor(0.5F, 0.5F, 0.5F, 1.0F);
+            }
+
             float scale = 1.0f + (hoverAnim * 0.1f);
             float centerX = scrollX + this.x + 3 + ICON_SIZE / 2.0f;
             float centerY = scrollY + this.y + ICON_SIZE / 2.0f;
             guiGraphics.pose().translate(centerX, centerY, 0);
             guiGraphics.pose().scale(scale, scale, 1.0f);
             guiGraphics.pose().translate(-centerX, -centerY, 0);
+
             guiGraphics.blitSprite(advancementState.frameSprite(this.displayInfo.getType()), scrollX + this.x + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE);
-            RenderUtil.setColor(enhancedDisplayInfo.defaultIconColor());
+
+            if (isDimmed) {
+                RenderSystem.setShaderColor(0.25F, 0.25F, 0.25F, 1.0F);
+            } else {
+                RenderUtil.setColor(enhancedDisplayInfo.defaultIconColor());
+            }
+
             guiGraphics.renderFakeItem(this.displayInfo.getIcon(), scrollX + this.x + 8, scrollY + this.y + 5);
+
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
             guiGraphics.pose().popPose();
         }
 

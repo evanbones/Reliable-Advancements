@@ -1,9 +1,6 @@
 package com.evandev.advancement_enhancement.platform;
 
-import com.evandev.advancement_enhancement.network.AdvancementJsonPayload;
-import com.evandev.advancement_enhancement.network.EditAdvancementPayload;
-import com.evandev.advancement_enhancement.network.LinkAdvancementPayload;
-import com.evandev.advancement_enhancement.network.RequestAdvancementJsonPayload;
+import com.evandev.advancement_enhancement.network.*;
 import com.evandev.advancement_enhancement.platform.services.IAdvancementVisitor;
 import com.evandev.advancement_enhancement.platform.services.IEventHelper;
 import com.evandev.advancement_enhancement.platform.services.IPlatformHelper;
@@ -91,6 +88,34 @@ public class FabricPlatformHelper implements IPlatformHelper {
     public void sendAdvancementJsonToClient(ServerPlayer player, AdvancementJsonPayload payload) {
         if (ServerPlayNetworking.canSend(player, AdvancementJsonPayload.TYPE)) {
             ServerPlayNetworking.send(player, payload);
+        }
+    }
+
+    @Override
+    public void sendClaimReward(ClaimRewardPayload payload) {
+        if (ClientPlayNetworking.canSend(ClaimRewardPayload.TYPE)) {
+            ClientPlayNetworking.send(payload);
+        }
+    }
+
+    @Override
+    public void sendClaimedRewardsSync(ServerPlayer player, SyncClaimedRewardsPayload payload) {
+        if (ServerPlayNetworking.canSend(player, SyncClaimedRewardsPayload.TYPE)) {
+            ServerPlayNetworking.send(player, payload);
+        }
+    }
+
+    @Override
+    public void sendRequestFullTree() {
+        if (ClientPlayNetworking.canSend(RequestFullTreePayload.TYPE)) {
+            ClientPlayNetworking.send(new RequestFullTreePayload());
+        }
+    }
+
+    @Override
+    public void sendResetTab(ResetTabPayload payload) {
+        if (ClientPlayNetworking.canSend(ResetTabPayload.TYPE)) {
+            ClientPlayNetworking.send(payload);
         }
     }
 }

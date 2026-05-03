@@ -41,6 +41,9 @@
   "config.advancement_enhancement.customInventoryButtonIcon.tooltip": "The item ID to use for the advancements button in the inventory (e.g., minecraft:book or minecraft:emerald).",
   "config.advancement_enhancement.discoveryMode": "Discovery Mode",
   "config.advancement_enhancement.discoveryMode.tooltip": "Only reveal advancements when the direct parent is completed (in vanilla, advancements unlock two advancements ahead).",
+  "config.advancement_enhancement.requireRewardClaiming": "Reward Claiming",
+  "config.advancement_enhancement.requireRewardClaiming.tooltip": "Advancements have to be claimed after being unlocked to get the reward.",
+
 
   "config.advancement_enhancement.category.editing": "Editing",
   "config.advancement_enhancement.enableEditMode": "Enable Edit Mode",

@@ -1,5 +1,6 @@
 package com.evandev.advancement_enhancement.network;
 
+import com.evandev.advancement_enhancement.client.ClientRewardTracker;
 import com.evandev.advancement_enhancement.gui.screens.AdvancementEditorScreen;
 import com.evandev.advancement_enhancement.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.advancement_enhancement.gui.screens.TabEditorScreen;
@@ -32,5 +33,10 @@ public class ClientNetworkHandler {
                         )));
             }
         }
+    }
+
+    public static void handleSyncClaimedRewards(SyncClaimedRewardsPayload payload) {
+        ClientRewardTracker.CLAIMED.clear();
+        ClientRewardTracker.CLAIMED.addAll(payload.claimedIds());
     }
 }

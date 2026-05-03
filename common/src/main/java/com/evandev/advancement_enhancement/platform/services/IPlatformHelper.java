@@ -1,9 +1,6 @@
 package com.evandev.advancement_enhancement.platform.services;
 
-import com.evandev.advancement_enhancement.network.AdvancementJsonPayload;
-import com.evandev.advancement_enhancement.network.EditAdvancementPayload;
-import com.evandev.advancement_enhancement.network.LinkAdvancementPayload;
-import com.evandev.advancement_enhancement.network.RequestAdvancementJsonPayload;
+import com.evandev.advancement_enhancement.network.*;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.nio.file.Path;
@@ -68,4 +65,12 @@ public interface IPlatformHelper {
     void sendLinkAdvancement(LinkAdvancementPayload payload);
 
     void sendAdvancementJsonToClient(ServerPlayer player, AdvancementJsonPayload payload);
+
+    void sendClaimReward(ClaimRewardPayload payload);
+
+    void sendClaimedRewardsSync(ServerPlayer player, SyncClaimedRewardsPayload payload);
+
+    void sendRequestFullTree();
+
+    void sendResetTab(ResetTabPayload payload);
 }

@@ -1,9 +1,6 @@
 package com.evandev.advancement_enhancement.platform;
 
-import com.evandev.advancement_enhancement.network.AdvancementJsonPayload;
-import com.evandev.advancement_enhancement.network.EditAdvancementPayload;
-import com.evandev.advancement_enhancement.network.LinkAdvancementPayload;
-import com.evandev.advancement_enhancement.network.RequestAdvancementJsonPayload;
+import com.evandev.advancement_enhancement.network.*;
 import com.evandev.advancement_enhancement.platform.services.IEventHelper;
 import com.evandev.advancement_enhancement.platform.services.IPlatformHelper;
 import net.minecraft.client.Minecraft;
@@ -93,6 +90,37 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
     public void sendAdvancementJsonToClient(ServerPlayer player, AdvancementJsonPayload payload) {
         if (player.connection.hasChannel(AdvancementJsonPayload.TYPE)) {
             PacketDistributor.sendToPlayer(player, payload);
+        }
+    }
+
+    @Override
+    public void sendClaimReward(ClaimRewardPayload payload) {
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection != null && connection.hasChannel(ClaimRewardPayload.TYPE)) {
+            PacketDistributor.sendToServer(payload);
+        }
+    }
+
+    @Override
+    public void sendClaimedRewardsSync(ServerPlayer player, SyncClaimedRewardsPayload payload) {
+        if (player.connection.hasChannel(SyncClaimedRewardsPayload.TYPE)) {
+            PacketDistributor.sendToPlayer(player, payload);
+        }
+    }
+
+    @Override
+    public void sendRequestFullTree() {
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection != null && connection.hasChannel(RequestFullTreePayload.TYPE)) {
+            PacketDistributor.sendToServer(new RequestFullTreePayload());
+        }
+    }
+
+    @Override
+    public void sendResetTab(ResetTabPayload payload) {
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection != null && connection.hasChannel(ResetTabPayload.TYPE)) {
+            PacketDistributor.sendToServer(payload);
         }
     }
 }

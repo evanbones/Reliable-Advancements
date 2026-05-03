@@ -1,8 +1,8 @@
 package com.evandev.advancement_enhancement.gui;
 
 import com.evandev.advancement_enhancement.gui.screens.EnhancedAdvancementsScreen;
-import com.evandev.advancement_enhancement.network.EditAdvancementPayload;
 import com.evandev.advancement_enhancement.network.RequestAdvancementJsonPayload;
+import com.evandev.advancement_enhancement.network.ResetTabPayload;
 import com.evandev.advancement_enhancement.platform.Services;
 import com.evandev.advancement_enhancement.util.PersistentData;
 import net.minecraft.client.Minecraft;
@@ -67,15 +67,15 @@ public class AdvancementContextMenu {
                 (confirmed) -> {
                     if (confirmed) {
                         if (parentScreen.selectedTab != null) {
-                            for (EnhancedAdvancementWidget w : new java.util.ArrayList<>(parentScreen.selectedTab.getWidgets().values())) {
-                                EditAdvancementPayload payload = new EditAdvancementPayload(w.getAdvancement().holder().id(), "{}", true);
-                                if (Services.PLATFORM.canSendAdvancementEdit()) {
-                                    Services.PLATFORM.sendAdvancementEdit(payload);
-                                }
+                            List<ResourceLocation> idsToDelete = new ArrayList<>();
+
+                            for (EnhancedAdvancementWidget w : parentScreen.selectedTab.getWidgets().values()) {
+                                idsToDelete.add(w.getAdvancement().holder().id());
                                 PersistentData.removePosition(w.getAdvancement().holder().id());
                             }
                             PersistentData.removeTabProperties(parentScreen.selectedTab.getRootNode().holder().id());
-                            parentScreen.selectedTab.getWidgets().clear();
+
+                            Services.PLATFORM.sendResetTab(new ResetTabPayload(idsToDelete));
                         }
                     }
                     Minecraft.getInstance().setScreen(parentScreen);

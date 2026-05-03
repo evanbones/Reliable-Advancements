@@ -21,8 +21,24 @@ public class NeoForgeNetworkHandler {
             context.enqueueWork(() -> ServerAdvancementEditor.handleLinkAdvancement(context.player().getServer(), (ServerPlayer) context.player(), payload));
         });
 
+        registrar.playToServer(ClaimRewardPayload.TYPE, ClaimRewardPayload.STREAM_CODEC, (payload, context) -> {
+            context.enqueueWork(() -> ServerAdvancementEditor.handleRewardClaim(context.player().getServer(), (ServerPlayer) context.player(), payload));
+        });
+
+        registrar.playToServer(RequestFullTreePayload.TYPE, RequestFullTreePayload.STREAM_CODEC, (payload, context) -> {
+            context.enqueueWork(() -> ServerAdvancementEditor.handleRequestFullTree(context.player().getServer(), (ServerPlayer) context.player()));
+        });
+
+        registrar.playToServer(ResetTabPayload.TYPE, ResetTabPayload.STREAM_CODEC, (payload, context) -> {
+            context.enqueueWork(() -> ServerAdvancementEditor.handleResetTab(context.player().getServer(), (ServerPlayer) context.player(), payload));
+        });
+
         registrar.playToClient(AdvancementJsonPayload.TYPE, AdvancementJsonPayload.STREAM_CODEC, (payload, context) -> {
             context.enqueueWork(() -> ClientNetworkHandler.handleAdvancementJson(payload));
+        });
+
+        registrar.playToClient(SyncClaimedRewardsPayload.TYPE, SyncClaimedRewardsPayload.STREAM_CODEC, (payload, context) -> {
+            context.enqueueWork(() -> ClientNetworkHandler.handleSyncClaimedRewards(payload));
         });
     }
 }

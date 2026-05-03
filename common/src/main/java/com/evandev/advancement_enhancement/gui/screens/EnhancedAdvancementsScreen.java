@@ -1,9 +1,11 @@
 package com.evandev.advancement_enhancement.gui.screens;
 
+import com.evandev.advancement_enhancement.client.ClientRewardTracker;
 import com.evandev.advancement_enhancement.gui.AdvancementContextMenu;
 import com.evandev.advancement_enhancement.gui.EnhancedAdvancementTab;
 import com.evandev.advancement_enhancement.gui.EnhancedAdvancementTabType;
 import com.evandev.advancement_enhancement.gui.EnhancedAdvancementWidget;
+import com.evandev.advancement_enhancement.network.ClaimRewardPayload;
 import com.evandev.advancement_enhancement.network.EditAdvancementPayload;
 import com.evandev.advancement_enhancement.network.LinkAdvancementPayload;
 import com.evandev.advancement_enhancement.network.RequestAdvancementJsonPayload;
@@ -23,12 +25,14 @@ import net.minecraft.client.GameNarrator;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientAdvancements;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundSeenAdvancementsPacket;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.NotNull;
@@ -53,6 +57,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public static ResourceLocation clipboardId = null;
     public static EnhancedAdvancementWidget selectedWidget = null;
     public static boolean discoveryMode = false;
+    public static boolean requireRewardClaiming = true;
     private static int tabPage, maxPages;
     private static ResourceLocation savedSelectedTab = null;
     private final ClientAdvancements clientAdvancements;
@@ -152,7 +157,9 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         this.minecraft.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
                 (confirmed) -> {
                     if (confirmed) {
-                        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), "{\"criteria\":{\"impossible\":{\"trigger\":\"minecraft:impossible\"}},\"display\":{\"hidden\":true}}", false);
+                        String dummyJson = "{\"criteria\":{\"impossible\":{\"trigger\":\"minecraft:impossible\"}}}";
+                        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), dummyJson, false);
+
                         if (Services.PLATFORM.canSendAdvancementEdit()) {
                             Services.PLATFORM.sendAdvancementEdit(payload);
                         }
@@ -171,7 +178,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     public void resetAdvancement(EnhancedAdvancementWidget widget) {
-        this.minecraft.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
+        this.minecraft.setScreen(new ConfirmScreen(
                 (confirmed) -> {
                     if (confirmed) {
                         EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), "{}", true);
@@ -182,7 +189,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                         if (this.selectedTab != null && widget.getAdvancement().holder().id().equals(this.selectedTab.getRootNode().holder().id())) {
                             PersistentData.removeTabProperties(this.selectedTab.getRootNode().holder().id());
                         }
-                        removeWidgetFromClient(widget);
+
+                        Services.PLATFORM.sendRequestFullTree();
                     }
                     this.minecraft.setScreen(this);
                 },
@@ -333,6 +341,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
 
         if (EnhancedAdvancementsScreen.canEdit()) {
+            Services.PLATFORM.sendRequestFullTree();
             for (AdvancementNode root : this.clientAdvancements.getTree().roots()) {
                 if (!this.tabs.containsKey(root.holder())) {
                     this.onAddAdvancementRoot(root);
@@ -444,6 +453,21 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
 
         if (button == 0) {
+            if (this.selectedTab != null && !EnhancedAdvancementsScreen.canEdit()) {
+                EnhancedAdvancementWidget hovered = getHoveredWidget(mouseX, mouseY);
+                if (hovered != null && EnhancedAdvancementsScreen.requireRewardClaiming) {
+                    boolean isCompleted = hovered.advancementProgress != null && hovered.advancementProgress.isDone();
+                    boolean isClaimed = ClientRewardTracker.isClaimed(hovered.getAdvancement().holder().id());
+
+                    if (isCompleted && !isClaimed) {
+                        Minecraft.getInstance().player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0F, 1.0F);
+
+                        Services.PLATFORM.sendClaimReward(new ClaimRewardPayload(hovered.getAdvancement().holder().id()));
+                        return true;
+                    }
+                }
+            }
+
             int maxTabs = EnhancedAdvancementTabType.getMaxTabs(width, height);
             int skip = tabPage * maxTabs;
 
