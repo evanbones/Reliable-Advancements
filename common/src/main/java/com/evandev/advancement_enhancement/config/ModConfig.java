@@ -37,6 +37,7 @@ public class ModConfig {
     public int inventoryButtonOffsetY = 0;
     public String customInventoryButtonTexture = "";
     public String customInventoryButtonTextureHovered = "";
+    public String customInventoryButtonIcon = "minecraft:book";
 
     // --- Editing ---
     public boolean enableEditMode = false;
@@ -102,6 +103,7 @@ public class ModConfig {
         AdvancementsScreenButton.offsetY = INSTANCE.inventoryButtonOffsetY;
         AdvancementsScreenButton.customTexture = INSTANCE.customInventoryButtonTexture;
         AdvancementsScreenButton.customTextureHovered = INSTANCE.customInventoryButtonTextureHovered;
+        AdvancementsScreenButton.customIcon = INSTANCE.customInventoryButtonIcon;
 
         // Editing
         EnhancedAdvancementsScreen.enableEditMode = INSTANCE.enableEditMode;
@@ -135,6 +137,7 @@ public class ModConfig {
         INSTANCE.inventoryButtonOffsetY = AdvancementsScreenButton.offsetY;
         INSTANCE.customInventoryButtonTexture = AdvancementsScreenButton.customTexture;
         INSTANCE.customInventoryButtonTextureHovered = AdvancementsScreenButton.customTextureHovered;
+        INSTANCE.customInventoryButtonIcon = AdvancementsScreenButton.customIcon;
 
         // Editing
         INSTANCE.enableEditMode = EnhancedAdvancementsScreen.enableEditMode;

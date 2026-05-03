@@ -107,6 +107,12 @@ public class ClothConfigScreen {
                 .setSaveConsumer(newValue -> AdvancementsScreenButton.customTextureHovered = newValue)
                 .build());
 
+        general.addEntry(entryBuilder.startStrField(Component.translatable("config.advancement_enhancement.customInventoryButtonIcon"), AdvancementsScreenButton.customIcon)
+                .setDefaultValue(defaults.customInventoryButtonIcon)
+                .setTooltip(Component.translatable("config.advancement_enhancement.customInventoryButtonIcon.tooltip"))
+                .setSaveConsumer(newValue -> AdvancementsScreenButton.customIcon = newValue)
+                .build());
+
         ConfigCategory editing = builder.getOrCreateCategory(Component.translatable("config.advancement_enhancement.category.editing"));
 
         editing.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.advancement_enhancement.enableEditMode"), EnhancedAdvancementsScreen.enableEditMode)

@@ -38,6 +38,7 @@ public class AdvancementContextMenu {
             this.options.add(new ContextOption("Delete from Game", true, () -> parentScreen.deleteAdvancement(widget)));
         } else {
             this.options.add(new ContextOption("Create New Advancement", false, () -> parentScreen.createNewAdvancement(mouseX, mouseY)));
+            this.options.add(new ContextOption("Create New Tab", false, () -> parentScreen.createNewTab(mouseX, mouseY)));
             this.options.add(new ContextOption("Paste (Ctrl+V)", false, () -> {
                 parentScreen.pasteAdvancement(mouseX, mouseY);
                 parentScreen.closeContextMenu();

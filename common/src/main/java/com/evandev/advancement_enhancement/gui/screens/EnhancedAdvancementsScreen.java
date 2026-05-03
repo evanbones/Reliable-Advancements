@@ -913,6 +913,51 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
     }
 
+    public void createNewTab(int mouseX, int mouseY) {
+        ResourceLocation newId;
+        int counter = 1;
+        while (true) {
+            String suffix = counter == 1 ? "" : "_" + counter;
+            ResourceLocation testId = ResourceLocation.fromNamespaceAndPath("minecraft", "new_tab" + suffix);
+            boolean exists = this.tabs.keySet().stream().anyMatch(h -> h.id().equals(testId));
+            if (!exists) {
+                newId = testId;
+                break;
+            }
+            counter++;
+        }
+
+        JsonObject root = new JsonObject();
+        JsonObject display = new JsonObject();
+        JsonObject icon = new JsonObject();
+
+        icon.addProperty("id", "minecraft:stone");
+        display.add("icon", icon);
+
+        JsonObject title = new JsonObject();
+        title.addProperty("text", "New Tab");
+        display.add("title", title);
+
+        JsonObject description = new JsonObject();
+        description.addProperty("text", "Description");
+        display.add("description", description);
+
+        display.addProperty("background", "minecraft:textures/gui/advancements/backgrounds/stone.png");
+        root.add("display", display);
+
+        JsonObject criteria = new JsonObject();
+        JsonObject crit = new JsonObject();
+        crit.addProperty("trigger", "minecraft:impossible");
+        criteria.add("impossible", crit);
+        root.add("criteria", criteria);
+
+        AdvancementEditorScreen editor = new AdvancementEditorScreen(
+                this, newId, true, 0, 0, "Properties", root.toString()
+        );
+        Minecraft.getInstance().setScreen(editor);
+        this.contextMenu = null;
+    }
+
     @Override
     public void onAdvancementsCleared() {
         if (this.selectedTab != null) {

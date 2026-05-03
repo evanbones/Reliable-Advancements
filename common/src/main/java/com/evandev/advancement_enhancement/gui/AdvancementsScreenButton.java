@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -20,6 +21,7 @@ public class AdvancementsScreenButton extends AbstractButton {
     public static int offsetY = 0;
     public static String customTexture = "";
     public static String customTextureHovered = "";
+    public static String customIcon = "minecraft:book";
 
     public AdvancementsScreenButton(int x, int y, Component buttonText) {
         super(
@@ -49,15 +51,24 @@ public class AdvancementsScreenButton extends AbstractButton {
                 guiGraphics.blit(tex, this.getX(), this.getY(), 0, 0, this.getWidth(), this.getHeight(), this.getWidth(), this.getHeight());
                 RenderSystem.disableBlend();
             }
-            guiGraphics.renderFakeItem(new ItemStack(Items.BOOK), this.getX() + 2, this.getY() + 1);
+            guiGraphics.renderFakeItem(getIconStack(), this.getX() + 2, this.getY() + 1);
         } else {
             guiGraphics.blit(Resources.Gui.TABS, this.getX(), this.getY(), 56, 0, 28, 32);
             RenderSystem.defaultBlendFunc();
-            guiGraphics.renderFakeItem(new ItemStack(Items.BOOK), this.getX() + 6, this.getY() + 10);
+            guiGraphics.renderFakeItem(getIconStack(), this.getX() + 6, this.getY() + 10);
         }
 
         if (this.isHovered) {
             guiGraphics.renderTooltip(mc.font, Component.translatable("gui.advancements"), mouseX, mouseY);
+        }
+    }
+
+    private ItemStack getIconStack() {
+        if (customIcon == null || customIcon.isEmpty()) return new ItemStack(Items.BOOK);
+        try {
+            return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(customIcon)));
+        } catch (Exception e) {
+            return new ItemStack(Items.BOOK);
         }
     }
 
