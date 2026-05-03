@@ -1013,6 +1013,14 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     @Override
     public void onRemoveAdvancementRoot(@NotNull AdvancementNode advancement) {
+        EnhancedAdvancementTab tab = this.tabs.remove(advancement.holder());
+        if (tab != null && tab == this.selectedTab) {
+            if (!this.tabs.isEmpty()) {
+                this.selectedTab = this.tabs.values().iterator().next();
+            } else {
+                this.selectedTab = null;
+            }
+        }
     }
 
     @Override
@@ -1025,6 +1033,17 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     @Override
     public void onRemoveAdvancementTask(@NotNull AdvancementNode advancement) {
+        EnhancedAdvancementTab betterAdvancementTabGui = this.getTab(advancement);
+        if (betterAdvancementTabGui != null) {
+            EnhancedAdvancementWidget widget = betterAdvancementTabGui.getWidget(advancement.holder());
+            if (widget != null) {
+                betterAdvancementTabGui.getWidgets().remove(advancement.holder());
+
+                if (widget.getParent() != null) {
+                    widget.getParent().getChildren().remove(widget);
+                }
+            }
+        }
     }
 
     @Override
