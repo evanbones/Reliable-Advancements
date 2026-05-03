@@ -30,6 +30,7 @@ public class ModConfig {
     public boolean orderTabsAlphabetically = false;
     public int uiScaling = 100;
     public boolean onlyUseAboveAdvancementTabs = false;
+    public boolean discoveryMode = false;
 
     // --- Inventory Button ---
     public InventoryButtonStyle inventoryButtonStyle = InventoryButtonStyle.TAB;
@@ -98,6 +99,7 @@ public class ModConfig {
         EnhancedAdvancementsScreen.orderTabsAlphabetically = INSTANCE.orderTabsAlphabetically;
         EnhancedAdvancementsScreen.uiScaling = INSTANCE.uiScaling;
         EnhancedAdvancementTabType.onlyUseAbove = INSTANCE.onlyUseAboveAdvancementTabs;
+        EnhancedAdvancementsScreen.discoveryMode = INSTANCE.discoveryMode;
         AdvancementsScreenButton.style = INSTANCE.inventoryButtonStyle;
         AdvancementsScreenButton.offsetX = INSTANCE.inventoryButtonOffsetX;
         AdvancementsScreenButton.offsetY = INSTANCE.inventoryButtonOffsetY;
@@ -132,6 +134,7 @@ public class ModConfig {
         INSTANCE.orderTabsAlphabetically = EnhancedAdvancementsScreen.orderTabsAlphabetically;
         INSTANCE.uiScaling = EnhancedAdvancementsScreen.uiScaling;
         INSTANCE.onlyUseAboveAdvancementTabs = EnhancedAdvancementTabType.onlyUseAbove;
+        INSTANCE.discoveryMode = EnhancedAdvancementsScreen.discoveryMode;
         INSTANCE.inventoryButtonStyle = AdvancementsScreenButton.style;
         INSTANCE.inventoryButtonOffsetX = AdvancementsScreenButton.offsetX;
         INSTANCE.inventoryButtonOffsetY = AdvancementsScreenButton.offsetY;

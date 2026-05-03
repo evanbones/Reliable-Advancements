@@ -52,6 +52,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public static String clipboardJson = null;
     public static ResourceLocation clipboardId = null;
     public static EnhancedAdvancementWidget selectedWidget = null;
+    public static boolean discoveryMode = false;
     private static int tabPage, maxPages;
     private static ResourceLocation savedSelectedTab = null;
     private final ClientAdvancements clientAdvancements;

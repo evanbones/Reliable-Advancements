@@ -113,6 +113,12 @@ public class ClothConfigScreen {
                 .setSaveConsumer(newValue -> AdvancementsScreenButton.customIcon = newValue)
                 .build());
 
+        general.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.advancement_enhancement.discoveryMode"), EnhancedAdvancementsScreen.discoveryMode)
+                .setDefaultValue(defaults.discoveryMode)
+                .setTooltip(Component.translatable("config.advancement_enhancement.discoveryMode.tooltip"))
+                .setSaveConsumer(newValue -> EnhancedAdvancementsScreen.discoveryMode = newValue)
+                .build());
+
         ConfigCategory editing = builder.getOrCreateCategory(Component.translatable("config.advancement_enhancement.category.editing"));
 
         editing.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.advancement_enhancement.enableEditMode"), EnhancedAdvancementsScreen.enableEditMode)

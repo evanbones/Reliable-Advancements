@@ -131,28 +131,44 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         }
     }
 
-    public void drawConnectivity(GuiGraphics guiGraphics, int scrollX, int scrollY, boolean drawInside) {
-        //Check if connections should be drawn at all
-        if (EnhancedAdvancementsScreen.canEdit() || !this.enhancedDisplayInfo.hideLines()) {
-            //Draw connection to parent
-            if (this.parent != null) {
+    public boolean shouldRender() {
+        // Always render in edit mode or if complete
+        if (EnhancedAdvancementsScreen.canEdit()) return true;
+        if (this.advancementProgress != null && this.advancementProgress.isDone()) return true;
 
+        // Vanilla hidden behavior: Hide until completed
+        if (this.displayInfo.isHidden()) return false;
+
+        // Discovery mode logic
+        if (EnhancedAdvancementsScreen.discoveryMode) {
+            // Root advancements have no parent, so they are always revealed
+            if (this.parent == null) return true;
+            // Child advancements only show if the parent is completed
+            return this.parent.advancementProgress != null && this.parent.advancementProgress.isDone();
+        }
+
+        // Default vanilla behavior
+        return true;
+    }
+
+    public void drawConnectivity(GuiGraphics guiGraphics, int scrollX, int scrollY, boolean drawInside) {
+        // Check if connections should be drawn at all
+        if (this.shouldRender() && (EnhancedAdvancementsScreen.canEdit() || !this.enhancedDisplayInfo.hideLines())) {
+            // Draw connection to parent
+            if (this.parent != null && this.parent.shouldRender()) {
                 this.drawConnection(guiGraphics, this.parent, scrollX, scrollY, drawInside);
             }
-
-            //Create and post event to get extra connections
+            // Create and post event to get extra connections
             IAdvancementDrawConnectionsEvent event = Services.PLATFORM.getEventHelper().postAdvancementDrawConnectionsEvent(this.advancementNode);
-
-            //Draw extra connections from event
+            // Draw extra connections from event
             for (AdvancementHolder parent : event.getExtraConnections()) {
                 final EnhancedAdvancementWidget parentGui = this.advancementTabGui.getWidget(parent);
-
-                if (parentGui != null) {
+                if (parentGui != null && parentGui.shouldRender()) {
                     this.drawConnection(guiGraphics, parentGui, scrollX, scrollY, drawInside);
                 }
             }
         }
-        //Draw child connections
+        // Draw child connections
         for (EnhancedAdvancementWidget advancementWidget : this.children) {
             advancementWidget.drawConnectivity(guiGraphics, scrollX, scrollY, drawInside);
         }
@@ -286,25 +302,21 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
 
     public void draw(GuiGraphics guiGraphics, int scrollX, int scrollY, double unzoomedX, double unzoomedY) {
         boolean isHovered = EnhancedAdvancementsScreen.canEdit() && this.isMouseOver(scrollX, scrollY, unzoomedX, unzoomedY);
-
         if (isHovered) {
             hoverAnim = Math.min(1.0f, hoverAnim + 0.15f);
         } else {
             hoverAnim = Math.max(0.0f, hoverAnim - 0.15f);
         }
 
-        if (EnhancedAdvancementsScreen.canEdit() || !this.displayInfo.isHidden() || this.advancementProgress != null && this.advancementProgress.isDone()) {
+        if (this.shouldRender()) {
             float f = this.advancementProgress == null ? 0.0F : this.advancementProgress.getPercent();
             AdvancementWidgetType advancementState;
-
             if (f >= 1.0F) {
                 advancementState = AdvancementWidgetType.OBTAINED;
             } else {
                 advancementState = AdvancementWidgetType.UNOBTAINED;
             }
-
             int baseColor = enhancedDisplayInfo.getIconColor(advancementState);
-
             if (hoverAnim > 0.0f) {
                 int r = (baseColor >> 16) & 255;
                 int g = (baseColor >> 8) & 255;
@@ -314,26 +326,21 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                 r = (int) (r + (255 - r) * hoverAnim * 0.4f);
                 g = (int) (g + (255 - g) * hoverAnim * 0.4f);
                 b = (int) (b + (255 - b) * hoverAnim * 0.4f);
-
                 baseColor = 0xFF000000 | (r << 16) | (g << 8) | b;
             }
 
             RenderUtil.setColor(baseColor);
             RenderSystem.enableBlend();
-
             guiGraphics.pose().pushPose();
             float scale = 1.0f + (hoverAnim * 0.1f);
             float centerX = scrollX + this.x + 3 + ICON_SIZE / 2.0f;
             float centerY = scrollY + this.y + ICON_SIZE / 2.0f;
-
             guiGraphics.pose().translate(centerX, centerY, 0);
             guiGraphics.pose().scale(scale, scale, 1.0f);
             guiGraphics.pose().translate(-centerX, -centerY, 0);
-
             guiGraphics.blitSprite(advancementState.frameSprite(this.displayInfo.getType()), scrollX + this.x + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE);
             RenderUtil.setColor(enhancedDisplayInfo.defaultIconColor());
             guiGraphics.renderFakeItem(this.displayInfo.getIcon(), scrollX + this.x + 8, scrollY + this.y + 5);
-
             guiGraphics.pose().popPose();
         }
 
@@ -506,7 +513,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     }
 
     public boolean isMouseOver(double scrollX, double scrollY, double mouseX, double mouseY) {
-        if (EnhancedAdvancementsScreen.canEdit() || !this.displayInfo.isHidden() || this.advancementProgress != null && this.advancementProgress.isDone()) {
+        if (this.shouldRender()) {
             double left = scrollX + this.x + 3;
             double right = left + ADVANCEMENT_SIZE;
             double top = scrollY + this.y;
