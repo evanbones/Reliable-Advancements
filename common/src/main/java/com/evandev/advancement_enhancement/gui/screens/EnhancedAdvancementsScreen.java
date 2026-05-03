@@ -1027,6 +1027,23 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public void onAddAdvancementTask(@NotNull AdvancementNode advancement) {
         EnhancedAdvancementTab betterAdvancementTabGui = this.getTab(advancement);
         if (betterAdvancementTabGui != null) {
+
+            ResourceLocation id = advancement.holder().id();
+            EnhancedAdvancementWidget oldWidget = null;
+            for (EnhancedAdvancementWidget w : betterAdvancementTabGui.getWidgets().values()) {
+                if (w.getAdvancement().holder().id().equals(id)) {
+                    oldWidget = w;
+                    break;
+                }
+            }
+
+            if (oldWidget != null) {
+                betterAdvancementTabGui.getWidgets().remove(oldWidget.getAdvancement().holder());
+                if (oldWidget.getParent() != null) {
+                    oldWidget.getParent().getChildren().remove(oldWidget);
+                }
+            }
+
             betterAdvancementTabGui.addAdvancement(advancement);
         }
     }
