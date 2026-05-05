@@ -1,7 +1,7 @@
 package com.evandev.advancement_enhancement.handler;
 
-import com.evandev.advancement_enhancement.gui.AdvancementsScreenButton;
-import com.evandev.advancement_enhancement.gui.InventoryButtonStyle;
+import com.evandev.advancement_enhancement.gui.button.AdvancementsScreenButton;
+import com.evandev.advancement_enhancement.gui.button.InventoryButtonStyle;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.Minecraft;

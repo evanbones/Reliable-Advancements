@@ -2,6 +2,8 @@ package com.evandev.advancement_enhancement.config;
 
 import com.evandev.advancement_enhancement.advancements.AdvancementDisplayInfo;
 import com.evandev.advancement_enhancement.gui.*;
+import com.evandev.advancement_enhancement.gui.button.AdvancementsScreenButton;
+import com.evandev.advancement_enhancement.gui.button.InventoryButtonStyle;
 import com.evandev.advancement_enhancement.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.advancement_enhancement.platform.Services;
 import com.evandev.advancement_enhancement.reference.Constants;
@@ -37,8 +39,8 @@ public class ModConfig {
     public InventoryButtonStyle inventoryButtonStyle = InventoryButtonStyle.TAB;
     public int inventoryButtonOffsetX = 0;
     public int inventoryButtonOffsetY = 0;
-    public String customInventoryButtonTexture = "";
-    public String customInventoryButtonTextureHovered = "";
+    public String customInventoryButtonTexture = "advancement_enhancement:textures/gui/inventory_button.png";
+    public String customInventoryButtonTextureHovered = "advancement_enhancement:textures/gui/inventory_button_highlighted.png";
     public String customInventoryButtonIcon = "minecraft:book";
 
     // --- Editing ---

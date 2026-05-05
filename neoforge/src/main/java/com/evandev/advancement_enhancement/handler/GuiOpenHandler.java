@@ -1,7 +1,7 @@
 package com.evandev.advancement_enhancement.handler;
 
-import com.evandev.advancement_enhancement.gui.AdvancementsScreenButton;
-import com.evandev.advancement_enhancement.gui.InventoryButtonStyle;
+import com.evandev.advancement_enhancement.gui.button.AdvancementsScreenButton;
+import com.evandev.advancement_enhancement.gui.button.InventoryButtonStyle;
 import com.evandev.advancement_enhancement.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.advancement_enhancement.util.AdvancementComparer;
 import net.minecraft.advancements.AdvancementNode;

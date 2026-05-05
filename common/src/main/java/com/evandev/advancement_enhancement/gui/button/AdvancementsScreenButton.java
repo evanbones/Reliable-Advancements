@@ -1,4 +1,4 @@
-package com.evandev.advancement_enhancement.gui;
+package com.evandev.advancement_enhancement.gui.button;
 
 import com.evandev.advancement_enhancement.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.advancement_enhancement.reference.Resources;
@@ -19,9 +19,10 @@ public class AdvancementsScreenButton extends AbstractButton {
     public static InventoryButtonStyle style = InventoryButtonStyle.BUTTON;
     public static int offsetX = 0;
     public static int offsetY = 0;
-    public static String customTexture = "";
-    public static String customTextureHovered = "";
-    public static String customIcon = "minecraft:book";
+
+    public static String customTexture = "advancement_enhancement:textures/gui/inventory_button.png";
+    public static String customTextureHovered = "advancement_enhancement:textures/gui/inventory_button_highlighted.png";
+    public static String customIcon = "";
 
     public AdvancementsScreenButton(int x, int y, Component buttonText) {
         super(
@@ -36,6 +37,7 @@ public class AdvancementsScreenButton extends AbstractButton {
     @Override
     public void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         if (!this.visible) return;
+
         Minecraft mc = Minecraft.getInstance();
         this.isHovered = mouseX >= this.getX() && mouseY >= this.getY() && mouseX < this.getX() + this.getWidth() && mouseY < this.getY() + this.getHeight();
 
@@ -46,12 +48,18 @@ public class AdvancementsScreenButton extends AbstractButton {
             } else {
                 String texToUse = (this.isHovered && customTextureHovered != null && !customTextureHovered.isEmpty()) ? customTextureHovered : customTexture;
                 ResourceLocation tex = ResourceLocation.parse(texToUse);
+
                 RenderSystem.enableBlend();
                 RenderSystem.defaultBlendFunc();
+
                 guiGraphics.blit(tex, this.getX(), this.getY(), 0, 0, this.getWidth(), this.getHeight(), this.getWidth(), this.getHeight());
+
                 RenderSystem.disableBlend();
             }
-            guiGraphics.renderFakeItem(getIconStack(), this.getX() + 2, this.getY() + 1);
+
+            if (customIcon != null && !customIcon.isEmpty()) {
+                guiGraphics.renderFakeItem(getIconStack(), this.getX() + 2, this.getY() + 1);
+            }
         } else {
             guiGraphics.blit(Resources.Gui.TABS, this.getX(), this.getY(), 56, 0, 28, 32);
             RenderSystem.defaultBlendFunc();
@@ -64,7 +72,7 @@ public class AdvancementsScreenButton extends AbstractButton {
     }
 
     private ItemStack getIconStack() {
-        if (customIcon == null || customIcon.isEmpty()) return new ItemStack(Items.BOOK);
+        if (customIcon == null || customIcon.isEmpty()) return ItemStack.EMPTY;
         try {
             return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(customIcon)));
         } catch (Exception e) {

@@ -1,3 +1,3 @@
-### Fixed
+### Changed
 
-- Fixed advancement linking creating ghost advancements.
+- Adjusted default inventory button texture.

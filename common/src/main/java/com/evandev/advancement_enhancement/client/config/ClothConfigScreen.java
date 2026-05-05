@@ -3,6 +3,8 @@ package com.evandev.advancement_enhancement.client.config;
 import com.evandev.advancement_enhancement.advancements.AdvancementDisplayInfo;
 import com.evandev.advancement_enhancement.config.ModConfig;
 import com.evandev.advancement_enhancement.gui.*;
+import com.evandev.advancement_enhancement.gui.button.AdvancementsScreenButton;
+import com.evandev.advancement_enhancement.gui.button.InventoryButtonStyle;
 import com.evandev.advancement_enhancement.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.advancement_enhancement.util.ColorHelper;
 import com.evandev.advancement_enhancement.util.CriteriaDetail;
