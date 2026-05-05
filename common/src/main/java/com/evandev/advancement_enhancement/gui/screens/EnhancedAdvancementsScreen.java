@@ -84,6 +84,32 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         return enableEditMode && Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasPermissions(2);
     }
 
+    public void centerOnAdvancement(ResourceLocation id) {
+        AdvancementNode node = this.clientAdvancements.getTree().get(id);
+        if (node == null) return;
+        AdvancementNode root = node.root();
+        EnhancedAdvancementTab targetTab = this.tabs.get(root.holder());
+
+        if (targetTab != null) {
+            this.selectedTab = targetTab;
+            this.clientAdvancements.setSelectedTab(root.holder(), true);
+            EnhancedAdvancementWidget widget = targetTab.getWidgets().get(node.holder());
+
+            if (widget != null) {
+                int boxWidth = getTabInternalWidth() - 2 * SIDE - 2 * PADDING;
+                int boxHeight = getTabInternalHeight() - TOP - SIDE - 3 * PADDING;
+
+                float currentZoom = getZoom();
+                int scaledWidth = (int) (boxWidth / currentZoom);
+                int scaledHeight = (int) (boxHeight / currentZoom);
+
+                targetTab.scrollX = (scaledWidth / 2) - (widget.getX() + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2);
+                targetTab.scrollY = (scaledHeight / 2) - (widget.getY() + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2);
+                targetTab.setCentered(true);
+            }
+        }
+    }
+
     @Override
     public boolean isPauseScreen() {
         return !EnhancedAdvancementsScreen.canEdit();

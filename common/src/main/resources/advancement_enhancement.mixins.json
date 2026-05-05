@@ -4,10 +4,12 @@
   "package": "com.evandev.advancement_enhancement.mixin",
   "compatibilityLevel": "JAVA_18",
   "mixins": [
+    "AdvancementTypeMixin",
     "PlayerAdvancementsMixin",
     "ServerAdvancementManagerAccessor"
   ],
   "client": [
+    "ScreenMixin"
   ],
   "server": [],
   "injectors": {

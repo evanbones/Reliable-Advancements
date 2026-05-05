@@ -168,6 +168,10 @@ public class EnhancedAdvancementTab {
         guiGraphics.disableScissor();
     }
 
+    public void setCentered(boolean centered) {
+        this.centered = centered;
+    }
+
     public void drawToolTips(GuiGraphics guiGraphics, int mouseX, int mouseY, int left, int top, int width, int height) {
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(0.0D, 0.0D, -200.0D);
