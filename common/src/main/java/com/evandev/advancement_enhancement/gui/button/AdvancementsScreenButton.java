@@ -16,6 +16,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class AdvancementsScreenButton extends AbstractButton {
     public static boolean addToInventory = true;
+    public static boolean enableButtonTooltip = false;
     public static InventoryButtonStyle style = InventoryButtonStyle.BUTTON;
     public static int offsetX = 0;
     public static int offsetY = 0;
@@ -66,7 +67,7 @@ public class AdvancementsScreenButton extends AbstractButton {
             guiGraphics.renderFakeItem(getIconStack(), this.getX() + 6, this.getY() + 10);
         }
 
-        if (this.isHovered) {
+        if (this.isHovered && enableButtonTooltip) {
             guiGraphics.renderTooltip(mc.font, Component.translatable("gui.advancements"), mouseX, mouseY);
         }
     }

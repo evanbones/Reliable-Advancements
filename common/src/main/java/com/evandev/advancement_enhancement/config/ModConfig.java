@@ -37,6 +37,7 @@ public class ModConfig {
 
     // --- Inventory Button ---
     public InventoryButtonStyle inventoryButtonStyle = InventoryButtonStyle.TAB;
+    public boolean enableButtonTooltip = false;
     public int inventoryButtonOffsetX = 0;
     public int inventoryButtonOffsetY = 0;
     public String customInventoryButtonTexture = "advancement_enhancement:textures/gui/inventory_button.png";
@@ -98,6 +99,7 @@ public class ModConfig {
         CriterionGrid.detailLevel = CriteriaDetail.fromName(INSTANCE.criteriaDetail);
         CriterionGrid.requiresShift = INSTANCE.requiresShift;
         AdvancementsScreenButton.addToInventory = INSTANCE.addToInventory;
+        AdvancementsScreenButton.enableButtonTooltip = INSTANCE.enableButtonTooltip;
         EnhancedAdvancementsScreen.showDebugCoordinates = INSTANCE.showDebugCoordinates;
         EnhancedAdvancementsScreen.orderTabsAlphabetically = INSTANCE.orderTabsAlphabetically;
         EnhancedAdvancementsScreen.uiScaling = INSTANCE.uiScaling;
@@ -141,6 +143,7 @@ public class ModConfig {
         INSTANCE.discoveryMode = EnhancedAdvancementsScreen.discoveryMode;
         INSTANCE.onlyUseAboveAdvancementTabs = EnhancedAdvancementTabType.onlyUseAbove;
         INSTANCE.inventoryButtonStyle = AdvancementsScreenButton.style;
+        INSTANCE.enableButtonTooltip = AdvancementsScreenButton.enableButtonTooltip;
         INSTANCE.inventoryButtonOffsetX = AdvancementsScreenButton.offsetX;
         INSTANCE.inventoryButtonOffsetY = AdvancementsScreenButton.offsetY;
         INSTANCE.customInventoryButtonTexture = AdvancementsScreenButton.customTexture;

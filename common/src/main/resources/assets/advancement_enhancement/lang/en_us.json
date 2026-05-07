@@ -67,5 +67,7 @@
   "config.advancement_enhancement.defaultCompletedTitleColor": "Completed Title Color",
   "config.advancement_enhancement.defaultCompletedTitleColor.tooltip": "Color of the title banner when an advancement is completed.",
   "config.advancement_enhancement.defaultUncompletedTitleColor": "Uncompleted Title Color",
-  "config.advancement_enhancement.defaultUncompletedTitleColor.tooltip": "Color of the title banner when an advancement is locked."
+  "config.advancement_enhancement.defaultUncompletedTitleColor.tooltip": "Color of the title banner when an advancement is locked.",
+  "config.advancement_enhancement.enableButtonTooltip": "Enable Button Tooltip",
+  "config.advancement_enhancement.enableButtonTooltip.tooltip": "Whether or not the inventory button should display a tooltip when hovered."
 }

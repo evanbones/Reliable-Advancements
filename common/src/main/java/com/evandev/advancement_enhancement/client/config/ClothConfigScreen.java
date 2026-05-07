@@ -85,6 +85,12 @@ public class ClothConfigScreen {
                 .setSaveConsumer(newValue -> AdvancementsScreenButton.style = newValue)
                 .build());
 
+        general.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.advancement_enhancement.enableButtonTooltip"), AdvancementsScreenButton.enableButtonTooltip)
+                .setDefaultValue(defaults.enableButtonTooltip)
+                .setTooltip(Component.translatable("config.advancement_enhancement.enableButtonTooltip.tooltip"))
+                .setSaveConsumer(newValue -> AdvancementsScreenButton.enableButtonTooltip = newValue)
+                .build());
+
         general.addEntry(entryBuilder.startIntField(Component.translatable("config.advancement_enhancement.inventoryButtonOffsetX"), AdvancementsScreenButton.offsetX)
                 .setDefaultValue(defaults.inventoryButtonOffsetX)
                 .setTooltip(Component.translatable("config.advancement_enhancement.inventoryButtonOffsetX.tooltip"))

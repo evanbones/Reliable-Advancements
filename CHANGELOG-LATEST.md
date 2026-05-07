@@ -1,3 +1,3 @@
 ### Added
 
-- Clicking an advancement in chat will now open it in the advancement screen.
+- Added a config option to enable/disable the tooltip in the inventory button.
