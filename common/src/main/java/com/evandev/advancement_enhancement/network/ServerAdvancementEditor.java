@@ -31,6 +31,11 @@ public class ServerAdvancementEditor {
     public static void handleJsonRequest(MinecraftServer server, ServerPlayer player, RequestAdvancementJsonPayload payload) {
         if (player != null && !player.hasPermissions(2)) return;
 
+        if (payload.advancementId().toString().equals("advancement_enhancement:resync")) {
+            player.getAdvancements().reload(server.getAdvancements());
+            return;
+        }
+
         AdvancementHolder holder = server.getAdvancements().get(payload.advancementId());
         if (holder != null) {
             RegistryOps<JsonElement> ops = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
@@ -97,7 +102,7 @@ public class ServerAdvancementEditor {
                     p.connection.send(new ClientboundUpdateAdvancementsPacket(
                             false,
                             List.of(newHolder),
-                            Set.of(),
+                            Set.of(newHolder.id()),
                             pMap
                     ));
                 }

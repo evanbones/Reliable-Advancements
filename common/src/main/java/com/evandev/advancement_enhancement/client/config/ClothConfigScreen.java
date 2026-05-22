@@ -2,10 +2,15 @@ package com.evandev.advancement_enhancement.client.config;
 
 import com.evandev.advancement_enhancement.advancements.AdvancementDisplayInfo;
 import com.evandev.advancement_enhancement.config.ModConfig;
-import com.evandev.advancement_enhancement.gui.*;
+import com.evandev.advancement_enhancement.gui.EnhancedAdvancementTab;
+import com.evandev.advancement_enhancement.gui.EnhancedAdvancementTabType;
+import com.evandev.advancement_enhancement.gui.EnhancedAdvancementWidget;
 import com.evandev.advancement_enhancement.gui.button.AdvancementsScreenButton;
 import com.evandev.advancement_enhancement.gui.button.InventoryButtonStyle;
 import com.evandev.advancement_enhancement.gui.screens.EnhancedAdvancementsScreen;
+import com.evandev.advancement_enhancement.network.RequestAdvancementJsonPayload;
+import com.evandev.advancement_enhancement.platform.Services;
+import com.evandev.advancement_enhancement.reference.Constants;
 import com.evandev.advancement_enhancement.util.ColorHelper;
 import com.evandev.advancement_enhancement.util.CriteriaDetail;
 import com.evandev.advancement_enhancement.util.CriterionGrid;
@@ -14,6 +19,7 @@ import me.shedaniel.clothconfig2.api.ConfigCategory;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 
 public class ClothConfigScreen {
 
@@ -138,13 +144,30 @@ public class ClothConfigScreen {
         editing.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.advancement_enhancement.enableEditMode"), EnhancedAdvancementsScreen.enableEditMode)
                 .setDefaultValue(defaults.enableEditMode)
                 .setTooltip(Component.translatable("config.advancement_enhancement.enableEditMode.tooltip"))
-                .setSaveConsumer(newValue -> EnhancedAdvancementsScreen.enableEditMode = newValue)
+                .setSaveConsumer(newValue -> {
+                    boolean previous = EnhancedAdvancementsScreen.enableEditMode;
+                    EnhancedAdvancementsScreen.enableEditMode = newValue;
+
+                    if (previous && !newValue) {
+                        EnhancedAdvancementsScreen.clientHasFullTree = false;
+                        Services.PLATFORM.sendAdvancementJsonRequest(new RequestAdvancementJsonPayload(ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "resync"), "Resync"));
+                    } else if (!previous && newValue) {
+                        EnhancedAdvancementsScreen.clientHasFullTree = true;
+                        Services.PLATFORM.sendRequestFullTree();
+                    }
+                })
                 .build());
 
         editing.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.advancement_enhancement.showTooltipsInEditMode"), EnhancedAdvancementsScreen.showTooltipsInEditMode)
                 .setDefaultValue(defaults.showTooltipsInEditMode)
                 .setTooltip(Component.translatable("config.advancement_enhancement.showTooltipsInEditMode.tooltip"))
                 .setSaveConsumer(newValue -> EnhancedAdvancementsScreen.showTooltipsInEditMode = newValue)
+                .build());
+
+        editing.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.advancement_enhancement.showEditModeButton"), EnhancedAdvancementsScreen.showEditModeButton)
+                .setDefaultValue(defaults.showEditModeButton)
+                .setTooltip(Component.translatable("config.advancement_enhancement.showEditModeButton.tooltip"))
+                .setSaveConsumer(newValue -> EnhancedAdvancementsScreen.showEditModeButton = newValue)
                 .build());
 
         ConfigCategory visuals = builder.getOrCreateCategory(Component.translatable("config.advancement_enhancement.category.visuals"));

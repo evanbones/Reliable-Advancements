@@ -10,6 +10,7 @@ import com.evandev.advancement_enhancement.network.EditAdvancementPayload;
 import com.evandev.advancement_enhancement.network.LinkAdvancementPayload;
 import com.evandev.advancement_enhancement.network.RequestAdvancementJsonPayload;
 import com.evandev.advancement_enhancement.platform.Services;
+import com.evandev.advancement_enhancement.reference.Constants;
 import com.evandev.advancement_enhancement.reference.Resources;
 import com.evandev.advancement_enhancement.util.PersistentData;
 import com.evandev.advancement_enhancement.util.RenderUtil;
@@ -50,6 +51,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     private static final int SIDE = 30, TOP = 40, BOTTOM = 30, PADDING = 9;
     private static final float MIN_ZOOM = 0.25F, MAX_ZOOM = 2.0F, ZOOM_STEP = 0.15F;
     public static boolean enableEditMode = false;
+    public static boolean showEditModeButton = true;
     public static boolean showTooltipsInEditMode = false;
     public static int uiScaling = 100;
     public static boolean showDebugCoordinates = false;
@@ -59,6 +61,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public static EnhancedAdvancementWidget selectedWidget = null;
     public static boolean discoveryMode = false;
     public static boolean requireRewardClaiming = true;
+    public static boolean clientHasFullTree = false;
+    private static ClientAdvancements lastAdvancementsManager = null;
     private static int tabPage, maxPages;
     private static ResourceLocation savedSelectedTab = null;
     private final ClientAdvancements clientAdvancements;
@@ -67,6 +71,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public EnhancedAdvancementTab selectedTab;
     public int internalWidth;
     protected int internalHeight;
+    private boolean isInitializing = false;
+    private boolean isDirty = false;
     private float zoom = 1.0F;
     private boolean isScrolling;
     private EnhancedAdvancementWidget advConnectedToMouse = null;
@@ -79,10 +85,24 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public EnhancedAdvancementsScreen(ClientAdvancements clientAdvancements) {
         super(GameNarrator.NO_TITLE);
         this.clientAdvancements = clientAdvancements;
+
+        if (lastAdvancementsManager != clientAdvancements) {
+            lastAdvancementsManager = clientAdvancements;
+            clientHasFullTree = false;
+        }
     }
 
     public static boolean canEdit() {
         return enableEditMode && Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasPermissions(2);
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (this.isDirty) {
+            this.isDirty = false;
+            this.minecraft.setScreen(new EnhancedAdvancementsScreen(this.clientAdvancements));
+        }
     }
 
     public void centerOnAdvancement(ResourceLocation id) {
@@ -113,7 +133,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     @Override
     public boolean isPauseScreen() {
-        return !EnhancedAdvancementsScreen.canEdit();
+        return false;
     }
 
     public Map<AdvancementHolder, EnhancedAdvancementTab> getTabs() {
@@ -337,6 +357,9 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     @Override
     protected void init() {
+        this.clearWidgets();
+        this.isInitializing = true;
+
         if (this.selectedTab != null) {
             this.selectedTab.storeScroll();
             savedSelectedTab = this.selectedTab.getRootNode().holder().id();
@@ -344,9 +367,14 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         PersistentData.load();
         this.internalHeight = this.height * uiScaling / 100;
         this.internalWidth = this.width * uiScaling / 100;
-
         this.tabs.clear();
         this.selectedTab = null;
+
+        if (EnhancedAdvancementsScreen.canEdit() && !clientHasFullTree) {
+            Services.PLATFORM.sendRequestFullTree();
+            clientHasFullTree = true;
+        }
+
         this.clientAdvancements.setListener(this);
 
         if (savedSelectedTab != null) {
@@ -367,18 +395,6 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             this.selectedTab.loadScroll();
         }
 
-        if (EnhancedAdvancementsScreen.canEdit()) {
-            Services.PLATFORM.sendRequestFullTree();
-            for (AdvancementNode root : this.clientAdvancements.getTree().roots()) {
-                if (!this.tabs.containsKey(root.holder())) {
-                    this.onAddAdvancementRoot(root);
-                }
-                for (AdvancementNode child : root.children()) {
-                    addTree(child);
-                }
-            }
-        }
-
         int tabW = getTabInternalWidth();
         int tabH = getTabInternalHeight();
         int left = SIDE + (width - tabW) / 2;
@@ -387,7 +403,6 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         int bottom = tabH - SIDE + (height - tabH) / 2;
         int width = right - left;
         int height = bottom - top;
-
         int maxTabs = EnhancedAdvancementTabType.getMaxTabs(width, height);
 
         if (this.tabs.size() > maxTabs) {
@@ -396,16 +411,24 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             maxPages = this.tabs.size() / maxTabs;
             tabPage = Math.min(tabPage, maxPages);
         }
-    }
 
-    private void addTree(AdvancementNode node) {
-        EnhancedAdvancementTab tab = this.getTab(node);
-        if (tab != null && !tab.getWidgets().containsKey(node.holder())) {
-            this.onAddAdvancementTask(node);
+        if (showEditModeButton && this.minecraft.player != null && this.minecraft.player.hasPermissions(2)) {
+            int editBtnWidth = 70;
+            addRenderableWidget(Button.builder(Component.literal("Edit: " + (enableEditMode ? "ON" : "OFF")), b -> {
+                enableEditMode = !enableEditMode;
+                if (enableEditMode) {
+                    clientHasFullTree = true;
+                    Services.PLATFORM.sendRequestFullTree();
+                } else {
+                    clientHasFullTree = false;
+                    Services.PLATFORM.sendAdvancementJsonRequest(new RequestAdvancementJsonPayload(
+                            ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "resync"), "Resync"));
+                }
+                b.setMessage(Component.literal("Edit: " + (enableEditMode ? "ON" : "OFF")));
+            }).pos(this.width - editBtnWidth - 10, 10).size(editBtnWidth, 20).build());
         }
-        for (AdvancementNode child : node.children()) {
-            addTree(child);
-        }
+
+        this.isInitializing = false;
     }
 
     private boolean isDescendant(EnhancedAdvancementWidget potentialAncestor, EnhancedAdvancementWidget potentialDescendant) {
@@ -725,6 +748,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         return true;
     }
 
+    @Override
+    public void renderBackground(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    }
+
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         int tabW = getTabInternalWidth();
         int tabH = getTabInternalHeight();
@@ -737,12 +764,12 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         int maxTabs = EnhancedAdvancementTabType.getMaxTabs(width, height);
         int skip = tabPage * maxTabs;
 
-        this.renderBackground(guiGraphics, mouseX, mouseY, partialTicks);
+        super.renderBackground(guiGraphics, mouseX, mouseY, partialTicks);
+
         if (maxPages != 0) {
             Component page = Component.literal(String.format("%d / %d", tabPage + 1, maxPages + 1));
             int textWidth = this.font.width(page);
             guiGraphics.drawString(this.font, page.getVisualOrderText(), left + (tabW - textWidth) / 2 - textWidth, bottom + 8, -1);
-            super.render(guiGraphics, mouseX, mouseY, partialTicks);
         }
 
         this.renderInside(guiGraphics, mouseX, mouseY, left, top, right, bottom);
@@ -773,6 +800,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
 
         this.renderWindow(guiGraphics, left, top, right, bottom, maxTabs, skip);
+
+        super.render(guiGraphics, mouseX, mouseY, partialTicks);
 
         if (this.advConnectedToMouse == null && this.contextMenu == null) {
             this.renderToolTips(guiGraphics, mouseX, mouseY, left, top, right, bottom, maxTabs, skip);
@@ -1018,6 +1047,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
         this.tabs.clear();
         this.selectedTab = null;
+
+        if (!this.isInitializing) {
+            this.isDirty = true;
+        }
     }
 
     @Override
@@ -1026,15 +1059,15 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         if (betterAdvancementTabGui != null) {
             this.tabs.put(advancement.holder(), betterAdvancementTabGui);
             sortTabs();
-            if (advancement.holder().id().equals(savedSelectedTab)) {
-                this.selectedTab = betterAdvancementTabGui;
-                this.clientAdvancements.setSelectedTab(advancement.holder(), true);
-                this.selectedTab.loadScroll();
-            } else if (this.selectedTab == null) {
+            if (advancement.holder().id().equals(savedSelectedTab) || this.selectedTab == null) {
                 this.selectedTab = betterAdvancementTabGui;
                 this.clientAdvancements.setSelectedTab(advancement.holder(), true);
                 this.selectedTab.loadScroll();
             }
+        }
+
+        if (!this.isInitializing) {
+            this.isDirty = true;
         }
     }
 
@@ -1047,6 +1080,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             } else {
                 this.selectedTab = null;
             }
+        }
+
+        if (!this.isInitializing) {
+            this.isDirty = true;
         }
     }
 
@@ -1073,6 +1110,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
             betterAdvancementTabGui.addAdvancement(advancement);
         }
+
+        if (!this.isInitializing) {
+            this.isDirty = true;
+        }
     }
 
     @Override
@@ -1082,11 +1123,14 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             EnhancedAdvancementWidget widget = betterAdvancementTabGui.getWidget(advancement.holder());
             if (widget != null) {
                 betterAdvancementTabGui.getWidgets().remove(advancement.holder());
-
                 if (widget.getParent() != null) {
                     widget.getParent().getChildren().remove(widget);
                 }
             }
+        }
+
+        if (!this.isInitializing) {
+            this.isDirty = true;
         }
     }
 

@@ -47,6 +47,7 @@ public class ModConfig {
     // --- Editing ---
     public boolean enableEditMode = false;
     public boolean showTooltipsInEditMode = false;
+    public boolean showEditModeButton = true;
 
     // --- Visuals ---
     public boolean drawArrows = false;
@@ -117,6 +118,7 @@ public class ModConfig {
         // Editing
         EnhancedAdvancementsScreen.enableEditMode = INSTANCE.enableEditMode;
         EnhancedAdvancementsScreen.showTooltipsInEditMode = INSTANCE.showTooltipsInEditMode;
+        EnhancedAdvancementsScreen.showEditModeButton = INSTANCE.showEditModeButton;
 
         // Visuals
         EnhancedAdvancementWidget.drawArrows = INSTANCE.drawArrows;
@@ -155,6 +157,7 @@ public class ModConfig {
         // Editing
         INSTANCE.enableEditMode = EnhancedAdvancementsScreen.enableEditMode;
         INSTANCE.showTooltipsInEditMode = EnhancedAdvancementsScreen.showTooltipsInEditMode;
+        INSTANCE.showEditModeButton = EnhancedAdvancementsScreen.showEditModeButton;
 
         // Visuals
         INSTANCE.drawArrows = EnhancedAdvancementWidget.drawArrows;
