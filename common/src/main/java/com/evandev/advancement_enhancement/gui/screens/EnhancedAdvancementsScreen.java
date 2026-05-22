@@ -50,6 +50,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     private static final int SIDE = 30, TOP = 40, BOTTOM = 30, PADDING = 9;
     private static final float MIN_ZOOM = 0.25F, MAX_ZOOM = 2.0F, ZOOM_STEP = 0.15F;
     public static boolean enableEditMode = false;
+    public static boolean showTooltipsInEditMode = false;
     public static int uiScaling = 100;
     public static boolean showDebugCoordinates = false;
     public static boolean orderTabsAlphabetically = false;

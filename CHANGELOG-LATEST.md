@@ -1,3 +1,3 @@
-### Added
+### Fixed
 
-- Added a config option to enable/disable the tooltip in the inventory button.
+- Fixed progress not saving when scrolling.

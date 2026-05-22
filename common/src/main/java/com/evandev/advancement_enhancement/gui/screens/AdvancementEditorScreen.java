@@ -75,6 +75,12 @@ public class AdvancementEditorScreen extends Screen {
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         this.scrollOffset -= (int) (scrollY * 20);
         this.scrollOffset = Math.max(0, Math.min(this.scrollOffset, this.maxScroll));
+
+        if (this.activeTab != null) {
+            this.activeTab.saveState(this.draft);
+            this.activeTab.loadState(this.draft);
+        }
+
         this.init();
         return true;
     }
@@ -232,6 +238,12 @@ public class AdvancementEditorScreen extends Screen {
         double pct = (my - scrollY - thumbH / 2.0) / trackH;
         pct = Math.max(0, Math.min(pct, 1));
         this.scrollOffset = (int) (pct * this.maxScroll);
+
+        if (this.activeTab != null) {
+            this.activeTab.saveState(this.draft);
+            this.activeTab.loadState(this.draft);
+        }
+
         this.init();
     }
 

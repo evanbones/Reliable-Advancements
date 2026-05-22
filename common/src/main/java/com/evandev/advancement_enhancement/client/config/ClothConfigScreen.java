@@ -141,6 +141,12 @@ public class ClothConfigScreen {
                 .setSaveConsumer(newValue -> EnhancedAdvancementsScreen.enableEditMode = newValue)
                 .build());
 
+        editing.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.advancement_enhancement.showTooltipsInEditMode"), EnhancedAdvancementsScreen.showTooltipsInEditMode)
+                .setDefaultValue(defaults.showTooltipsInEditMode)
+                .setTooltip(Component.translatable("config.advancement_enhancement.showTooltipsInEditMode.tooltip"))
+                .setSaveConsumer(newValue -> EnhancedAdvancementsScreen.showTooltipsInEditMode = newValue)
+                .build());
+
         ConfigCategory visuals = builder.getOrCreateCategory(Component.translatable("config.advancement_enhancement.category.visuals"));
 
         visuals.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.advancement_enhancement.drawArrows"), EnhancedAdvancementWidget.drawArrows)

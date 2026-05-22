@@ -318,7 +318,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     }
 
     public void draw(GuiGraphics guiGraphics, int scrollX, int scrollY, double unzoomedX, double unzoomedY) {
-        boolean isHovered = EnhancedAdvancementsScreen.canEdit() && this.isMouseOver(scrollX, scrollY, unzoomedX, unzoomedY);
+        boolean isHovered = EnhancedAdvancementsScreen.canEdit() && !EnhancedAdvancementsScreen.showTooltipsInEditMode && this.isMouseOver(scrollX, scrollY, unzoomedX, unzoomedY);
         if (isHovered) {
             hoverAnim = Math.min(1.0f, hoverAnim + 0.15f);
         } else {
@@ -402,7 +402,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     }
 
     public void drawHover(GuiGraphics guiGraphics, int scrollX, int scrollY, int left, int top) {
-        if (EnhancedAdvancementsScreen.canEdit()) {
+        if (EnhancedAdvancementsScreen.canEdit() && !EnhancedAdvancementsScreen.showTooltipsInEditMode) {
             return;
         }
 

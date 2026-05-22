@@ -44,10 +44,11 @@
   "config.advancement_enhancement.requireRewardClaiming": "Reward Claiming",
   "config.advancement_enhancement.requireRewardClaiming.tooltip": "Advancements have to be claimed after being unlocked to get the reward.",
 
-
   "config.advancement_enhancement.category.editing": "Editing",
   "config.advancement_enhancement.enableEditMode": "Enable Edit Mode",
   "config.advancement_enhancement.enableEditMode.tooltip": "Right click advancements to edit their properties and rearrange them (Requires OP to sync).",
+  "config.advancement_enhancement.showTooltipsInEditMode": "Show Tooltips in Edit Mode",
+  "config.advancement_enhancement.showTooltipsInEditMode.tooltip": "If enabled, hovering over advancements while in edit mode will still display their title, description, and requirements.",
 
   "config.advancement_enhancement.category.visuals": "Visuals",
   "config.advancement_enhancement.drawArrows": "Draw Connection Arrows",

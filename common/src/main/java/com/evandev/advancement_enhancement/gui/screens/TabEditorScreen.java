@@ -58,6 +58,7 @@ public class TabEditorScreen extends Screen {
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         this.scrollOffset -= (int) (scrollY * 20);
         this.scrollOffset = Math.max(0, Math.min(this.scrollOffset, this.maxScroll));
+        this.saveCurrentState();
         this.init();
         return true;
     }
@@ -71,6 +72,7 @@ public class TabEditorScreen extends Screen {
         double pct = (my - scrollY - thumbH / 2.0) / trackH;
         pct = Math.max(0, Math.min(pct, 1));
         this.scrollOffset = (int) (pct * this.maxScroll);
+        this.saveCurrentState();
         this.init();
     }
 
@@ -220,21 +222,7 @@ public class TabEditorScreen extends Screen {
     }
 
     private void saveAndClose() {
-        JsonObject bTab = getBTab();
-
-        draft.rootJson.add("better_tab", bTab);
-
-        tab.customTitle = nameBox.getValue();
-        tab.customBackground = bgBox.getValue().isEmpty() ? null : ResourceLocation.parse(bgBox.getValue());
-        tab.isStaticBackground = isStaticBg;
-        try {
-            tab.bgWidth = bgWidthBox.getValue().isEmpty() ? 16 : Integer.parseInt(bgWidthBox.getValue());
-            tab.bgHeight = bgHeightBox.getValue().isEmpty() ? 16 : Integer.parseInt(bgHeightBox.getValue());
-            tab.customWidth = widthBox.getValue().isEmpty() ? 0 : Integer.parseInt(widthBox.getValue());
-            tab.customHeight = heightBox.getValue().isEmpty() ? 0 : Integer.parseInt(heightBox.getValue());
-            tab.customIndex = indexBox.getValue().isEmpty() ? 0 : Integer.parseInt(indexBox.getValue());
-        } catch (NumberFormatException ignored) {
-        }
+        this.saveCurrentState();
 
         parentScreen.sortTabs();
         PersistentData.save(parentScreen.getTabs());
@@ -268,6 +256,24 @@ public class TabEditorScreen extends Screen {
 
     @Override
     public void renderBackground(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    }
+
+    private void saveCurrentState() {
+        if (nameBox != null) {
+            JsonObject bTab = getBTab();
+            draft.rootJson.add("better_tab", bTab);
+            tab.customTitle = nameBox.getValue();
+            tab.customBackground = bgBox.getValue().isEmpty() ? null : ResourceLocation.parse(bgBox.getValue());
+            tab.isStaticBackground = isStaticBg;
+            try {
+                tab.bgWidth = bgWidthBox.getValue().isEmpty() ? 16 : Integer.parseInt(bgWidthBox.getValue());
+                tab.bgHeight = bgHeightBox.getValue().isEmpty() ? 16 : Integer.parseInt(bgHeightBox.getValue());
+                tab.customWidth = widthBox.getValue().isEmpty() ? 0 : Integer.parseInt(widthBox.getValue());
+                tab.customHeight = heightBox.getValue().isEmpty() ? 0 : Integer.parseInt(heightBox.getValue());
+                tab.customIndex = indexBox.getValue().isEmpty() ? 0 : Integer.parseInt(indexBox.getValue());
+            } catch (NumberFormatException ignored) {
+            }
+        }
     }
 
     @Override
