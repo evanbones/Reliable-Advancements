@@ -160,7 +160,7 @@ public class EnhancedAdvancementTab {
         this.root.draw(guiGraphics, this.scrollX, this.scrollY, unzoomedX, unzoomedY);
 
         for (EnhancedAdvancementWidget advancementWidget : this.widgets.values()) {
-            if (advancementWidget == EnhancedAdvancementsScreen.selectedWidget) {
+            if (EnhancedAdvancementsScreen.selectedWidgets.contains(advancementWidget)) {
                 guiGraphics.fill(advancementWidget.getX() + this.scrollX + 1, advancementWidget.getY() + this.scrollY - 2, advancementWidget.getX() + this.scrollX + 31, advancementWidget.getY() + this.scrollY + 28, 0x6600FF00);
             }
         }

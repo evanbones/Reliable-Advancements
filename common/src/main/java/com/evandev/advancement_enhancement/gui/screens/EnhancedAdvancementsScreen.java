@@ -38,12 +38,10 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancements.Listener {
+    public static final Set<EnhancedAdvancementWidget> selectedWidgets = new LinkedHashSet<>();
     private static final Component VERY_SAD_LABEL = Component.translatable("advancements.sad_label");
     private static final Component NO_ADVANCEMENTS_LABEL = Component.translatable("advancements.empty");
     private static final Component TITLE = Component.translatable("gui.advancements");
@@ -58,7 +56,6 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public static boolean orderTabsAlphabetically = false;
     public static String clipboardJson = null;
     public static ResourceLocation clipboardId = null;
-    public static EnhancedAdvancementWidget selectedWidget = null;
     public static boolean discoveryMode = false;
     public static boolean requireRewardClaiming = true;
     public static boolean clientHasFullTree = false;
@@ -413,8 +410,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
 
         if (showEditModeButton && this.minecraft.player != null && this.minecraft.player.hasPermissions(2)) {
-            int editBtnWidth = 70;
-            addRenderableWidget(Button.builder(Component.literal("Edit: " + (enableEditMode ? "ON" : "OFF")), b -> {
+            int editBtnWidth = 80;
+            addRenderableWidget(Button.builder(Component.literal("Edit Mode: " + (enableEditMode ? "ON" : "OFF")), b -> {
                 enableEditMode = !enableEditMode;
                 if (enableEditMode) {
                     clientHasFullTree = true;
@@ -425,7 +422,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                             ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "resync"), "Resync"));
                 }
                 b.setMessage(Component.literal("Edit: " + (enableEditMode ? "ON" : "OFF")));
-            }).pos(this.width - editBtnWidth - 10, 10).size(editBtnWidth, 20).build());
+            }).pos(this.width - editBtnWidth - 30, 10).size(editBtnWidth, 20).build());
         }
 
         this.isInitializing = false;
@@ -444,12 +441,23 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         if (EnhancedAdvancementsScreen.canEdit() && button == 0 && this.contextMenu == null) {
             EnhancedAdvancementWidget hovered = getHoveredWidget(mouseX, mouseY);
             if (hovered != null) {
-                selectedWidget = hovered;
+                if (Screen.hasShiftDown() || Screen.hasControlDown()) {
+                    if (selectedWidgets.contains(hovered)) {
+                        selectedWidgets.remove(hovered);
+                    } else {
+                        selectedWidgets.add(hovered);
+                    }
+                } else {
+                    if (!selectedWidgets.contains(hovered)) {
+                        selectedWidgets.clear();
+                        selectedWidgets.add(hovered);
+                    }
+                }
             } else {
                 int left = SIDE + (width - getTabInternalWidth()) / 2;
                 int top = TOP + (height - getTabInternalHeight()) / 2;
                 if (mouseX >= left && mouseX <= left + getTabInternalWidth() && mouseY >= top && mouseY <= top + getTabInternalHeight()) {
-                    selectedWidget = null;
+                    selectedWidgets.clear();
                 }
             }
         }
@@ -591,26 +599,21 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         if (this.contextMenu != null) this.contextMenu = null;
 
         if (EnhancedAdvancementsScreen.canEdit()) {
-            if (selectedWidget != null) {
+            if (!selectedWidgets.isEmpty()) {
                 int shift = Screen.hasShiftDown() ? 4 : 1;
-                boolean moved = false;
-                if (keyCode == 265) { // Up
-                    selectedWidget.setY(selectedWidget.getY() - shift);
-                    moved = true;
-                } else if (keyCode == 264) { // Down
-                    selectedWidget.setY(selectedWidget.getY() + shift);
-                    moved = true;
-                } else if (keyCode == 263) { // Left
-                    selectedWidget.setX(selectedWidget.getX() - shift);
-                    moved = true;
-                } else if (keyCode == 262) { // Right
-                    selectedWidget.setX(selectedWidget.getX() + shift);
-                    moved = true;
-                }
+                int dx = 0, dy = 0;
+                if (keyCode == 265) dy = -shift; // Up
+                else if (keyCode == 264) dy = shift; // Down
+                else if (keyCode == 263) dx = -shift; // Left
+                else if (keyCode == 262) dx = shift; // Right
 
-                if (moved) {
-                    Services.PLATFORM.getEventHelper().postAdvancementMovementEvent(selectedWidget);
-                    PersistentData.setMemoryPosition(selectedWidget.getAdvancement().holder().id(), selectedWidget.getX(), selectedWidget.getY());
+                if (dx != 0 || dy != 0) {
+                    for (EnhancedAdvancementWidget w : selectedWidgets) {
+                        w.setX(w.getX() + dx);
+                        w.setY(w.getY() + dy);
+                        Services.PLATFORM.getEventHelper().postAdvancementMovementEvent(w);
+                        PersistentData.setMemoryPosition(w.getAdvancement().holder().id(), w.getX(), w.getY());
+                    }
                     PersistentData.save(this.tabs);
                     return true;
                 }
@@ -619,7 +622,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             if (Screen.hasControlDown() && keyCode == 67) { // C
                 double mouseX = this.minecraft.mouseHandler.xpos() * (double) this.width / (double) this.minecraft.getWindow().getScreenWidth();
                 double mouseY = this.minecraft.mouseHandler.ypos() * (double) this.height / (double) this.minecraft.getWindow().getScreenHeight();
-                EnhancedAdvancementWidget target = selectedWidget;
+                EnhancedAdvancementWidget target = selectedWidgets.size() == 1 ? selectedWidgets.iterator().next() : null;
                 if (target == null) target = getHoveredWidget(mouseX, mouseY);
                 if (target != null) {
                     copyAdvancement(target);
@@ -633,7 +636,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             } else if (keyCode == 261 || keyCode == 259) { // Delete / backspace
                 double mouseX = this.minecraft.mouseHandler.xpos() * (double) this.width / (double) this.minecraft.getWindow().getScreenWidth();
                 double mouseY = this.minecraft.mouseHandler.ypos() * (double) this.height / (double) this.minecraft.getWindow().getScreenHeight();
-                EnhancedAdvancementWidget target = selectedWidget;
+                EnhancedAdvancementWidget target = selectedWidgets.size() == 1 ? selectedWidgets.iterator().next() : null;
                 if (target == null) target = getHoveredWidget(mouseX, mouseY);
                 if (target != null) {
                     deleteAdvancement(target);
@@ -654,8 +657,15 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (this.advConnectedToMouse != null) {
-            Services.PLATFORM.getEventHelper().postAdvancementMovementEvent(this.advConnectedToMouse);
-            PersistentData.setMemoryPosition(this.advConnectedToMouse.getAdvancement().holder().id(), this.advConnectedToMouse.getX(), this.advConnectedToMouse.getY());
+            if (selectedWidgets.contains(this.advConnectedToMouse)) {
+                for (EnhancedAdvancementWidget w : selectedWidgets) {
+                    Services.PLATFORM.getEventHelper().postAdvancementMovementEvent(w);
+                    PersistentData.setMemoryPosition(w.getAdvancement().holder().id(), w.getX(), w.getY());
+                }
+            } else {
+                Services.PLATFORM.getEventHelper().postAdvancementMovementEvent(this.advConnectedToMouse);
+                PersistentData.setMemoryPosition(this.advConnectedToMouse.getAdvancement().holder().id(), this.advConnectedToMouse.getX(), this.advConnectedToMouse.getY());
+            }
             this.advConnectedToMouse = null;
             if (EnhancedAdvancementsScreen.canEdit()) {
                 PersistentData.save(this.tabs);
@@ -728,8 +738,20 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     newPosY = 4 * Math.round((float) newPosY / 4);
                 }
 
-                this.advConnectedToMouse.setX(newPosX);
-                this.advConnectedToMouse.setY(newPosY);
+                int deltaX = newPosX - this.advConnectedToMouse.getX();
+                int deltaY = newPosY - this.advConnectedToMouse.getY();
+
+                if (deltaX != 0 || deltaY != 0) {
+                    if (selectedWidgets.contains(this.advConnectedToMouse)) {
+                        for (EnhancedAdvancementWidget w : selectedWidgets) {
+                            w.setX(w.getX() + deltaX);
+                            w.setY(w.getY() + deltaY);
+                        }
+                    } else {
+                        this.advConnectedToMouse.setX(newPosX);
+                        this.advConnectedToMouse.setY(newPosY);
+                    }
+                }
             }
         } else {
             if (this.advConnectedToMouse != null) {
@@ -780,10 +802,13 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
         if (EnhancedAdvancementsScreen.canEdit() && this.selectedTab != null) {
             if (this.advConnectedToMouse != null) {
-                int ax = this.advConnectedToMouse.getX() + this.selectedTab.scrollX;
-                int ay = this.advConnectedToMouse.getY() + this.selectedTab.scrollY;
-                guiGraphics.renderOutline(ax + 2, ay - 1, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 2, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 2, 0xFF00FF00);
-                guiGraphics.renderOutline(ax + 1, ay - 2, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 4, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 4, 0xFF00FF00);
+                java.util.Set<EnhancedAdvancementWidget> draggingWidgets = selectedWidgets.contains(this.advConnectedToMouse) ? selectedWidgets : java.util.Set.of(this.advConnectedToMouse);
+                for (EnhancedAdvancementWidget w : draggingWidgets) {
+                    int ax = w.getX() + this.selectedTab.scrollX;
+                    int ay = w.getY() + this.selectedTab.scrollY;
+                    guiGraphics.renderOutline(ax + 2, ay - 1, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 2, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 2, 0xFF00FF00);
+                    guiGraphics.renderOutline(ax + 1, ay - 2, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 4, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 4, 0xFF00FF00);
+                }
             }
         }
         guiGraphics.pose().popPose();
