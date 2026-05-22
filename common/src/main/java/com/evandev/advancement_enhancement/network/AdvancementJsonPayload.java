@@ -14,7 +14,7 @@ public record AdvancementJsonPayload(ResourceLocation advancementId, String json
 
     public static final StreamCodec<RegistryFriendlyByteBuf, AdvancementJsonPayload> STREAM_CODEC = StreamCodec.composite(
             ResourceLocation.STREAM_CODEC, AdvancementJsonPayload::advancementId,
-            ByteBufCodecs.STRING_UTF8, AdvancementJsonPayload::jsonPayload,
+            ByteBufCodecs.stringUtf8(1048576), AdvancementJsonPayload::jsonPayload,
             ByteBufCodecs.STRING_UTF8, AdvancementJsonPayload::initialTab,
             AdvancementJsonPayload::new
     );

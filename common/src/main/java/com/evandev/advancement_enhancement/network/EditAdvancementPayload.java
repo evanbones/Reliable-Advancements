@@ -13,7 +13,7 @@ public record EditAdvancementPayload(ResourceLocation advancementId, String json
 
     public static final StreamCodec<RegistryFriendlyByteBuf, EditAdvancementPayload> STREAM_CODEC = StreamCodec.composite(
             ResourceLocation.STREAM_CODEC, EditAdvancementPayload::advancementId,
-            ByteBufCodecs.STRING_UTF8, EditAdvancementPayload::jsonPayload,
+            ByteBufCodecs.stringUtf8(1048576), EditAdvancementPayload::jsonPayload,
             ByteBufCodecs.BOOL, EditAdvancementPayload::isDelete,
             EditAdvancementPayload::new
     );

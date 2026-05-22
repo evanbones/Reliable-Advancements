@@ -95,17 +95,7 @@ public class ServerAdvancementEditor {
                 tree.addAll(map.values());
                 manager.setTree(tree);
 
-                for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-                    AdvancementProgress prog = p.getAdvancements().getOrStartProgress(newHolder);
-                    Map<ResourceLocation, AdvancementProgress> pMap = prog.hasProgress() ? Map.of(newHolder.id(), prog) : Map.of();
-
-                    p.connection.send(new ClientboundUpdateAdvancementsPacket(
-                            false,
-                            List.of(newHolder),
-                            Set.of(newHolder.id()),
-                            pMap
-                    ));
-                }
+                sendFullTreeToAll(server);
             }
         } catch (Exception e) {
             Constants.LOG.error("Failed to save and persist advancement edit", e);

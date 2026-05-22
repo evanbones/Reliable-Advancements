@@ -8,3 +8,4 @@
 
 - Fixed progress resetting when scrolling.
 - Fixed certain advancement edits not taking effect until the screen is reloaded.
+- Fixed networking crash with large advancement sizes.
