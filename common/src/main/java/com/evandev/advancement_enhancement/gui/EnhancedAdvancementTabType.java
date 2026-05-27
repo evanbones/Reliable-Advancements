@@ -1,5 +1,6 @@
 package com.evandev.advancement_enhancement.gui;
 
+import com.evandev.advancement_enhancement.config.ModConfig;
 import com.evandev.advancement_enhancement.reference.Resources;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.advancements.AdvancementTabType;
@@ -15,7 +16,6 @@ public class EnhancedAdvancementTabType {
     // Below is not included in all as we will not be using it to leave space for pagination
     public static final List<EnhancedAdvancementTabType> ALL = List.of(ABOVE, RIGHT, LEFT);
 
-    public static boolean onlyUseAbove = false;
     private final int textureX;
     private final int textureY;
     private final int width;
@@ -49,7 +49,7 @@ public class EnhancedAdvancementTabType {
     }
 
     public static int getMaxTabs(int width, int height) {
-        if (onlyUseAbove) {
+        if (ModConfig.get().onlyUseAboveAdvancementTabs) {
             return ABOVE.getMax(width, height);
         }
 

@@ -1,6 +1,7 @@
 package com.evandev.advancement_enhancement.gui.screens;
 
 import com.evandev.advancement_enhancement.client.ClientRewardTracker;
+import com.evandev.advancement_enhancement.config.ModConfig;
 import com.evandev.advancement_enhancement.gui.AdvancementContextMenu;
 import com.evandev.advancement_enhancement.gui.EnhancedAdvancementTab;
 import com.evandev.advancement_enhancement.gui.EnhancedAdvancementTabType;
@@ -48,16 +49,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     private static final int WIDTH = 252, HEIGHT = 140, CORNER_SIZE = 30;
     private static final int SIDE = 30, TOP = 40, BOTTOM = 30, PADDING = 9;
     private static final float MIN_ZOOM = 0.25F, MAX_ZOOM = 2.0F, ZOOM_STEP = 0.15F;
-    public static boolean enableEditMode = false;
-    public static boolean showEditModeButton = true;
-    public static boolean showTooltipsInEditMode = false;
-    public static int uiScaling = 100;
-    public static boolean showDebugCoordinates = false;
-    public static boolean orderTabsAlphabetically = false;
     public static String clipboardJson = null;
     public static ResourceLocation clipboardId = null;
-    public static boolean discoveryMode = false;
-    public static boolean requireRewardClaiming = true;
     public static boolean clientHasFullTree = false;
     private static ClientAdvancements lastAdvancementsManager = null;
     private static int tabPage, maxPages;
@@ -90,7 +83,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     public static boolean canEdit() {
-        return enableEditMode && Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasPermissions(2);
+        return ModConfig.get().enableEditMode && Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasPermissions(2);
     }
 
     @Override
@@ -148,7 +141,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public void sortTabs() {
         List<Map.Entry<AdvancementHolder, EnhancedAdvancementTab>> list = new ArrayList<>(this.tabs.entrySet());
         list.sort(Comparator.comparingInt((Map.Entry<AdvancementHolder, EnhancedAdvancementTab> e) -> e.getValue().customIndex)
-                .thenComparing(e -> orderTabsAlphabetically ? e.getValue().getTitle().getString() : ""));
+                .thenComparing(e -> ModConfig.get().orderTabsAlphabetically ? e.getValue().getTitle().getString() : ""));
         this.tabs.clear();
         int newIndex = 0;
         int tabW = getTabInternalWidth();
@@ -362,8 +355,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             savedSelectedTab = this.selectedTab.getRootNode().holder().id();
         }
         PersistentData.load();
-        this.internalHeight = this.height * uiScaling / 100;
-        this.internalWidth = this.width * uiScaling / 100;
+        this.internalHeight = this.height * ModConfig.get().uiScaling / 100;
+        this.internalWidth = this.width * ModConfig.get().uiScaling / 100;
         this.tabs.clear();
         this.selectedTab = null;
 
@@ -409,11 +402,11 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             tabPage = Math.min(tabPage, maxPages);
         }
 
-        if (showEditModeButton && this.minecraft.player != null && this.minecraft.player.hasPermissions(2)) {
+        if (ModConfig.get().showEditModeButton && this.minecraft.player != null && this.minecraft.player.hasPermissions(2)) {
             int editBtnWidth = 80;
-            addRenderableWidget(Button.builder(Component.literal("Edit Mode: " + (enableEditMode ? "ON" : "OFF")), b -> {
-                enableEditMode = !enableEditMode;
-                if (enableEditMode) {
+            addRenderableWidget(Button.builder(Component.literal("Edit Mode: " + (ModConfig.get().enableEditMode ? "ON" : "OFF")), b -> {
+                ModConfig.get().enableEditMode = !ModConfig.get().enableEditMode;
+                if (ModConfig.get().enableEditMode) {
                     clientHasFullTree = true;
                     Services.PLATFORM.sendRequestFullTree();
                 } else {
@@ -421,7 +414,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     Services.PLATFORM.sendAdvancementJsonRequest(new RequestAdvancementJsonPayload(
                             ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "resync"), "Resync"));
                 }
-                b.setMessage(Component.literal("Edit: " + (enableEditMode ? "ON" : "OFF")));
+                b.setMessage(Component.literal("Edit: " + (ModConfig.get().enableEditMode ? "ON" : "OFF")));
             }).pos(this.width - editBtnWidth - 30, 10).size(editBtnWidth, 20).build());
         }
 
@@ -513,7 +506,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         if (button == 0) {
             if (this.selectedTab != null && !EnhancedAdvancementsScreen.canEdit()) {
                 EnhancedAdvancementWidget hovered = getHoveredWidget(mouseX, mouseY);
-                if (hovered != null && EnhancedAdvancementsScreen.requireRewardClaiming) {
+                if (hovered != null && ModConfig.get().requireRewardClaiming) {
                     boolean isCompleted = hovered.advancementProgress != null && hovered.advancementProgress.isDone();
                     boolean isClaimed = ClientRewardTracker.isClaimed(hovered.getAdvancement().holder().id());
 
@@ -910,7 +903,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             guiGraphics.pose().popPose();
         }
 
-        if (EnhancedAdvancementsScreen.showDebugCoordinates && this.selectedTab != null && mouseX < getTabInternalWidth() - SIDE - PADDING && mouseX > SIDE + PADDING && mouseY < getTabInternalHeight() - top + 1 && mouseY > top + PADDING * 2) {
+        if (ModConfig.get().showDebugCoordinates && this.selectedTab != null && mouseX < getTabInternalWidth() - SIDE - PADDING && mouseX > SIDE + PADDING && mouseY < getTabInternalHeight() - top + 1 && mouseY > top + PADDING * 2) {
             if (this.advConnectedToMouse != null) {
                 int currentX = (int) ((this.advConnectedToMouse.getX() + this.selectedTab.scrollX + 4) * zoom) + left + PADDING;
                 int currentY = (int) ((this.advConnectedToMouse.getY() + this.selectedTab.scrollY) * zoom) + top + 2 * PADDING - font.lineHeight + 1;

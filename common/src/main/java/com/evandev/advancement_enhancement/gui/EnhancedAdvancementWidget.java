@@ -1,9 +1,10 @@
 package com.evandev.advancement_enhancement.gui;
 
-import com.evandev.advancement_enhancement.client.ClientRewardTracker;
 import com.evandev.advancement_enhancement.advancements.AdvancementDisplayInfo;
 import com.evandev.advancement_enhancement.api.IAdvancementEntryGui;
 import com.evandev.advancement_enhancement.api.event.IAdvancementDrawConnectionsEvent;
+import com.evandev.advancement_enhancement.client.ClientRewardTracker;
+import com.evandev.advancement_enhancement.config.ModConfig;
 import com.evandev.advancement_enhancement.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.advancement_enhancement.platform.Services;
 import com.evandev.advancement_enhancement.reference.Resources;
@@ -39,7 +40,6 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     private static final int WIDGET_HEIGHT = 26;
     private static final int TITLE_SIZE = 32;
     private static final int ICON_SIZE = 26;
-    public static boolean drawArrows = false;
     public final AdvancementDisplayInfo enhancedDisplayInfo;
     private final EnhancedAdvancementTab advancementTabGui;
     private final AdvancementNode advancementNode;
@@ -47,12 +47,12 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     private final String title;
     private final Minecraft minecraft;
     private final List<EnhancedAdvancementWidget> children = Lists.newArrayList();
+    public AdvancementProgress advancementProgress;
     protected int x, y;
     private int width;
     private List<FormattedCharSequence> description;
     private CriterionGrid criterionGrid;
     private EnhancedAdvancementWidget parent;
-    public AdvancementProgress advancementProgress;
     private float hoverAnim = 0.0f;
 
     public EnhancedAdvancementWidget(EnhancedAdvancementTab advancementTabGui, Minecraft mc, AdvancementNode advancementNode, DisplayInfo displayInfo) {
@@ -84,7 +84,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         this.criterionGrid = CriterionGrid.findOptimalCriterionGrid(this.advancementNode.holder(), this.advancementNode.advancement(), advancementProgress, screen.width / 2, mc.font);
         int maxWidth;
 
-        if (!CriterionGrid.requiresShift || Screen.hasShiftDown()) {
+        if (!ModConfig.get().requiresShift || Screen.hasShiftDown()) {
             maxWidth = Math.max(titleWidth, this.criterionGrid.width);
         } else {
             maxWidth = titleWidth;
@@ -137,11 +137,11 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         if (this.advancementProgress != null && this.advancementProgress.isDone()) return true;
         if (this.displayInfo.isHidden()) return false;
 
-        if (EnhancedAdvancementsScreen.discoveryMode) {
+        if (ModConfig.get().discoveryMode) {
             if (this.parent == null) return true;
             boolean parentCompleted = this.parent.advancementProgress != null && this.parent.advancementProgress.isDone();
 
-            boolean parentClaimed = !EnhancedAdvancementsScreen.requireRewardClaiming || ClientRewardTracker.isClaimed(this.parent.getAdvancement().holder().id());
+            boolean parentClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(this.parent.getAdvancement().holder().id());
 
             return parentCompleted && parentClaimed;
         }
@@ -176,15 +176,15 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
      */
     public void drawConnection(GuiGraphics guiGraphics, EnhancedAdvancementWidget parent, int scrollX, int scrollY, boolean drawInside) {
         boolean parentCompleted = parent.advancementProgress != null && parent.advancementProgress.isDone();
-        boolean parentClaimed = !EnhancedAdvancementsScreen.requireRewardClaiming || ClientRewardTracker.isClaimed(parent.getAdvancement().holder().id());
+        boolean parentClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(parent.getAdvancement().holder().id());
 
         boolean thisCompleted = this.advancementProgress != null && this.advancementProgress.isDone();
-        boolean thisClaimed = !EnhancedAdvancementsScreen.requireRewardClaiming || ClientRewardTracker.isClaimed(this.advancementNode.holder().id());
+        boolean thisClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(this.advancementNode.holder().id());
 
         int innerLineColor;
         int borderLineColor = 0xFF000000;
 
-        if (EnhancedAdvancementsScreen.requireRewardClaiming) {
+        if (ModConfig.get().requireRewardClaiming) {
             if (parentClaimed) {
                 if (thisClaimed) {
                     innerLineColor = enhancedDisplayInfo.getCompletedLineColor();
@@ -214,7 +214,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                 }
 
                 // Angled Arrow Logic
-                if (drawArrows && !drawInside) {
+                if (ModConfig.get().drawArrows && !drawInside) {
                     float dx = x1 - x2;
                     float dy = y1 - y2;
                     float distance = (float) Math.sqrt(dx * dx + dy * dy);
@@ -271,7 +271,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                 boolean showArrow = (verticalAnchors ? diffY : diffX) > 15;
 
                 // Orthogonal Direct Line Arrows
-                if (!drawInside && showArrow && drawArrows) {
+                if (!drawInside && showArrow && ModConfig.get().drawArrows) {
                     int edgeDistanceX = ADVANCEMENT_SIZE / 2 + 3;
                     int edgeDistanceY = ADVANCEMENT_SIZE / 2 + 3;
                     if (this.displayInfo.getType() == net.minecraft.advancements.AdvancementType.GOAL) {
@@ -304,8 +304,8 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                 guiGraphics.vLine(endXHalf, endY, startY, innerLineColor);
 
                 // Vanilla Line Arrows
-                if (drawArrows) {
-                    int edgeDistanceX = ADVANCEMENT_SIZE / 2 + 3; // +3 to push outside the widget
+                if (ModConfig.get().drawArrows) {
+                    int edgeDistanceX = ADVANCEMENT_SIZE / 2 + 3;
                     int edgeDistanceY = ADVANCEMENT_SIZE / 2 + 3;
                     if (this.displayInfo.getType() == net.minecraft.advancements.AdvancementType.GOAL) {
                         edgeDistanceX += 2;
@@ -318,7 +318,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     }
 
     public void draw(GuiGraphics guiGraphics, int scrollX, int scrollY, double unzoomedX, double unzoomedY) {
-        boolean isHovered = EnhancedAdvancementsScreen.canEdit() && !EnhancedAdvancementsScreen.showTooltipsInEditMode && this.isMouseOver(scrollX, scrollY, unzoomedX, unzoomedY);
+        boolean isHovered = EnhancedAdvancementsScreen.canEdit() && !ModConfig.get().showTooltipsInEditMode && this.isMouseOver(scrollX, scrollY, unzoomedX, unzoomedY);
         if (isHovered) {
             hoverAnim = Math.min(1.0f, hoverAnim + 0.15f);
         } else {
@@ -327,12 +327,12 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
 
         if (this.shouldRender()) {
             boolean isCompleted = this.advancementProgress != null && this.advancementProgress.isDone();
-            boolean isClaimed = !EnhancedAdvancementsScreen.requireRewardClaiming || ClientRewardTracker.isClaimed(this.advancementNode.holder().id());
+            boolean isClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(this.advancementNode.holder().id());
 
             AdvancementWidgetType advancementState;
             boolean isDimmed = false;
 
-            if (EnhancedAdvancementsScreen.requireRewardClaiming) {
+            if (ModConfig.get().requireRewardClaiming) {
                 if (isCompleted && !isClaimed) {
                     advancementState = AdvancementWidgetType.OBTAINED;
                 } else if (isCompleted && isClaimed) {
@@ -402,7 +402,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     }
 
     public void drawHover(GuiGraphics guiGraphics, int scrollX, int scrollY, int left, int top) {
-        if (EnhancedAdvancementsScreen.canEdit() && !EnhancedAdvancementsScreen.showTooltipsInEditMode) {
+        if (EnhancedAdvancementsScreen.canEdit() && !ModConfig.get().showTooltipsInEditMode) {
             return;
         }
 
@@ -412,7 +412,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         int i = s == null ? 0 : this.minecraft.font.width(s);
         boolean drawTop;
 
-        if (!CriterionGrid.requiresShift || Screen.hasShiftDown()) {
+        if (!ModConfig.get().requiresShift || Screen.hasShiftDown()) {
             if (this.criterionGrid.height < this.advancementTabGui.getScreen().height) {
                 drawTop = top + scrollY + this.y + this.description.size() * this.minecraft.font.lineHeight + this.criterionGrid.height + 50 >= this.advancementTabGui.getScreen().height;
             } else {
@@ -462,7 +462,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         }
         int boxHeight;
 
-        if (!CriterionGrid.requiresShift || Screen.hasShiftDown()) {
+        if (!ModConfig.get().requiresShift || Screen.hasShiftDown()) {
             boxHeight = TITLE_SIZE + this.description.size() * this.minecraft.font.lineHeight + this.criterionGrid.height;
         } else {
             boxHeight = TITLE_SIZE + this.description.size() * this.minecraft.font.lineHeight;
@@ -519,7 +519,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         for (int k1 = 0; k1 < this.description.size(); ++k1) {
             guiGraphics.drawString(this.minecraft.font, this.description.get(k1), drawX + 5, yOffset + k1 * this.minecraft.font.lineHeight, -5592406, false);
         }
-        if (this.criterionGrid != null && !CriterionGrid.requiresShift || Screen.hasShiftDown()) {
+        if (this.criterionGrid != null && !ModConfig.get().requiresShift || Screen.hasShiftDown()) {
             int xOffset = drawX + 5;
             yOffset += this.description.size() * this.minecraft.font.lineHeight;
             for (int colIndex = 0; colIndex < this.criterionGrid.columns.size(); colIndex++) {

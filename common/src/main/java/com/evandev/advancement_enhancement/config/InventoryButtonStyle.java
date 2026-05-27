@@ -1,4 +1,4 @@
-package com.evandev.advancement_enhancement.gui.button;
+package com.evandev.advancement_enhancement.config;
 
 public enum InventoryButtonStyle {
     TAB,

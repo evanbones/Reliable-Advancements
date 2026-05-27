@@ -1,5 +1,7 @@
 package com.evandev.advancement_enhancement.gui.button;
 
+import com.evandev.advancement_enhancement.config.InventoryButtonStyle;
+import com.evandev.advancement_enhancement.config.ModConfig;
 import com.evandev.advancement_enhancement.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.advancement_enhancement.reference.Resources;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -15,24 +17,32 @@ import net.minecraft.world.item.Items;
 import org.jetbrains.annotations.NotNull;
 
 public class AdvancementsScreenButton extends AbstractButton {
-    public static boolean addToInventory = true;
-    public static boolean enableButtonTooltip = false;
-    public static InventoryButtonStyle style = InventoryButtonStyle.BUTTON;
-    public static int offsetX = 0;
-    public static int offsetY = 0;
-
-    public static String customTexture = "advancement_enhancement:textures/gui/inventory_button.png";
-    public static String customTextureHovered = "advancement_enhancement:textures/gui/inventory_button_highlighted.png";
-    public static String customIcon = "";
-
     public AdvancementsScreenButton(int x, int y, Component buttonText) {
         super(
-                style == InventoryButtonStyle.BUTTON ? x + offsetX : x - 28 + offsetX,
-                style == InventoryButtonStyle.BUTTON ? y + offsetY : y - 28 + offsetY,
-                style == InventoryButtonStyle.BUTTON ? 20 : 28,
-                style == InventoryButtonStyle.BUTTON ? 18 : 32,
+                calculateX(x),
+                calculateY(y),
+                calculateWidth(),
+                calculateHeight(),
                 buttonText
         );
+    }
+
+    private static int calculateX(int x) {
+        var config = ModConfig.get();
+        return ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON ? x + config.inventoryButtonOffsetX : x - 28 + config.inventoryButtonOffsetX;
+    }
+
+    private static int calculateY(int y) {
+        var config = ModConfig.get();
+        return ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON ? y + config.inventoryButtonOffsetY : y - 28 + config.inventoryButtonOffsetY;
+    }
+
+    private static int calculateWidth() {
+        return ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON ? 20 : 28;
+    }
+
+    private static int calculateHeight() {
+        return ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON ? 18 : 32;
     }
 
     @Override
@@ -42,12 +52,12 @@ public class AdvancementsScreenButton extends AbstractButton {
         Minecraft mc = Minecraft.getInstance();
         this.isHovered = mouseX >= this.getX() && mouseY >= this.getY() && mouseX < this.getX() + this.getWidth() && mouseY < this.getY() + this.getHeight();
 
-        if (style == InventoryButtonStyle.BUTTON) {
-            if (customTexture == null || customTexture.isEmpty()) {
+        if (ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON) {
+            if (ModConfig.get().customInventoryButtonTexture == null || ModConfig.get().customInventoryButtonTexture.isEmpty()) {
                 ResourceLocation sprite = this.isHovered ? ResourceLocation.withDefaultNamespace("widget/button_highlighted") : ResourceLocation.withDefaultNamespace("widget/button");
                 guiGraphics.blitSprite(sprite, this.getX(), this.getY(), this.getWidth(), this.getHeight());
             } else {
-                String texToUse = (this.isHovered && customTextureHovered != null && !customTextureHovered.isEmpty()) ? customTextureHovered : customTexture;
+                String texToUse = (this.isHovered && ModConfig.get().customInventoryButtonTextureHovered != null && !ModConfig.get().customInventoryButtonTextureHovered.isEmpty()) ? ModConfig.get().customInventoryButtonTextureHovered : ModConfig.get().customInventoryButtonTexture;
                 ResourceLocation tex = ResourceLocation.parse(texToUse);
 
                 RenderSystem.enableBlend();
@@ -58,7 +68,7 @@ public class AdvancementsScreenButton extends AbstractButton {
                 RenderSystem.disableBlend();
             }
 
-            if (customIcon != null && !customIcon.isEmpty()) {
+            if (ModConfig.get().customInventoryButtonIcon != null && !ModConfig.get().customInventoryButtonIcon.isEmpty()) {
                 guiGraphics.renderFakeItem(getIconStack(), this.getX() + 2, this.getY() + 1);
             }
         } else {
@@ -67,15 +77,16 @@ public class AdvancementsScreenButton extends AbstractButton {
             guiGraphics.renderFakeItem(getIconStack(), this.getX() + 6, this.getY() + 10);
         }
 
-        if (this.isHovered && enableButtonTooltip) {
+        if (this.isHovered && ModConfig.get().enableButtonTooltip) {
             guiGraphics.renderTooltip(mc.font, Component.translatable("gui.advancements"), mouseX, mouseY);
         }
     }
 
     private ItemStack getIconStack() {
-        if (customIcon == null || customIcon.isEmpty()) return ItemStack.EMPTY;
+        if (ModConfig.get().customInventoryButtonIcon == null || ModConfig.get().customInventoryButtonIcon.isEmpty())
+            return ItemStack.EMPTY;
         try {
-            return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(customIcon)));
+            return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(ModConfig.get().customInventoryButtonIcon)));
         } catch (Exception e) {
             return new ItemStack(Items.BOOK);
         }

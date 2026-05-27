@@ -1,6 +1,7 @@
 package com.evandev.advancement_enhancement.advancements;
 
 import com.evandev.advancement_enhancement.api.IDisplayInfo;
+import com.evandev.advancement_enhancement.config.ModConfig;
 import com.evandev.advancement_enhancement.util.ColorHelper;
 import com.google.gson.JsonObject;
 import net.minecraft.advancements.Advancement;
@@ -13,18 +14,10 @@ public class AdvancementDisplayInfo implements IDisplayInfo {
     public static final String defaultMinecraftCompletedIconColor = "#DBA213", defaultMinecraftUncompletedIconColor = "#FFFFFF";
     public static final String defaultMinecraftCompletedTitleColor = "#DBA213", defaultMinecraftUncompletedTitleColor = "#0489C1";
     private static final int minecraftCompletedIconColor = ColorHelper.RGB(defaultMinecraftCompletedIconColor);
-    public static int defaultCompletedIconColor = minecraftCompletedIconColor;
     private static final int minecraftUncompletedIconColor = ColorHelper.RGB(defaultMinecraftUncompletedIconColor);
     private static final int minecraftCompletedTitleColor = ColorHelper.RGB(defaultMinecraftCompletedTitleColor);
-    public static int defaultCompletedTitleColor = minecraftCompletedTitleColor;
     private static final int minecraftUncompletedTitleColor = ColorHelper.RGB(defaultMinecraftUncompletedTitleColor);
     private static final int WHITE = ColorHelper.RGB(1F, 1F, 1F);
-    public static int defaultUncompletedIconColor = minecraftUncompletedIconColor;
-    public static int defaultUncompletedTitleColor = minecraftUncompletedTitleColor;
-    public static boolean defaultDrawDirectLines = false;
-    public static int defaultCompletedLineColor = ColorHelper.RGB("#FFFFFF");
-    public static int defaultUncompletedLineColor = ColorHelper.RGB("#FFFFFF");
-    public static boolean defaultHideLines = false;
     private ResourceLocation id;
     private int completedIconColor, unCompletedIconColor;
     private int completedTitleColor, unCompletedTitleColor;
@@ -62,16 +55,16 @@ public class AdvancementDisplayInfo implements IDisplayInfo {
     }
 
     private void defaults() {
-        this.completedIconColor = defaultCompletedIconColor;
-        this.completedTitleColor = defaultCompletedTitleColor;
-        this.unCompletedIconColor = defaultUncompletedIconColor;
-        this.unCompletedTitleColor = defaultUncompletedTitleColor;
-        this.drawDirectLines = defaultDrawDirectLines;
-        this.unCompletedLineColor = defaultUncompletedLineColor;
-        this.completedLineColor = defaultCompletedLineColor;
+        this.completedIconColor = ColorHelper.RGB(ModConfig.get().defaultCompletedIconColor);
+        this.completedTitleColor = ColorHelper.RGB(ModConfig.get().defaultCompletedTitleColor);
+        this.unCompletedIconColor = ColorHelper.RGB(ModConfig.get().defaultUncompletedIconColor);
+        this.unCompletedTitleColor = ColorHelper.RGB(ModConfig.get().defaultUncompletedTitleColor);
+        this.drawDirectLines = ModConfig.get().defaultDrawDirectLines;
+        this.unCompletedLineColor = ColorHelper.RGB(ModConfig.get().defaultUncompletedLineColor);
+        this.completedLineColor = ColorHelper.RGB(ModConfig.get().defaultCompletedLineColor);
         this.posX = null;
         this.posY = null;
-        this.hideLines = defaultHideLines;
+        this.hideLines = ModConfig.get().defaultHideLines;
         this.allowDragging = false;
     }
 

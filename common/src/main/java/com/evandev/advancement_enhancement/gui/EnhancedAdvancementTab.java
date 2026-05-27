@@ -2,6 +2,7 @@ package com.evandev.advancement_enhancement.gui;
 
 import com.evandev.advancement_enhancement.advancements.AdvancementDisplayInfo;
 import com.evandev.advancement_enhancement.advancements.AdvancementDisplayInfoRegistry;
+import com.evandev.advancement_enhancement.config.ModConfig;
 import com.evandev.advancement_enhancement.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.advancement_enhancement.util.PersistentData;
 import com.google.common.collect.Maps;
@@ -22,7 +23,6 @@ import java.util.Optional;
 
 public class EnhancedAdvancementTab {
     public static final Map<ResourceLocation, Tuple<Integer, Integer>> scrollHistory = Maps.newLinkedHashMap();
-    public static boolean doFade = false;
     protected final Map<AdvancementHolder, EnhancedAdvancementWidget> widgets = Maps.newLinkedHashMap();
     private final Minecraft minecraft;
     private final EnhancedAdvancementsScreen screen;
@@ -197,7 +197,7 @@ public class EnhancedAdvancementTab {
 
         guiGraphics.pose().popPose();
 
-        if (doFade && flag) {
+        if (ModConfig.get().doFade && flag) {
             this.fade = Mth.clamp(this.fade + 0.02F, 0.0F, 0.3F);
         } else {
             this.fade = Mth.clamp(this.fade - 0.04F, 0.0F, 1.0F);

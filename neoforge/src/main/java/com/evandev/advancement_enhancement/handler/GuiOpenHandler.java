@@ -1,7 +1,8 @@
 package com.evandev.advancement_enhancement.handler;
 
+import com.evandev.advancement_enhancement.config.InventoryButtonStyle;
+import com.evandev.advancement_enhancement.config.ModConfig;
 import com.evandev.advancement_enhancement.gui.button.AdvancementsScreenButton;
-import com.evandev.advancement_enhancement.gui.button.InventoryButtonStyle;
 import com.evandev.advancement_enhancement.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.advancement_enhancement.util.AdvancementComparer;
 import net.minecraft.advancements.AdvancementNode;
@@ -38,13 +39,13 @@ public class GuiOpenHandler {
     @SubscribeEvent
     public void onGuiOpened(final ScreenEvent.Init.Post event) {
         if (event.getScreen() instanceof InventoryScreen) {
-            if (AdvancementsScreenButton.addToInventory) {
+            if (ModConfig.get().addToInventory) {
                 InventoryScreen guiInventory = (InventoryScreen) event.getScreen();
 
                 int x = guiInventory.getGuiLeft();
                 int y = guiInventory.getGuiTop();
 
-                if (AdvancementsScreenButton.style == InventoryButtonStyle.BUTTON) {
+                if (ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON) {
                     x += 126;
                     y += 61;
                 } else {
@@ -59,7 +60,7 @@ public class GuiOpenHandler {
     @SubscribeEvent(priority = EventPriority.HIGH) // put on HIGH to be before Triumph sorting, giving them priority
     public void onGuiAboutToOpen(final ScreenEvent.Init.Pre event) {
         if (event.getScreen() instanceof EnhancedAdvancementsScreen) {
-            if (EnhancedAdvancementsScreen.orderTabsAlphabetically) {
+            if (ModConfig.get().orderTabsAlphabetically) {
                 Minecraft mc = Minecraft.getInstance();
                 ClientAdvancements clientAdvancements = mc.player.connection.getAdvancements();
                 AdvancementTree advancementTree = clientAdvancements.getTree();

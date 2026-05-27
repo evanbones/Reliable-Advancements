@@ -1,5 +1,6 @@
 package com.evandev.advancement_enhancement.util;
 
+import com.evandev.advancement_enhancement.config.ModConfig;
 import com.evandev.advancement_enhancement.reference.Constants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.advancements.*;
@@ -16,8 +17,6 @@ import java.util.List;
  */
 public class CriterionGrid {
     private static final CriterionGrid empty = new CriterionGrid();
-    public static CriteriaDetail detailLevel = CriteriaDetail.DEFAULT;
-    public static boolean requiresShift = true;
     public final int numRows;
     private final List<Component> cellContents;
     private final int[] cellWidths;
@@ -51,7 +50,7 @@ public class CriterionGrid {
      * If there is no such grid, this method returns a single-column grid.
      */
     public static CriterionGrid findOptimalCriterionGrid(AdvancementHolder holder, Advancement advancement, AdvancementProgress progress, int maxWidth, Font font) {
-        if (progress == null || progress.isDone() || detailLevel.equals(CriteriaDetail.OFF)) {
+        if (progress == null || progress.isDone() || CriteriaDetail.fromName(ModConfig.get().criteriaDetail) == CriteriaDetail.OFF) {
             return CriterionGrid.empty;
         }
         AdvancementRequirements requirements = advancement.requirements();
@@ -60,18 +59,21 @@ public class CriterionGrid {
         }
         int numUnobtained = 0;
         List<Component> cellContents = new ArrayList<>();
+        CriteriaDetail currentDetail = CriteriaDetail.fromName(ModConfig.get().criteriaDetail);
+
         for (String criterion : requirements.names()) {
             CriterionProgress criterionProgress = progress.getCriterion(criterion);
             String criterionKey = Constants.MOD_ID + ".criterion." + holder.id() + "." + criterion;
+
             if (criterionProgress != null && criterionProgress.isDone()) {
-                if (detailLevel.showObtained()) {
+                if (currentDetail.showObtained()) {
                     MutableComponent text = Component.literal(" + ").withStyle(ChatFormatting.GREEN);
                     MutableComponent text2 = Component.translatableWithFallback(criterionKey, criterion).withStyle(ChatFormatting.WHITE);
                     text.append(text2);
                     cellContents.add(text);
                 }
             } else {
-                if (detailLevel.showUnobtained()) {
+                if (currentDetail.showUnobtained()) {
                     MutableComponent text = Component.literal(" x ").withStyle(ChatFormatting.DARK_RED);
                     MutableComponent text2 = Component.translatableWithFallback(criterionKey, criterion).withStyle(ChatFormatting.WHITE);
                     text.append(text2);
@@ -81,7 +83,7 @@ public class CriterionGrid {
             }
         }
 
-        if (!detailLevel.showUnobtained()) {
+        if (!currentDetail.showUnobtained() && numUnobtained > 0) {
             MutableComponent text = Component.literal(" x ").withStyle(ChatFormatting.DARK_RED);
             MutableComponent text2 = Component.translatable(Constants.MOD_ID + ".remaining", numUnobtained).withStyle(ChatFormatting.WHITE, ChatFormatting.ITALIC);
             text.append(text2);
