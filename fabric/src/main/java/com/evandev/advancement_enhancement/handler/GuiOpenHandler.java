@@ -1,7 +1,8 @@
 package com.evandev.advancement_enhancement.handler;
 
-import com.evandev.advancement_enhancement.gui.button.AdvancementsScreenButton;
 import com.evandev.advancement_enhancement.config.InventoryButtonStyle;
+import com.evandev.advancement_enhancement.config.ModConfig;
+import com.evandev.advancement_enhancement.gui.button.AdvancementsScreenButton;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.Minecraft;
@@ -13,7 +14,6 @@ public class GuiOpenHandler implements ScreenEvents.AfterInit {
     public static final GuiOpenHandler instance = new GuiOpenHandler();
 
     private GuiOpenHandler() {
-
     }
 
     public void registerEventHandlers() {
@@ -22,14 +22,12 @@ public class GuiOpenHandler implements ScreenEvents.AfterInit {
 
     @Override
     public void afterInit(Minecraft minecraft, Screen screen, int scaledWidth, int scaledHeight) {
-        if (screen instanceof InventoryScreen) {
-            if (AdvancementsScreenButton.addToInventory) {
-                InventoryScreen inventoryScreen = (InventoryScreen) screen;
-
+        if (screen instanceof InventoryScreen inventoryScreen) {
+            if (ModConfig.get().addToInventory) {
                 int x = inventoryScreen.leftPos;
                 int y = inventoryScreen.topPos;
 
-                if (AdvancementsScreenButton.style == InventoryButtonStyle.BUTTON) {
+                if (ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON) {
                     x += 126;
                     y += 61;
                 } else {
