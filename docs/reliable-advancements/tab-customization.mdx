@@ -1,0 +1,205 @@
+---
+title: Tab Customization
+hide_meta: true
+---
+
+Reliable Advancements lets you customize the appearance of advancement tabs: rename them, change the background texture, control how the background is tiled, and set up randomized pre-1.12 Achievements style backgrounds with multiple textures.
+
+## Opening the Tab Editor
+
+With [edit mode](edit-mode) enabled, **right-click** on empty space in the advancements screen and choose **Edit Tab Properties**.
+
+## Tab Properties
+
+| Field | Description |
+|---|---|
+| Tab Name | Override the tab's display name. Leave empty to use the root advancement's title. |
+| Background Texture | Resource location of the background texture, e.g. `minecraft:textures/gui/advancements/backgrounds/stone.png`. Supports autocomplete. |
+| Tex Width / Tex Height | Width and height of each background tile in pixels (default `16`×`16`). Set these to match your texture's actual dimensions. |
+| Background mode | **Pannable** scrolls the background as you drag the tab. **Fixed/Static** keeps the background stationary. |
+| UI Width / UI Height | Override the dimensions of the tab window. Leave blank to use defaults (`252`×`140`). |
+| Tab Index | Determines the tab's position in the tab bar. Lower numbers appear first (leftmost). |
+| Random Block Rules (JSON) | JSON array of rules for randomized tile backgrounds (see below). |
+
+## The `better_tab` JSON Field
+
+Tab properties are stored directly inside the root advancement's JSON file under a `better_tab` key. You can set these by hand if you prefer not to use the in-game editor:
+
+```json
+{
+  "display": { ... },
+  "criteria": { ... },
+  "better_tab": {
+    "title": "My Custom Tab",
+    "background": "minecraft:textures/block/stone.png",
+    "bg_width": 16,
+    "bg_height": 16,
+    "static_background": false,
+    "width": 252,
+    "height": 140,
+    "index": 0,
+    "background_rules": "[]"
+  }
+}
+```
+
+> **Note:** `background_rules` is stored as a **JSON string** inside the `better_tab` object. When editing by hand, the rules array must be a string value with escaped quotes.
+
+## Custom Background Textures
+
+Any texture loadable by the resource manager can be used as a background. Common vanilla backgrounds:
+
+```
+minecraft:textures/gui/advancements/backgrounds/stone.png
+minecraft:textures/gui/advancements/backgrounds/adventure.png
+minecraft:textures/gui/advancements/backgrounds/end.png
+minecraft:textures/gui/advancements/backgrounds/nether.png
+minecraft:textures/gui/advancements/backgrounds/husbandry.png
+```
+
+You can also reference block textures or any other `.png` in a loaded resource pack:
+
+```
+minecraft:textures/block/deepslate.png
+minecraft:textures/block/grass_block_side.png
+```
+
+When **Tex Width** and **Tex Height** match the texture's actual pixel dimensions, the background tiles correctly. Block textures are typically `16`×`16`.
+
+## Randomized Background Rules
+
+The Random Block Rules system lets you layer multiple textures to create pre-1.12 Achievements style backgrounds.
+
+Rules are applied per background tile. Each tile gets a deterministic seed from its grid position, then a random Y offset and a random float are generated. Rules are checked in order; the **first matching rule** is used.
+
+### Rule Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `texture` | String | Texture to use for this rule (required) |
+| `min_y` | Integer | Minimum tile row to apply this rule (optional, default: no minimum) |
+| `max_y` | Integer | Maximum tile row to apply this rule (optional, default: no maximum) |
+| `chance` | Float (0.0–1.0) | Probability threshold; a tile uses this rule if its random float ≤ `chance` (default: `1.0`) |
+| `absolute_y` | Boolean | If `false` (default), adds a small random Y offset (±0 to 3 rows) for a natural edge. If `true`, uses the exact tile row. |
+
+### How `chance` Works
+
+Each tile generates a random float between 0 and 1. A rule matches if that float is **less than or equal to** `chance`. Since rules are checked in order and the first match wins, you can layer rules for mixed probabilities:
+
+- Rule A with `chance: 0.4` — 40% of tiles use texture A
+- Rule B with `chance: 0.7` — 30% of remaining tiles use texture B (tiles where random float was 0.4–0.7)
+- No rule matches — 30% of tiles use the default background texture
+
+### Example: Grass / Dirt / Stone Layers
+
+This creates a background that looks like a side-view terrain cross-section. Rows 0 and above are grass, rows 1–4 are dirt, and rows 5 and below are stone. Natural edge blending is on by default (`absolute_y: false`).
+
+```json
+[
+  {
+    "texture": "minecraft:textures/block/grass_block_top.png",
+    "max_y": 0
+  },
+  {
+    "texture": "minecraft:textures/block/dirt.png",
+    "min_y": 1,
+    "max_y": 4
+  },
+  {
+    "texture": "minecraft:textures/block/stone.png",
+    "min_y": 5
+  }
+]
+```
+
+In the in-game Tab Editor, paste the rules as a plain JSON array in the text box.
+
+### Example: Random Scattered Gravel
+
+Mix gravel into a stone background with a 20% chance per tile, with no Y restriction:
+
+```json
+[
+  {
+    "texture": "minecraft:textures/block/gravel.png",
+    "chance": 0.2
+  }
+]
+```
+
+The default background (set in the **Background Texture** field) fills in the remaining 80%.
+
+### Example: Nether Terrain
+
+A Nether-themed layered background with lava at the bottom and netherrack everywhere else. Sharp edge at row 6:
+
+```json
+[
+  {
+    "texture": "minecraft:textures/block/lava_still.png",
+    "min_y": 6,
+    "absolute_y": true
+  },
+  {
+    "texture": "minecraft:textures/block/netherrack.png"
+  }
+]
+```
+
+Since `netherrack` has no Y restriction and `chance: 1.0` (default), it matches everything not already matched by the lava rule. The `absolute_y: true` on lava gives a sharp horizontal cut at row 6.
+
+### Example: Random Cave Mossy Blocks
+
+Mix stone, cobblestone, and mossy cobblestone randomly:
+
+```json
+[
+  {
+    "texture": "minecraft:textures/block/cobblestone.png",
+    "chance": 0.25
+  },
+  {
+    "texture": "minecraft:textures/block/mossy_cobblestone.png",
+    "chance": 0.45
+  }
+]
+```
+
+Result per tile:
+- 25% cobblestone (random float ≤ 0.25)
+- 20% mossy cobblestone (random float 0.25–0.45)
+- 55% default background texture (random float > 0.45)
+
+## Custom Line Colors
+
+Individual advancements can have custom connection line colors set in their `display` JSON. These are custom fields from Reliable Advancements: they are not part of vanilla advancements.
+
+```json
+"display": {
+  "icon": { "id": "minecraft:diamond" },
+  "title": { "text": "Example" },
+  "description": { "text": "" },
+  "frame": "task",
+  "completed_line_color": "#00FF00",
+  "uncompleted_line_color": "#555555",
+  "completed_icon_color": "#FFD700",
+  "uncompleted_icon_color": "#AAAAAA",
+  "completed_title_color": "#FFD700",
+  "uncompleted_title_color": "#FFFFFF",
+  "draw_direct_lines": false,
+  "hide_lines": false
+}
+```
+
+| Field | Description |
+|---|---|
+| `completed_line_color` | Line color when this advancement is earned |
+| `uncompleted_line_color` | Line color when not yet earned |
+| `completed_icon_color` | Icon tint when earned |
+| `uncompleted_icon_color` | Icon tint when not yet earned |
+| `completed_title_color` | Title text color when earned |
+| `uncompleted_title_color` | Title text color when not yet earned |
+| `draw_direct_lines` | If `true`, draws a straight line to the parent instead of the default angled connector |
+| `hide_lines` | If `true`, hides the connector line to this advancement's parent |
+
+Default colors for all advancements can be set globally in the [config](configuration).

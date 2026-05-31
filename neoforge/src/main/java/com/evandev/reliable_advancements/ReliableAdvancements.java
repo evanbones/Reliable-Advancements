@@ -14,8 +14,8 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 @Mod(Constants.MOD_ID)
-public class Reliableadvancements {
-    public Reliableadvancements(ModContainer container, IEventBus modEventBus) {
+public class ReliableAdvancements {
+    public ReliableAdvancements(ModContainer container, IEventBus modEventBus) {
         modEventBus.addListener(NeoForgeNetworkHandler::register);
         NeoForge.EVENT_BUS.addListener(this::onPlayerJoin);
 

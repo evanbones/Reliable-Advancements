@@ -1,7 +1,7 @@
 {
-  "id": "mod-template",
+  "id": "reliable-advancements",
   "platforms": {
-    "curseforge": "mod-template",
-    "modrinth": "mod-template"
+    "curseforge": "reliable-advancements",
+    "modrinth": "reliable-advancements"
   }
 }

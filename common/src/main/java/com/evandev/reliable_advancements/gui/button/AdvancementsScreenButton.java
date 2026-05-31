@@ -16,25 +16,33 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.function.Supplier;
+
 public class AdvancementsScreenButton extends AbstractButton {
-    public AdvancementsScreenButton(int x, int y, Component buttonText) {
+
+    private final Supplier<Integer> xSupplier;
+    private final Supplier<Integer> ySupplier;
+
+    public AdvancementsScreenButton(Supplier<Integer> xSupplier, Supplier<Integer> ySupplier, Component buttonText) {
         super(
-                calculateX(x),
-                calculateY(y),
+                calculateX(xSupplier.get()),
+                calculateY(ySupplier.get()),
                 calculateWidth(),
                 calculateHeight(),
                 buttonText
         );
+        this.xSupplier = xSupplier;
+        this.ySupplier = ySupplier;
     }
 
     private static int calculateX(int x) {
         var config = ModConfig.get();
-        return ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON ? x + config.inventoryButtonOffsetX : x - 28 + config.inventoryButtonOffsetX;
+        return config.inventoryButtonStyle == InventoryButtonStyle.BUTTON ? x + config.inventoryButtonOffsetX : x - 28 + config.inventoryButtonOffsetX;
     }
 
     private static int calculateY(int y) {
         var config = ModConfig.get();
-        return ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON ? y + config.inventoryButtonOffsetY : y - 28 + config.inventoryButtonOffsetY;
+        return config.inventoryButtonStyle == InventoryButtonStyle.BUTTON ? y + config.inventoryButtonOffsetY : y - 28 + config.inventoryButtonOffsetY;
     }
 
     private static int calculateWidth() {
@@ -49,6 +57,12 @@ public class AdvancementsScreenButton extends AbstractButton {
     public void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         if (!this.visible) return;
 
+        // DYNAMIC POSITION SYNC: Fixes the desync when the recipe book slides the GUI
+        this.setX(calculateX(this.xSupplier.get()));
+        this.setY(calculateY(this.ySupplier.get()));
+        this.setWidth(calculateWidth());
+        this.setHeight(calculateHeight());
+
         Minecraft mc = Minecraft.getInstance();
         this.isHovered = mouseX >= this.getX() && mouseY >= this.getY() && mouseX < this.getX() + this.getWidth() && mouseY < this.getY() + this.getHeight();
 
@@ -59,12 +73,9 @@ public class AdvancementsScreenButton extends AbstractButton {
             } else {
                 String texToUse = (this.isHovered && ModConfig.get().customInventoryButtonTextureHovered != null && !ModConfig.get().customInventoryButtonTextureHovered.isEmpty()) ? ModConfig.get().customInventoryButtonTextureHovered : ModConfig.get().customInventoryButtonTexture;
                 ResourceLocation tex = ResourceLocation.parse(texToUse);
-
                 RenderSystem.enableBlend();
                 RenderSystem.defaultBlendFunc();
-
                 guiGraphics.blit(tex, this.getX(), this.getY(), 0, 0, this.getWidth(), this.getHeight(), this.getWidth(), this.getHeight());
-
                 RenderSystem.disableBlend();
             }
 

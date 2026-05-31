@@ -24,17 +24,22 @@ public class GuiOpenHandler implements ScreenEvents.AfterInit {
     public void afterInit(Minecraft minecraft, Screen screen, int scaledWidth, int scaledHeight) {
         if (screen instanceof InventoryScreen inventoryScreen) {
             if (ModConfig.get().addToInventory) {
-                int x = inventoryScreen.leftPos;
-                int y = inventoryScreen.topPos;
 
-                if (ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON) {
-                    x += 126;
-                    y += 61;
-                } else {
-                    x += inventoryScreen.imageWidth;
-                }
-
-                Screens.getButtons(screen).add(new AdvancementsScreenButton(x, y, Component.literal("BA")));
+                Screens.getButtons(screen).add(new AdvancementsScreenButton(
+                        () -> {
+                            int currentX = inventoryScreen.leftPos;
+                            return ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON
+                                    ? currentX + 126
+                                    : currentX + inventoryScreen.imageWidth;
+                        },
+                        () -> {
+                            int currentY = inventoryScreen.topPos;
+                            return ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON
+                                    ? currentY + 61
+                                    : currentY;
+                        },
+                        Component.literal("BA")
+                ));
             }
         }
     }

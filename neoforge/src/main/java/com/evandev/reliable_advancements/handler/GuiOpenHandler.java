@@ -38,21 +38,24 @@ public class GuiOpenHandler {
 
     @SubscribeEvent
     public void onGuiOpened(final ScreenEvent.Init.Post event) {
-        if (event.getScreen() instanceof InventoryScreen) {
+        if (event.getScreen() instanceof InventoryScreen guiInventory) {
             if (ModConfig.get().addToInventory) {
-                InventoryScreen guiInventory = (InventoryScreen) event.getScreen();
 
-                int x = guiInventory.getGuiLeft();
-                int y = guiInventory.getGuiTop();
-
-                if (ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON) {
-                    x += 126;
-                    y += 61;
-                } else {
-                    x += guiInventory.getXSize();
-                }
-
-                event.addListener(new AdvancementsScreenButton(x, y, Component.literal("BA")));
+                event.addListener(new AdvancementsScreenButton(
+                        () -> {
+                            int currentX = guiInventory.getGuiLeft();
+                            return ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON
+                                    ? currentX + 126
+                                    : currentX + guiInventory.getXSize();
+                        },
+                        () -> {
+                            int currentY = guiInventory.getGuiTop();
+                            return ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON
+                                    ? currentY + 61
+                                    : currentY;
+                        },
+                        Component.literal("BA")
+                ));
             }
         }
     }

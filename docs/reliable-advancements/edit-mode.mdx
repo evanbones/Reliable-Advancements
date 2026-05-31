@@ -1,0 +1,101 @@
+---
+title: Edit Mode
+hide_meta: true
+---
+
+Edit mode lets you create, modify, and delete advancements directly from the in-game advancements screen. All changes are applied live, no `/reload` or server restart needed.
+
+## Enabling Edit Mode
+
+Two things are required before you can edit:
+
+1. **Permission level 2** (operator) on the server
+2. `enableEditMode: true` in your client config (`config/reliable_advancements.json`)
+
+To toggle it in-game, open the advancements screen. If `showEditModeButton` is enabled (on by default), an **Edit Mode** button is visible on the screen. You can also set `"enableEditMode": true` directly in the config file.
+
+> **Client-side setting:** `enableEditMode` only affects your own client. Every player who wants to use the editor must enable it themselves. Whether they can actually edit is still gated by the server's permission level check.
+
+## Right-Click Context Menu
+
+With edit mode active, **right-clicking** in the advancements screen opens a context menu.
+
+**Right-clicking on empty space:**
+
+| Option | Description |
+|---|---|
+| Create New Advancement | Opens the editor to create a new advancement at the cursor position |
+| Create New Tab | Creates a new root advancement, which becomes a new tab |
+| Paste (Ctrl+V) | Pastes a previously copied advancement |
+| Edit Tab Properties | Opens the [tab editor](tab-customization) for the current tab |
+| Reset Entire Tab | Deletes all edits in the current tab and restores vanilla (confirmation required) |
+
+**Right-clicking on an advancement:**
+
+| Option | Description |
+|---|---|
+| Edit Properties | Opens the advancement editor |
+| Copy (Ctrl+C) | Copies the advancement to clipboard |
+| Link to Parent... | Starts linking mode — click another advancement to re-parent this one |
+| Reset to Vanilla | Removes edits for this advancement and restores vanilla |
+| Delete from Game | Permanently removes the advancement (red, confirmation required) |
+
+## The Advancement Editor
+
+The editor opens in a panel with four tabs on the left sidebar.
+
+### Properties Tab
+
+| Field | Description |
+|---|---|
+| ID | Resource location, e.g. `mypack:story/my_advancement` |
+| Title | Display name shown in the advancement |
+| Description | Tooltip description text |
+| Icon (Item ID) | Item used as the icon, e.g. `minecraft:diamond` |
+| Parent ID | Resource location of the parent advancement; leave empty to make this a root (new tab) |
+| Frame | `task`, `goal`, or `challenge` |
+| Hidden | If true, hides the advancement until it's earned |
+| Telemetry | Whether completion sends a Minecraft telemetry event |
+
+### Layout Tab
+
+Sets the X and Y pixel position of the advancement widget within its tab. Positions are saved client-side in `config/reliable_advancements_layout.json` and are not part of the datapack export.
+
+### Criteria Tab
+
+Each criterion has a name, a trigger, and optional conditions. Use **< >** arrows to navigate between criteria; **+** and **−** add or remove them. The trigger field has autocomplete from all registered trigger types.
+
+For condition values, enter valid JSON in the multiline box — a green outline means the JSON is valid, red means there is a syntax error.
+
+See [Advancements Guide](advancements-guide) for a trigger reference and condition examples.
+
+### Rewards Tab
+
+| Field | Description |
+|---|---|
+| Experience | Number of XP points awarded on completion |
+| Function | A function run as the player on completion, e.g. `mypack:my_function` |
+| Loot Tables | One or more loot table resource locations to roll |
+| Recipes | One or more recipe resource locations to unlock |
+
+## Keyboard Shortcuts
+
+While in edit mode:
+
+| Shortcut | Action |
+|---|---|
+| Right-click | Open context menu |
+| Ctrl+C | Copy the hovered advancement |
+| Ctrl+V | Paste the copied advancement at the cursor |
+
+## How Edits Are Saved
+
+Clicking **Save** sends the edit to the server. The server requires permission level 2. Edits are written to:
+
+```
+<world>/datapacks/reliable_advancements_edits/data/<namespace>/advancement/<path>.json
+```
+
+The advancement tree is updated immediately for all connected players — no reload or restart is needed.
+
+To use these edits in other worlds or distribute them, see [Saving Globally](saving-globally).

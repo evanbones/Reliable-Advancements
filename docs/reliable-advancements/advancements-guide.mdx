@@ -1,0 +1,357 @@
+---
+title: Advancements Guide
+hide_meta: true
+---
+
+This page explains how Minecraft advancement JSON files work, covering the display block, criteria, triggers, requirements, and rewards. This knowledge applies both to the in-game editor and to writing advancement datapacks by hand.
+
+## File Location
+
+An advancement is a JSON file at:
+
+```
+data/<namespace>/advancement/<path>.json
+```
+
+For example, `data/mypack/advancement/story/first_diamond.json` has the resource location `mypack:story/first_diamond`.
+
+## Basic Structure
+
+```json
+{
+  "display": {
+    "icon": { "id": "minecraft:diamond" },
+    "title": { "text": "A Shiny Rock" },
+    "description": { "text": "Pick up a diamond" },
+    "frame": "task"
+  },
+  "parent": "minecraft:story/mine_stone",
+  "criteria": {
+    "get_diamond": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{ "items": ["minecraft:diamond"] }]
+      }
+    }
+  }
+}
+```
+
+## The `display` Block
+
+| Field | Type | Description |
+|---|---|---|
+| `icon` | Object | Item icon: `{ "id": "minecraft:diamond" }` |
+| `title` | Text Component | Name shown in the advancement |
+| `description` | Text Component | Tooltip description |
+| `frame` | String | `task`, `goal`, or `challenge` |
+| `background` | String | Background texture path for root advancements only |
+| `show_toast` | Boolean | Show a toast notification on completion (default `true`) |
+| `announce_to_chat` | Boolean | Announce completion in chat (default `true`) |
+| `hidden` | Boolean | Hide the advancement until it is earned (default `false`) |
+
+**Frame types:**
+- `task` — Standard square frame, yellow name
+- `goal` — Rounded frame, green name
+- `challenge` — Spiked/ornate frame, pink name; awards bonus XP by default
+
+### Text Components
+
+`title` and `description` accept Minecraft text components. The simplest form:
+
+```json
+"title": { "text": "My Advancement" }
+```
+
+With color and formatting:
+
+```json
+"title": {
+  "text": "My Advancement",
+  "color": "gold",
+  "bold": true
+}
+```
+
+Named colors include `black`, `dark_blue`, `dark_green`, `dark_aqua`, `dark_red`, `dark_purple`, `gold`, `gray`, `dark_gray`, `blue`, `green`, `aqua`, `red`, `light_purple`, `yellow`, and `white`. Hex colors (`"#RRGGBB"`) are also supported.
+
+## Criteria
+
+Criteria are named conditions the player must satisfy. An advancement is complete when enough criteria are met (see [Requirements](#requirements) below).
+
+```json
+"criteria": {
+  "my_criterion": {
+    "trigger": "minecraft:player_killed_entity",
+    "conditions": {
+      "entity": {
+        "type": "minecraft:creeper"
+      }
+    }
+  }
+}
+```
+
+The criterion name (`"my_criterion"`) is a key you choose. It's used in the `requirements` field and in progress tracking.
+
+## Triggers
+
+A trigger fires when a specific event happens. Only triggers whose conditions match will advance progress.
+
+| Trigger | Fires When |
+|---|---|
+| `minecraft:impossible` | Never — for advancements granted only via `/advancement grant` |
+| `minecraft:tick` | Every game tick |
+| `minecraft:inventory_changed` | The player's inventory changes |
+| `minecraft:player_killed_entity` | The player kills an entity |
+| `minecraft:entity_killed_player` | An entity kills the player |
+| `minecraft:player_hurt_entity` | The player deals damage to an entity |
+| `minecraft:item_used_on_block` | An item is used on a block |
+| `minecraft:placed_block` | The player places a block |
+| `minecraft:consume_item` | The player eats or drinks an item |
+| `minecraft:crafted_item` | The player crafts an item |
+| `minecraft:recipe_unlocked` | A recipe is unlocked |
+| `minecraft:enter_block` | The player is inside a specific block type |
+| `minecraft:location` | Checked periodically based on player location |
+| `minecraft:changed_dimension` | The player travels to a different dimension |
+| `minecraft:bred_animals` | The player breeds two animals |
+| `minecraft:tame_animal` | The player tames an animal |
+| `minecraft:fishing_rod_hooked` | A fishing rod catches something |
+| `minecraft:enchanted_item` | The player enchants an item |
+| `minecraft:fall_from_height` | The player falls from a height |
+| `minecraft:levitation` | The player is levitating |
+| `minecraft:nether_travel` | Based on distance traveled in the Nether |
+| `minecraft:hero_of_the_village` | After successfully defending a village |
+| `minecraft:voluntary_exile` | After triggering a Bad Omen |
+| `minecraft:using_item` | While the player is using an item |
+| `minecraft:shot_crossbow` | The player fires a crossbow |
+| `minecraft:thrown_item_picked_up_by_entity` | A thrown item is picked up |
+| `minecraft:lightning_strike` | A lightning bolt strikes near the player |
+| `minecraft:kill_mob_near_sculk_catalyst` | The player kills a mob near a Sculk Catalyst |
+| `minecraft:allay_drop_item_on_block` | An Allay drops an item on a block |
+
+### Condition Examples
+
+**Player has a specific item:**
+```json
+"conditions": {
+  "items": [
+    { "items": ["minecraft:diamond"] }
+  ]
+}
+```
+
+**Specific entity killed:**
+```json
+"conditions": {
+  "entity": {
+    "type": "minecraft:zombie"
+  }
+}
+```
+
+**Entity killed with a specific item:**
+```json
+"conditions": {
+  "entity": { "type": "minecraft:skeleton" },
+  "killing_blow": {
+    "direct_item": { "items": ["minecraft:bow"] }
+  }
+}
+```
+
+**Location — player in a biome:**
+```json
+"conditions": {
+  "location": {
+    "biome": "minecraft:deep_dark"
+  }
+}
+```
+
+**Location — player at a certain height:**
+```json
+"conditions": {
+  "location": {
+    "y": { "min": 60 }
+  }
+}
+```
+
+**Player has a status effect:**
+```json
+"conditions": {
+  "player": {
+    "effects": {
+      "minecraft:speed": { "amplifier": { "min": 1 } }
+    }
+  }
+}
+```
+
+**Block placed is a specific type:**
+```json
+"conditions": {
+  "block": { "blocks": ["minecraft:diamond_block"] },
+  "location": { "y": { "max": 0 } }
+}
+```
+
+## Requirements
+
+By default, all criteria must be satisfied to complete an advancement. The `requirements` field lets you define AND/OR logic.
+
+`requirements` is an **array of arrays**. Each inner array is a group where **at least one** criterion must be satisfied (OR). Every group must be satisfied (AND).
+
+**Require A AND B (default behavior when omitted):**
+```json
+"requirements": [
+  ["criterion_a"],
+  ["criterion_b"]
+]
+```
+
+**Require A OR B:**
+```json
+"requirements": [
+  ["criterion_a", "criterion_b"]
+]
+```
+
+**Require (A OR B) AND (C OR D):**
+```json
+"requirements": [
+  ["criterion_a", "criterion_b"],
+  ["criterion_c", "criterion_d"]
+]
+```
+
+### Example: Kill Any of Three Mobs
+
+```json
+{
+  "display": {
+    "icon": { "id": "minecraft:bone" },
+    "title": { "text": "Monster Hunter" },
+    "description": { "text": "Kill a Zombie, Skeleton, or Creeper." },
+    "frame": "task"
+  },
+  "parent": "minecraft:adventure/root",
+  "criteria": {
+    "kill_zombie": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": { "entity": { "type": "minecraft:zombie" } }
+    },
+    "kill_skeleton": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": { "entity": { "type": "minecraft:skeleton" } }
+    },
+    "kill_creeper": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": { "entity": { "type": "minecraft:creeper" } }
+    }
+  },
+  "requirements": [
+    ["kill_zombie", "kill_skeleton", "kill_creeper"]
+  ]
+}
+```
+
+### Example: Collect All Three Ores (must get each one)
+
+```json
+{
+  "display": {
+    "icon": { "id": "minecraft:iron_ore" },
+    "title": { "text": "The Full Set" },
+    "description": { "text": "Pick up iron, gold, and diamond." },
+    "frame": "goal"
+  },
+  "parent": "minecraft:story/mine_stone",
+  "criteria": {
+    "get_iron": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": { "items": [{ "items": ["minecraft:iron_ingot"] }] }
+    },
+    "get_gold": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": { "items": [{ "items": ["minecraft:gold_ingot"] }] }
+    },
+    "get_diamond": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": { "items": [{ "items": ["minecraft:diamond"] }] }
+    }
+  }
+}
+```
+
+Here `requirements` is omitted, so all three criteria must be satisfied.
+
+## Rewards
+
+The optional `rewards` block defines what the player receives on completion.
+
+```json
+"rewards": {
+  "experience": 100,
+  "loot": [
+    "minecraft:chests/simple_dungeon"
+  ],
+  "recipes": [
+    "minecraft:saddle"
+  ],
+  "function": "mypack:on_advancement_complete"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `experience` | Integer | XP points to award |
+| `loot` | Array of strings | Loot table resource locations to roll |
+| `recipes` | Array of strings | Recipe resource locations to unlock |
+| `function` | String | A function to run as the player |
+
+> **Reward Claiming:** If `requireRewardClaiming` is enabled in the Reliable Advancements config, rewards are not granted automatically. Players must click a button in the UI to claim them.
+
+## Granting Advancements via Command
+
+You can grant or revoke advancements with commands:
+
+```
+/advancement grant <player> only <advancement>
+/advancement revoke <player> only <advancement>
+/advancement grant <player> everything
+```
+
+Advancements with `minecraft:impossible` as their trigger are designed to be granted this way — they never fire on their own.
+
+## Full Example
+
+An advancement that requires visiting the Nether while on fire:
+
+```json
+{
+  "display": {
+    "icon": { "id": "minecraft:flint_and_steel" },
+    "title": { "text": "Hot Vacation" },
+    "description": { "text": "Enter the Nether while on fire." },
+    "frame": "challenge",
+    "announce_to_chat": true
+  },
+  "parent": "minecraft:story/enter_the_nether",
+  "criteria": {
+    "enter_nether_on_fire": {
+      "trigger": "minecraft:changed_dimension",
+      "conditions": {
+        "to": "minecraft:the_nether",
+        "player": {
+          "flags": { "is_on_fire": true }
+        }
+      }
+    }
+  },
+  "rewards": {
+    "experience": 100
+  }
+}
+```
