@@ -66,7 +66,7 @@ This mod is built upon the incredible work of previous advancement UI mods.
 
 ## License
 
-[![Code license (MIT)](https://img.shields.io/badge/code%20license-MIT-green.svg?style=flat-square)](https://github.com/evanbones/Reliable-Advancements/blob/1.20.1/LICENSE)
+[![Code license (MIT)](https://img.shields.io/badge/code%20license-MIT-green.svg?style=flat-square)](https://github.com/evanbones/Reliable-Advancements/blob/1.21.1/LICENSE)
 
 ---
 
