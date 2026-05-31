@@ -4,8 +4,12 @@ import com.evandev.advancement_enhancement.advancements.AdvancementDisplayInfo;
 import com.evandev.advancement_enhancement.advancements.AdvancementDisplayInfoRegistry;
 import com.evandev.advancement_enhancement.config.ModConfig;
 import com.evandev.advancement_enhancement.gui.screens.EnhancedAdvancementsScreen;
+import com.evandev.advancement_enhancement.reference.Constants;
 import com.evandev.advancement_enhancement.util.PersistentData;
 import com.google.common.collect.Maps;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.DisplayInfo;
@@ -18,11 +22,11 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class EnhancedAdvancementTab {
     public static final Map<ResourceLocation, Tuple<Integer, Integer>> scrollHistory = Maps.newLinkedHashMap();
+    public final List<BackgroundRule> backgroundRules = new ArrayList<>();
     protected final Map<AdvancementHolder, EnhancedAdvancementWidget> widgets = Maps.newLinkedHashMap();
     private final Minecraft minecraft;
     private final EnhancedAdvancementsScreen screen;
@@ -42,6 +46,7 @@ public class EnhancedAdvancementTab {
     public int customWidth = 0;
     public int customHeight = 0;
     public int customIndex = 0;
+    public String rawBackgroundRules = "[]";
     private EnhancedAdvancementTabType type;
     private int index;
     private int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
@@ -89,6 +94,18 @@ public class EnhancedAdvancementTab {
         }
     }
 
+    public void parseBackgroundRules(String jsonStr) {
+        this.backgroundRules.clear();
+        this.rawBackgroundRules = jsonStr != null ? jsonStr : "[]";
+        try {
+            JsonArray arr = JsonParser.parseString(this.rawBackgroundRules).getAsJsonArray();
+            for (JsonElement el : arr) {
+                this.backgroundRules.add(BackgroundRule.fromJson(el.getAsJsonObject()));
+            }
+        } catch (Exception e) {
+            Constants.LOG.error("Failed to parse background rules", e);
+        }
+    }
 
     public void updateIndex(int index, int width, int height) {
         this.index = index;
@@ -135,10 +152,10 @@ public class EnhancedAdvancementTab {
         guiGraphics.pose().translate(left, top, 0);
         guiGraphics.pose().scale(zoom, zoom, 1.0F);
 
-        ResourceLocation resourcelocation = this.customBackground != null ? this.customBackground : this.display.getBackground().orElse(TextureManager.INTENTIONAL_MISSING_TEXTURE);
+        ResourceLocation defaultRes = this.customBackground != null ? this.customBackground : this.display.getBackground().orElse(TextureManager.INTENTIONAL_MISSING_TEXTURE);
 
         if (this.isStaticBackground && this.bgWidth == 0 && this.bgHeight == 0) {
-            guiGraphics.blit(resourcelocation, 0, 0, 0.0F, 0.0F, scaledWidth, scaledHeight, scaledWidth, scaledHeight);
+            guiGraphics.blit(defaultRes, 0, 0, 0.0F, 0.0F, scaledWidth, scaledHeight, scaledWidth, scaledHeight);
         } else {
             int texW = this.bgWidth > 0 ? this.bgWidth : 16;
             int texH = this.bgHeight > 0 ? this.bgHeight : 16;
@@ -146,11 +163,36 @@ public class EnhancedAdvancementTab {
             int i = this.isStaticBackground ? 0 : this.scrollX % texW;
             int j = this.isStaticBackground ? 0 : this.scrollY % texH;
 
+            Random random = new Random();
+
             int k = -1;
             for (; k <= 1 + scaledWidth / texW; k++) {
                 int l = -1;
                 for (; l <= 1 + scaledHeight / texH; l++) {
-                    guiGraphics.blit(resourcelocation, i + texW * k, j + texH * l, 0.0F, 0.0F, texW, texH, texW, texH);
+                    ResourceLocation texToDraw = defaultRes;
+
+                    if (!this.backgroundRules.isEmpty() && !this.isStaticBackground) {
+                        int absoluteX = i + (texW * k) - this.scrollX;
+                        int absoluteY = j + (texH * l) - this.scrollY;
+                        int cellX = Math.floorDiv(absoluteX, texW);
+                        int cellY = Math.floorDiv(absoluteY, texH);
+
+                        random.setSeed((long) cellX * 3129871L ^ (long) cellY * 116129781L);
+
+                        int j4 = cellY + random.nextInt(4) - random.nextInt(4);
+                        float randomChance = random.nextFloat();
+
+                        for (BackgroundRule rule : this.backgroundRules) {
+                            int yToCheck = rule.absoluteY ? cellY : j4;
+
+                            if (yToCheck >= rule.minY && yToCheck <= rule.maxY && randomChance <= rule.chance) {
+                                texToDraw = rule.texture;
+                                break;
+                            }
+                        }
+                    }
+
+                    guiGraphics.blit(texToDraw, i + texW * k, j + texH * l, 0.0F, 0.0F, texW, texH, texW, texH);
                 }
             }
         }
@@ -268,6 +310,24 @@ public class EnhancedAdvancementTab {
             this.centered = true;
             this.scrollX = scroll.getA();
             this.scrollY = scroll.getB();
+        }
+    }
+
+    public static class BackgroundRule {
+        public int minY = Integer.MIN_VALUE;
+        public int maxY = Integer.MAX_VALUE;
+        public float chance = 1.0f;
+        public boolean absoluteY = false;
+        public ResourceLocation texture;
+
+        public static BackgroundRule fromJson(com.google.gson.JsonObject json) {
+            BackgroundRule rule = new BackgroundRule();
+            if (json.has("min_y")) rule.minY = json.get("min_y").getAsInt();
+            if (json.has("max_y")) rule.maxY = json.get("max_y").getAsInt();
+            if (json.has("chance")) rule.chance = json.get("chance").getAsFloat();
+            if (json.has("absolute_y")) rule.absoluteY = json.get("absolute_y").getAsBoolean();
+            if (json.has("texture")) rule.texture = ResourceLocation.parse(json.get("texture").getAsString());
+            return rule;
         }
     }
 }

@@ -11,6 +11,7 @@ import com.google.gson.JsonObject;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -36,6 +37,7 @@ public class TabEditorScreen extends Screen {
     private EditBox widthBox;
     private EditBox heightBox;
     private EditBox indexBox;
+    private MultiLineEditBox rulesBox;
 
     private Button saveBtn;
     private Button cancelBtn;
@@ -103,7 +105,7 @@ public class TabEditorScreen extends Screen {
                 return true;
             }
         }
-        
+
         if (my > uiY + uiH - 40 && my < uiY + uiH) {
             if (saveBtn != null && saveBtn.isMouseOver(mx, my)) return saveBtn.mouseClicked(mx, my, button);
             if (cancelBtn != null && cancelBtn.isMouseOver(mx, my)) return cancelBtn.mouseClicked(mx, my, button);
@@ -199,6 +201,18 @@ public class TabEditorScreen extends Screen {
         indexBox.setValue(tIndex);
         this.addRenderableWidget(indexBox);
 
+        currentY += 45;
+        String rulesStr = tab.rawBackgroundRules;
+        if (draft.rootJson.has("better_tab")) {
+            JsonObject bTab = draft.rootJson.getAsJsonObject("better_tab");
+            if (bTab.has("background_rules")) rulesStr = bTab.get("background_rules").getAsString();
+        }
+
+        rulesBox = new MultiLineEditBox(this.font, startX, currentY, 200, 80, Component.literal("Background Rules JSON"), Component.empty());
+        rulesBox.setValue(rulesStr);
+        this.addRenderableWidget(rulesBox);
+        currentY += 85;
+
         currentY += 30;
 
         int contentHeight = currentY + scrollOffset - (uiY + 50);
@@ -249,6 +263,9 @@ public class TabEditorScreen extends Screen {
             if (!widthBox.getValue().isEmpty()) bTab.addProperty("width", Integer.parseInt(widthBox.getValue()));
             if (!heightBox.getValue().isEmpty()) bTab.addProperty("height", Integer.parseInt(heightBox.getValue()));
             if (!indexBox.getValue().isEmpty()) bTab.addProperty("index", Integer.parseInt(indexBox.getValue()));
+            if (rulesBox != null && !rulesBox.getValue().isEmpty()) {
+                bTab.addProperty("background_rules", rulesBox.getValue());
+            }
         } catch (NumberFormatException ignored) {
         }
         return bTab;
@@ -259,6 +276,9 @@ public class TabEditorScreen extends Screen {
     }
 
     private void saveCurrentState() {
+        if (rulesBox != null) {
+            tab.parseBackgroundRules(rulesBox.getValue());
+        }
         if (nameBox != null) {
             JsonObject bTab = getBTab();
             draft.rootJson.add("better_tab", bTab);
@@ -299,6 +319,8 @@ public class TabEditorScreen extends Screen {
 
         gfx.enableScissor(uiX, uiY + 32, uiX + uiW - 14, uiY + uiH - 40);
 
+        if (rulesBox != null)
+            gfx.drawString(this.font, "Random Block Rules (JSON)", rulesBox.getX(), rulesBox.getY() - 11, 0xFFA08060, false);
         if (nameBox != null)
             gfx.drawString(this.font, "Tab Name", nameBox.getX(), nameBox.getY() - 11, 0xFFA08060, false);
         if (bgBox != null)

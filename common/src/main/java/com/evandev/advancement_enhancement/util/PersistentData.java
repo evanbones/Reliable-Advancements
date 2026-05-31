@@ -49,6 +49,7 @@ public class PersistentData {
                 tObj.addProperty("width", tab.customWidth);
                 tObj.addProperty("height", tab.customHeight);
                 tObj.addProperty("index", tab.customIndex);
+                tObj.addProperty("background_rules", tab.rawBackgroundRules);
                 tabProperties.add(tab.getRootNode().holder().id().toString(), tObj);
             }
             json.add("positions", positions);
@@ -110,6 +111,7 @@ public class PersistentData {
                     if (tObj.has("width")) tab.customWidth = tObj.get("width").getAsInt();
                     if (tObj.has("height")) tab.customHeight = tObj.get("height").getAsInt();
                     if (tObj.has("index")) tab.customIndex = tObj.get("index").getAsInt();
+                    if (tObj.has("background_rules")) tab.parseBackgroundRules(tObj.get("background_rules").getAsString());
                 }
             }
         } catch (Exception e) {

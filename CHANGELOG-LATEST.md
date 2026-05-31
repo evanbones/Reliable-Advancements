@@ -1,3 +1,3 @@
-### Fixed
+### Added
 
-- Fixed crashes on dedicated servers.
+- Added a field to configure randomized backgrounds.
