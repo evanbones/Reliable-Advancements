@@ -9,21 +9,21 @@
     "${mod_author}"
   ],
   "contact": {
-    "homepage": "https://github.com/evanbones/Advancement-Enhancement",
-    "sources": "https://github.com/evanbones/Advancement-Enhancement"
+    "homepage": "https://github.com/evanbones/Reliable-Advancements",
+    "sources": "https://github.com/evanbones/Reliable-Advancements"
   },
   "license": "${license}",
   "icon": "${mod_id}.png",
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.evandev.advancement_enhancement.AdvancementEnhancement"
+      "com.evandev.reliable_advancements.ReliableAdvancements"
     ],
     "client": [
-      "com.evandev.advancement_enhancement.client.AdvancementEnhancementClient"
+      "com.evandev.reliable_advancements.client.ReliableAdvancementsClient"
     ],
     "modmenu": [
-      "com.evandev.advancement_enhancement.config.AdvancementEnhancementModMenu"
+      "com.evandev.reliable_advancements.config.ReliableAdvancementsModMenu"
     ]
   },
   "mixins": [

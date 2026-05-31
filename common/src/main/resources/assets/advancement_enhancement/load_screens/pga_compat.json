@@ -1,8 +1,0 @@
-{
-	"screens" : [{
-			"COMMENT" : "ADVANCEMENT ENHANCEMENT SUPPORT",
-			"class" : "advancement_enhancement.gui.screens.EnhancedAdvancementsScreen",
-			"texture" : "publicguiannouncement:textures/gui/advancements_menu.png", 
-			"fullSize" : 255
-		}]
-}

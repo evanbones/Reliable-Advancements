@@ -1,0 +1,8 @@
+{
+	"screens" : [{
+			"COMMENT" : "RELIABLE ADVANCEMENTS SUPPORT",
+			"class" : "reliable_advancements.gui.screens.EnhancedAdvancementsScreen",
+			"texture" : "publicguiannouncement:textures/gui/advancements_menu.png", 
+			"fullSize" : 255
+		}]
+}
