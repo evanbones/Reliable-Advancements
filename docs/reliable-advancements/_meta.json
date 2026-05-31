@@ -1,8 +1,8 @@
 {
   "usage.mdx": "Overview",
+  "configuration.mdx": "Configuration",
   "edit-mode.mdx": "Edit Mode",
-  "advancements-guide.mdx": "Advancements Guide",
   "tab-customization.mdx": "Tab Customization",
   "saving-globally.mdx": "Saving Globally",
-  "configuration.mdx": "Configuration"
+  "advancements-guide.mdx": "Advancements Guide"
 }
