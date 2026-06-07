@@ -57,7 +57,6 @@ public class AdvancementsScreenButton extends AbstractButton {
     public void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         if (!this.visible) return;
 
-        // DYNAMIC POSITION SYNC: Fixes the desync when the recipe book slides the GUI
         this.setX(calculateX(this.xSupplier.get()));
         this.setY(calculateY(this.ySupplier.get()));
         this.setWidth(calculateWidth());
