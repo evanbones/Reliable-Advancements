@@ -7,7 +7,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
@@ -177,11 +177,11 @@ public class RewardsTab implements IEditorTab {
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
-        gfx.drawString(font, "Experience (Number)", startX, expY, 0xFFA08060, false);
-        gfx.drawString(font, "Function", startX, funcY, 0xFFA08060, false);
-        gfx.drawString(font, "Loot Tables", startX, lootLabelY, 0xFFA08060, false);
-        gfx.drawString(font, "Recipes", startX, recipeLabelY, 0xFFA08060, false);
+    public void render(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
+        gfx.text(font, "Experience (Number)", startX, expY, 0xFFA08060, false);
+        gfx.text(font, "Function", startX, funcY, 0xFFA08060, false);
+        gfx.text(font, "Loot Tables", startX, lootLabelY, 0xFFA08060, false);
+        gfx.text(font, "Recipes", startX, recipeLabelY, 0xFFA08060, false);
     }
 
     @Override

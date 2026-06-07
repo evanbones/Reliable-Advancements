@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 
 import java.io.InputStreamReader;
@@ -16,7 +16,7 @@ import java.util.Map;
 
 public class TriggerSchemaManager {
     private static final Map<String, JsonObject> TRIGGERS = new HashMap<>();
-    private static final ResourceLocation SCHEMA_FILE = ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "trigger_schemas.json");
+    private static final Identifier SCHEMA_FILE = Identifier.fromNamespaceAndPath(Constants.MOD_ID, "trigger_schemas.json");
 
     public static void load() {
         TRIGGERS.clear();

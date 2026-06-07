@@ -5,14 +5,14 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
-public record EditAdvancementPayload(ResourceLocation advancementId, String jsonPayload, boolean isDelete) implements CustomPacketPayload {
-    public static final Type<EditAdvancementPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "edit_advancement"));
+public record EditAdvancementPayload(Identifier advancementId, String jsonPayload, boolean isDelete) implements CustomPacketPayload {
+    public static final Type<EditAdvancementPayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "edit_advancement"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, EditAdvancementPayload> STREAM_CODEC = StreamCodec.composite(
-            ResourceLocation.STREAM_CODEC, EditAdvancementPayload::advancementId,
+            Identifier.STREAM_CODEC, EditAdvancementPayload::advancementId,
             ByteBufCodecs.stringUtf8(1048576), EditAdvancementPayload::jsonPayload,
             ByteBufCodecs.BOOL, EditAdvancementPayload::isDelete,
             EditAdvancementPayload::new

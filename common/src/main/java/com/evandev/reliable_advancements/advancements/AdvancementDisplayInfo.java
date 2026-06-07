@@ -8,7 +8,7 @@ import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.gui.screens.advancements.AdvancementWidgetType;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public class AdvancementDisplayInfo implements IDisplayInfo {
     public static final String defaultMinecraftCompletedIconColor = "#DBA213", defaultMinecraftUncompletedIconColor = "#FFFFFF";
@@ -18,7 +18,7 @@ public class AdvancementDisplayInfo implements IDisplayInfo {
     private static final int minecraftCompletedTitleColor = ColorHelper.RGB(defaultMinecraftCompletedTitleColor);
     private static final int minecraftUncompletedTitleColor = ColorHelper.RGB(defaultMinecraftUncompletedTitleColor);
     private static final int WHITE = ColorHelper.RGB(1F, 1F, 1F);
-    private ResourceLocation id;
+    private Identifier id;
     private int completedIconColor, unCompletedIconColor;
     private int completedTitleColor, unCompletedTitleColor;
     private boolean drawDirectLines;
@@ -42,12 +42,12 @@ public class AdvancementDisplayInfo implements IDisplayInfo {
         }
     }
 
-    public AdvancementDisplayInfo(ResourceLocation id) {
+    public AdvancementDisplayInfo(Identifier id) {
         this.id = id;
         this.defaults();
     }
 
-    public AdvancementDisplayInfo(ResourceLocation id, JsonObject displayJson) {
+    public AdvancementDisplayInfo(Identifier id, JsonObject displayJson) {
         this(id);
         if (displayJson != null) {
             this.parseDisplayJson(displayJson);
@@ -135,7 +135,7 @@ public class AdvancementDisplayInfo implements IDisplayInfo {
         this.allowDragging = displayInfo.allowDragging();
     }
 
-    public ResourceLocation getId() {
+    public Identifier getId() {
         return this.id;
     }
 

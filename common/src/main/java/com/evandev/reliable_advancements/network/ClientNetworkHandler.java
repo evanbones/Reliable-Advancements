@@ -5,7 +5,6 @@ import com.evandev.reliable_advancements.gui.screens.AdvancementEditorScreen;
 import com.evandev.reliable_advancements.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.reliable_advancements.gui.screens.TabEditorScreen;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
 
 public class ClientNetworkHandler {
     public static void handleAdvancementJson(AdvancementJsonPayload payload) {
@@ -20,9 +19,6 @@ public class ClientNetworkHandler {
             if ("Copy".equals(payload.initialTab())) {
                 EnhancedAdvancementsScreen.clipboardJson = payload.jsonPayload();
                 EnhancedAdvancementsScreen.clipboardId = payload.advancementId();
-                if (mc.player != null) {
-                    mc.player.displayClientMessage(Component.literal("Copied advancement: " + payload.advancementId()), false);
-                }
                 return;
             }
             if (mainScreen.selectedTab != null) {

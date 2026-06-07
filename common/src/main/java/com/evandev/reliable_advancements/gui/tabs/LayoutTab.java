@@ -2,7 +2,7 @@ package com.evandev.reliable_advancements.gui.tabs;
 
 import com.evandev.reliable_advancements.gui.model.AdvancementDraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.network.chat.Component;
@@ -60,9 +60,9 @@ public class LayoutTab implements IEditorTab {
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
-        gfx.drawString(font, "X Position", startX, startY - 11, 0xFFA08060, false);
-        gfx.drawString(font, "Y Position", startX, startY + 34, 0xFFA08060, false);
+    public void render(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
+        gfx.text(font, "X Position", startX, startY - 11, 0xFFA08060, false);
+        gfx.text(font, "Y Position", startX, startY + 34, 0xFFA08060, false);
     }
 
     @Override

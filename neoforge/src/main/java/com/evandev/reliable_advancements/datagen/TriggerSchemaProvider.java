@@ -4,13 +4,13 @@ import com.evandev.reliable_advancements.reference.Constants;
 import com.google.gson.JsonObject;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.advancements.CriterionTrigger;
-import net.minecraft.advancements.critereon.*;
+import net.minecraft.advancements.criterion.*;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.ParameterizedType;
@@ -34,7 +34,7 @@ public class TriggerSchemaProvider implements DataProvider {
 
         Map<CriterionTrigger<?>, Class<?>> manualMap = getManualMapping();
         for (Map.Entry<ResourceKey<CriterionTrigger<?>>, CriterionTrigger<?>> entry : BuiltInRegistries.TRIGGER_TYPES.entrySet()) {
-            ResourceLocation id = entry.getKey().location();
+            Identifier id = entry.getKey().identifier();
             CriterionTrigger<?> trigger = entry.getValue();
             Class<?> recordClass = manualMap.get(trigger);
 
@@ -74,7 +74,7 @@ public class TriggerSchemaProvider implements DataProvider {
             if (clazz == Boolean.class || clazz == boolean.class) return "boolean";
             if (clazz == Float.class || clazz == float.class || clazz == Double.class || clazz == double.class)
                 return "float";
-            if (clazz == ResourceLocation.class) return "resource_location";
+            if (clazz == Identifier.class) return "resource_location";
             return "object";
         } else if (type instanceof ParameterizedType pType) {
             Class<?> rawType = (Class<?>) pType.getRawType();
@@ -123,7 +123,7 @@ public class TriggerSchemaProvider implements DataProvider {
         map.put(CriteriaTriggers.FISHING_ROD_HOOKED, FishingRodHookedTrigger.TriggerInstance.class);
         map.put(CriteriaTriggers.CHANNELED_LIGHTNING, ChanneledLightningTrigger.TriggerInstance.class);
         map.put(CriteriaTriggers.SHOT_CROSSBOW, ShotCrossbowTrigger.TriggerInstance.class);
-        map.put(CriteriaTriggers.KILLED_BY_CROSSBOW, KilledByCrossbowTrigger.TriggerInstance.class);
+        map.put(CriteriaTriggers.KILLED_BY_ARROW, KilledByArrowTrigger.TriggerInstance.class);
         map.put(CriteriaTriggers.RAID_WIN, PlayerTrigger.TriggerInstance.class);
         map.put(CriteriaTriggers.RAID_OMEN, PlayerTrigger.TriggerInstance.class);
         map.put(CriteriaTriggers.HONEY_BLOCK_SLIDE, SlideDownBlockTrigger.TriggerInstance.class);

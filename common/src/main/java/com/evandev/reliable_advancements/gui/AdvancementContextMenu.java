@@ -7,10 +7,11 @@ import com.evandev.reliable_advancements.platform.Services;
 import com.evandev.reliable_advancements.util.PersistentData;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.ConfirmScreen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +39,7 @@ public class AdvancementContextMenu {
             this.options.add(new ContextOption("Delete from Game", true, () -> parentScreen.deleteAdvancement(widget)));
         } else {
             this.options.add(new ContextOption("Create New Advancement", false, () -> parentScreen.createNewAdvancement(mouseX, mouseY)));
-            this.options.add(new ContextOption("Create New Tab", false, () -> parentScreen.createNewTab(mouseX, mouseY)));
+            this.options.add(new ContextOption("Create New Tab", false, () -> parentScreen.createNewTab()));
             this.options.add(new ContextOption("Paste (Ctrl+V)", false, () -> {
                 parentScreen.pasteAdvancement(mouseX, mouseY);
                 parentScreen.closeContextMenu();
@@ -54,7 +55,7 @@ public class AdvancementContextMenu {
     }
 
     private void openEditor(String tabName) {
-        ResourceLocation id = widget.getAdvancement().holder().id();
+        Identifier id = widget.getAdvancement().holder().id();
         RequestAdvancementJsonPayload request = new RequestAdvancementJsonPayload(id, tabName);
 
         Services.PLATFORM.sendAdvancementJsonRequest(request);
@@ -67,7 +68,7 @@ public class AdvancementContextMenu {
                 (confirmed) -> {
                     if (confirmed) {
                         if (parentScreen.selectedTab != null) {
-                            List<ResourceLocation> idsToDelete = new ArrayList<>();
+                            List<Identifier> idsToDelete = new ArrayList<>();
 
                             for (EnhancedAdvancementWidget w : parentScreen.selectedTab.getWidgets().values()) {
                                 idsToDelete.add(w.getAdvancement().holder().id());
@@ -86,12 +87,12 @@ public class AdvancementContextMenu {
         parentScreen.closeContextMenu();
     }
 
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 1000);
+    public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.nextStratum();
 
         guiGraphics.fillGradient(x, y, x + width, y + height, 0xF0101010, 0xF0101010);
-        guiGraphics.renderOutline(x, y, width, height, 0xFF505050);
+        guiGraphics.outline(x, y, width, height, 0xFF505050);
 
         Font font = Minecraft.getInstance().font;
         for (int i = 0; i < options.size(); i++) {
@@ -104,13 +105,17 @@ public class AdvancementContextMenu {
             }
 
             int textColor = hovered ? (option.isDestructive ? 0xFF5555 : 0xFFFFAA) : 0xFFFFFF;
-            guiGraphics.drawString(font, option.label, x + 6, optY + 6, textColor);
+            guiGraphics.text(font, option.label, x + 6, optY + 6, textColor);
         }
 
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
     }
 
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+
         if (mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height) {
             if (button == 0) {
                 int index = (int) ((mouseY - y - 2) / 20);

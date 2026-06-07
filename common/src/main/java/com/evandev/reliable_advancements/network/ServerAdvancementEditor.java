@@ -14,22 +14,22 @@ import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.advancements.AdvancementTree;
 import net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.level.storage.LevelResource;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class ServerAdvancementEditor {
     public static void handleJsonRequest(MinecraftServer server, ServerPlayer player, RequestAdvancementJsonPayload payload) {
-        if (player != null && !player.hasPermissions(2)) return;
+        if (player != null && !player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
         if (payload.advancementId().toString().equals("reliable_advancements:resync")) {
             player.getAdvancements().reload(server.getAdvancements());
@@ -50,7 +50,7 @@ public class ServerAdvancementEditor {
     }
 
     public static void handleLinkAdvancement(MinecraftServer server, ServerPlayer player, LinkAdvancementPayload payload) {
-        if (player != null && !player.hasPermissions(2)) return;
+        if (player != null && !player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
         AdvancementHolder holder = server.getAdvancements().get(payload.childId());
         if (holder != null) {
@@ -66,7 +66,7 @@ public class ServerAdvancementEditor {
     }
 
     public static void saveAdvancementEdit(MinecraftServer server, ServerPlayer player, EditAdvancementPayload payload) {
-        if (player != null && !player.hasPermissions(2)) return;
+        if (player != null && !player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
         try {
             File datapackDir = new File(server.getWorldPath(LevelResource.DATAPACK_DIR).toFile(), Constants.MOD_ID + "_edits");
             File dataDir = new File(datapackDir, "data/" + payload.advancementId().getNamespace() + "/advancement");
@@ -87,7 +87,7 @@ public class ServerAdvancementEditor {
                 AdvancementHolder newHolder = new AdvancementHolder(payload.advancementId(), newAdvancement);
 
                 ServerAdvancementManagerAccessor manager = (ServerAdvancementManagerAccessor) server.getAdvancements();
-                Map<ResourceLocation, AdvancementHolder> map = new HashMap<>(manager.getAdvancements());
+                Map<Identifier, AdvancementHolder> map = new HashMap<>(manager.getAdvancements());
                 map.put(payload.advancementId(), newHolder);
                 manager.setAdvancements(map);
 
@@ -103,10 +103,10 @@ public class ServerAdvancementEditor {
     }
 
     public static void handleResetTab(MinecraftServer server, ServerPlayer player, ResetTabPayload payload) {
-        if (player != null && !player.hasPermissions(2)) return;
+        if (player != null && !player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
         File datapackDir = new File(server.getWorldPath(LevelResource.DATAPACK_DIR).toFile(), Constants.MOD_ID + "_edits");
 
-        for (ResourceLocation id : payload.advancementIds()) {
+        for (Identifier id : payload.advancementIds()) {
             File advFile = new File(datapackDir, "data/" + id.getNamespace() + "/advancement/" + id.getPath() + ".json");
             if (advFile.exists()) {
                 advFile.delete();
@@ -121,7 +121,7 @@ public class ServerAdvancementEditor {
     }
 
     public static void handleRequestFullTree(MinecraftServer server, ServerPlayer player) {
-        if (player != null && player.hasPermissions(2)) {
+        if (player != null && player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) {
             sendFullTreeToPlayer(server, player);
         }
     }
@@ -133,7 +133,7 @@ public class ServerAdvancementEditor {
     }
 
     private static void sendFullTreeToPlayer(MinecraftServer server, ServerPlayer player) {
-        Map<ResourceLocation, AdvancementProgress> progressMap = new HashMap<>();
+        Map<Identifier, AdvancementProgress> progressMap = new HashMap<>();
         for (AdvancementHolder holder : server.getAdvancements().getAllAdvancements()) {
             AdvancementProgress prog = player.getAdvancements().getOrStartProgress(holder);
             if (prog.hasProgress()) {

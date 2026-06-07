@@ -7,7 +7,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -17,7 +17,7 @@ import java.util.*;
 
 public class RewardTrackerData extends SavedData {
     private static final String DATA_NAME = "reliable_advancements_claims";
-    private final Map<UUID, Set<ResourceLocation>> claimedRewards = new HashMap<>();
+    private final Map<UUID, Set<Identifier>> claimedRewards = new HashMap<>();
 
     public static RewardTrackerData get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(
@@ -31,10 +31,10 @@ public class RewardTrackerData extends SavedData {
         for (String key : tag.getAllKeys()) {
             try {
                 UUID uuid = UUID.fromString(key);
-                Set<ResourceLocation> claims = new HashSet<>();
+                Set<Identifier> claims = new HashSet<>();
                 ListTag list = tag.getList(key, Tag.TAG_STRING);
                 for (int i = 0; i < list.size(); i++) {
-                    claims.add(ResourceLocation.parse(list.getString(i)));
+                    claims.add(Identifier.parse(list.getString(i)));
                 }
                 data.claimedRewards.put(uuid, claims);
             } catch (IllegalArgumentException ignored) {
@@ -43,16 +43,16 @@ public class RewardTrackerData extends SavedData {
         return data;
     }
 
-    public boolean isClaimed(UUID player, ResourceLocation advancement) {
+    public boolean isClaimed(UUID player, Identifier advancement) {
         return claimedRewards.getOrDefault(player, Collections.emptySet()).contains(advancement);
     }
 
-    public void claim(UUID player, ResourceLocation advancement) {
+    public void claim(UUID player, Identifier advancement) {
         claimedRewards.computeIfAbsent(player, k -> new HashSet<>()).add(advancement);
         this.setDirty();
     }
 
-    public void unclaim(UUID player, ResourceLocation advancement) {
+    public void unclaim(UUID player, Identifier advancement) {
         if (claimedRewards.containsKey(player)) {
             claimedRewards.get(player).remove(advancement);
             this.setDirty();
@@ -60,15 +60,15 @@ public class RewardTrackerData extends SavedData {
     }
 
     public void syncToPlayer(ServerPlayer player) {
-        Set<ResourceLocation> claims = claimedRewards.getOrDefault(player.getUUID(), Collections.emptySet());
+        Set<Identifier> claims = claimedRewards.getOrDefault(player.getUUID(), Collections.emptySet());
         Services.PLATFORM.sendClaimedRewardsSync(player, new SyncClaimedRewardsPayload(new ArrayList<>(claims)));
     }
 
     @Override
     public @NotNull CompoundTag save(@NotNull CompoundTag tag, @NotNull HolderLookup.Provider provider) {
-        for (Map.Entry<UUID, Set<ResourceLocation>> entry : claimedRewards.entrySet()) {
+        for (Map.Entry<UUID, Set<Identifier>> entry : claimedRewards.entrySet()) {
             ListTag list = new ListTag();
-            for (ResourceLocation id : entry.getValue()) {
+            for (Identifier id : entry.getValue()) {
                 list.add(StringTag.valueOf(id.toString()));
             }
             tag.put(entry.getKey().toString(), list);

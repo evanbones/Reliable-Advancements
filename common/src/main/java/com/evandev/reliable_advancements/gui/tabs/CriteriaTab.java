@@ -7,7 +7,7 @@ import com.google.gson.*;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultiLineEditBox;
@@ -15,7 +15,7 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -99,7 +99,7 @@ public class CriteriaTab implements IEditorTab {
         widgets.add(Button.builder(Component.literal("-"), b -> removeCriterion(reinitScreen)).pos(x + width - 25, y).size(20, 20).build());
 
         triggerBox = new SuggestingEditBox(font, x, y + 45, width, 20, Component.literal("Trigger"),
-                () -> BuiltInRegistries.TRIGGER_TYPES.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList()));
+                () -> BuiltInRegistries.TRIGGER_TYPES.keySet().stream().map(Identifier::toString).collect(Collectors.toList()));
         triggerBox.setMaxLength(256);
         triggerBox.setValue(active.trigger);
         triggerBox.setResponder(s -> active.trigger = s);
@@ -203,10 +203,10 @@ public class CriteriaTab implements IEditorTab {
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
-        gfx.drawString(font, "Criteria " + (selectedCriterion + 1) + "/" + criteriaList.size(), startX, startY - 11, 0xFFA08060, false);
-        gfx.drawString(font, "Trigger", startX, startY + 34, 0xFFA08060, false);
-        gfx.drawString(font, "Conditions", startX, startY + 79, 0xFF55FF55, false);
+    public void render(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
+        gfx.text(font, "Criteria " + (selectedCriterion + 1) + "/" + criteriaList.size(), startX, startY - 11, 0xFFA08060, false);
+        gfx.text(font, "Trigger", startX, startY + 34, 0xFFA08060, false);
+        gfx.text(font, "Conditions", startX, startY + 79, 0xFF55FF55, false);
     }
 
     @Override
@@ -263,17 +263,17 @@ public class CriteriaTab implements IEditorTab {
         }
 
         @Override
-        public void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
+        public void extractWidgetRenderState(@NotNull GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
             String currentText = this.getValue();
             if (lastText == null || !lastText.equals(currentText)) {
                 lastText = currentText;
                 validate(currentText);
             }
 
-            super.renderWidget(gfx, mouseX, mouseY, partialTicks);
+            super.extractWidgetRenderState(gfx, mouseX, mouseY, partialTicks);
 
             int outlineColor = isValid ? 0xFF00FF00 : 0xFFFF0000;
-            gfx.renderOutline(getX() - 1, getY() - 1, getWidth() + 2, getHeight() + 2, outlineColor);
+            gfx.outline(getX() - 1, getY() - 1, getWidth() + 2, getHeight() + 2, outlineColor);
         }
 
         private void validate(String text) {

@@ -7,13 +7,14 @@ import com.evandev.reliable_advancements.platform.Services;
 import com.evandev.reliable_advancements.util.PersistentData;
 import com.google.gson.GsonBuilder;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.NonNull;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -31,7 +32,7 @@ public class AdvancementEditorScreen extends Screen {
     private static final int ROW_H = 24;
 
     private final EnhancedAdvancementsScreen parentScreen;
-    private final ResourceLocation advId;
+    private final Identifier advId;
     private final AdvancementDraft draft;
     private final boolean isNew;
     private final int posX, posY;
@@ -48,7 +49,7 @@ public class AdvancementEditorScreen extends Screen {
     private Button saveBtn;
     private Button cancelBtn;
 
-    public AdvancementEditorScreen(EnhancedAdvancementsScreen parentScreen, ResourceLocation id, boolean isNew, int posX, int posY, String initialTabName, String rawJsonFromServer) {
+    public AdvancementEditorScreen(EnhancedAdvancementsScreen parentScreen, Identifier id, boolean isNew, int posX, int posY, String initialTabName, String rawJsonFromServer) {
         super(Component.literal((isNew ? "Create" : "Edit") + " Advancement: " + id));
         this.parentScreen = parentScreen;
         this.advId = id;
@@ -157,7 +158,7 @@ public class AdvancementEditorScreen extends Screen {
     private void saveAndClose() {
         activeTab.saveState(draft);
 
-        ResourceLocation finalId = ResourceLocation.parse(draft.id);
+        Identifier finalId = Identifier.parse(draft.id);
 
         int finalX = posX;
         int finalY = posY;
@@ -177,18 +178,14 @@ public class AdvancementEditorScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-    }
-
-    @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
-        super.renderBackground(gfx, mouseX, mouseY, partialTicks);
+    public void extractRenderState(@NonNull GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
+        super.extractRenderState(gfx, mouseX, mouseY, partialTicks);
 
         gfx.fill(0, 0, this.width, this.height, COL_BG_OVERLAY);
         gfx.fill(uiX, uiY, uiX + uiW, uiY + uiH, 0xFF202020);
         gfx.fill(uiX, uiY, uiX + SIDEBAR_WIDTH, uiY + uiH, 0xFF181818);
 
-        gfx.drawString(this.font, (isNew ? "Create" : "Edit") + " Advancement", uiX + SIDEBAR_WIDTH + 20, uiY + 15, COL_GOLD, false);
+        gfx.text(this.font, (isNew ? "Create" : "Edit") + " Advancement", uiX + SIDEBAR_WIDTH + 20, uiY + 15, COL_GOLD, false);
         gfx.fill(uiX + SIDEBAR_WIDTH + 20, uiY + 30, uiX + uiW - 20, uiY + 31, 0x55808080);
 
         int treeTop = uiY + 15;
@@ -205,7 +202,7 @@ public class AdvancementEditorScreen extends Screen {
             }
 
             int textCol = selected ? COL_SEL_TEXT : COL_GOLD;
-            gfx.drawString(font, tabName, uiX + 15, ry + (ROW_H - font.lineHeight) / 2 + 1, textCol, false);
+            gfx.text(font, tabName, uiX + 15, ry + (ROW_H - font.lineHeight) / 2 + 1, textCol, false);
             i++;
         }
 
@@ -222,11 +219,11 @@ public class AdvancementEditorScreen extends Screen {
 
         gfx.enableScissor(uiX + SIDEBAR_WIDTH, uiY + 32, uiX + uiW, uiY + uiH - 40);
         activeTab.render(gfx, mouseX, mouseY, partialTicks);
-        super.render(gfx, mouseX, mouseY, partialTicks);
+        super.extractRenderState(gfx, mouseX, mouseY, partialTicks);
         gfx.disableScissor();
 
-        if (saveBtn != null) saveBtn.render(gfx, mouseX, mouseY, partialTicks);
-        if (cancelBtn != null) cancelBtn.render(gfx, mouseX, mouseY, partialTicks);
+        if (saveBtn != null) saveBtn.extractRenderState(gfx, mouseX, mouseY, partialTicks);
+        if (cancelBtn != null) cancelBtn.extractRenderState(gfx, mouseX, mouseY, partialTicks);
     }
 
     private void updateScrollFromMouse(double my) {

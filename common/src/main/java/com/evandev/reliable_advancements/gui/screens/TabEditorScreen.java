@@ -8,14 +8,14 @@ import com.evandev.reliable_advancements.platform.Services;
 import com.evandev.reliable_advancements.util.PersistentData;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -159,7 +159,7 @@ public class TabEditorScreen extends Screen {
 
         List<String> textureSuggestions = this.minecraft.getResourceManager()
                 .listResources("textures", loc -> loc.getPath().endsWith(".png"))
-                .keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+                .keySet().stream().map(Identifier::toString).collect(Collectors.toList());
 
         bgBox = new SuggestingEditBox(this.font, startX, currentY, 200, 20, Component.literal("Background Texture"), () -> textureSuggestions);
         bgBox.setMaxLength(256);
@@ -271,10 +271,6 @@ public class TabEditorScreen extends Screen {
         return bTab;
     }
 
-    @Override
-    public void renderBackground(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-    }
-
     private void saveCurrentState() {
         if (rulesBox != null) {
             tab.parseBackgroundRules(rulesBox.getValue());
@@ -283,7 +279,7 @@ public class TabEditorScreen extends Screen {
             JsonObject bTab = getBTab();
             draft.rootJson.add("better_tab", bTab);
             tab.customTitle = nameBox.getValue();
-            tab.customBackground = bgBox.getValue().isEmpty() ? null : ResourceLocation.parse(bgBox.getValue());
+            tab.customBackground = bgBox.getValue().isEmpty() ? null : Identifier.parse(bgBox.getValue());
             tab.isStaticBackground = isStaticBg;
             try {
                 tab.bgWidth = bgWidthBox.getValue().isEmpty() ? 16 : Integer.parseInt(bgWidthBox.getValue());
@@ -297,13 +293,13 @@ public class TabEditorScreen extends Screen {
     }
 
     @Override
-    public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
-        super.renderBackground(gfx, mouseX, mouseY, partialTicks);
+    public void extractRenderState(@NotNull GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
+        super.extractRenderState(gfx, mouseX, mouseY, partialTicks);
 
         gfx.fill(0, 0, this.width, this.height, COL_BG_OVERLAY);
         gfx.fill(uiX, uiY, uiX + uiW, uiY + uiH, 0xFF202020);
 
-        gfx.drawString(this.font, "Edit Tab Properties", uiX + 20, uiY + 15, COL_GOLD, false);
+        gfx.text(this.font, "Edit Tab Properties", uiX + 20, uiY + 15, COL_GOLD, false);
         gfx.fill(uiX + 20, uiY + 30, uiX + uiW - 20, uiY + 31, 0x55808080);
 
         if (this.maxScroll > 0) {
@@ -320,27 +316,27 @@ public class TabEditorScreen extends Screen {
         gfx.enableScissor(uiX, uiY + 32, uiX + uiW - 14, uiY + uiH - 40);
 
         if (rulesBox != null)
-            gfx.drawString(this.font, "Random Block Rules (JSON)", rulesBox.getX(), rulesBox.getY() - 11, 0xFFA08060, false);
+            gfx.text(this.font, "Random Block Rules (JSON)", rulesBox.getX(), rulesBox.getY() - 11, 0xFFA08060, false);
         if (nameBox != null)
-            gfx.drawString(this.font, "Tab Name", nameBox.getX(), nameBox.getY() - 11, 0xFFA08060, false);
+            gfx.text(this.font, "Tab Name", nameBox.getX(), nameBox.getY() - 11, 0xFFA08060, false);
         if (bgBox != null)
-            gfx.drawString(this.font, "Background Texture", bgBox.getX(), bgBox.getY() - 11, 0xFFA08060, false);
+            gfx.text(this.font, "Background Texture", bgBox.getX(), bgBox.getY() - 11, 0xFFA08060, false);
         if (bgWidthBox != null)
-            gfx.drawString(this.font, "Tex Width", bgWidthBox.getX(), bgWidthBox.getY() - 11, 0xFFA08060, false);
+            gfx.text(this.font, "Tex Width", bgWidthBox.getX(), bgWidthBox.getY() - 11, 0xFFA08060, false);
         if (bgHeightBox != null)
-            gfx.drawString(this.font, "Tex Height", bgHeightBox.getX(), bgHeightBox.getY() - 11, 0xFFA08060, false);
+            gfx.text(this.font, "Tex Height", bgHeightBox.getX(), bgHeightBox.getY() - 11, 0xFFA08060, false);
         if (widthBox != null)
-            gfx.drawString(this.font, "UI Width", widthBox.getX(), widthBox.getY() - 11, 0xFFA08060, false);
+            gfx.text(this.font, "UI Width", widthBox.getX(), widthBox.getY() - 11, 0xFFA08060, false);
         if (heightBox != null)
-            gfx.drawString(this.font, "UI Height", heightBox.getX(), heightBox.getY() - 11, 0xFFA08060, false);
+            gfx.text(this.font, "UI Height", heightBox.getX(), heightBox.getY() - 11, 0xFFA08060, false);
         if (indexBox != null)
-            gfx.drawString(this.font, "Tab Index", indexBox.getX(), indexBox.getY() - 11, 0xFFA08060, false);
+            gfx.text(this.font, "Tab Index", indexBox.getX(), indexBox.getY() - 11, 0xFFA08060, false);
 
-        super.render(gfx, mouseX, mouseY, partialTicks);
+        super.extractRenderState(gfx, mouseX, mouseY, partialTicks);
 
         gfx.disableScissor();
 
-        if (saveBtn != null) saveBtn.render(gfx, mouseX, mouseY, partialTicks);
-        if (cancelBtn != null) cancelBtn.render(gfx, mouseX, mouseY, partialTicks);
+        if (saveBtn != null) saveBtn.extractRenderState(gfx, mouseX, mouseY, partialTicks);
+        if (cancelBtn != null) cancelBtn.extractRenderState(gfx, mouseX, mouseY, partialTicks);
     }
 }

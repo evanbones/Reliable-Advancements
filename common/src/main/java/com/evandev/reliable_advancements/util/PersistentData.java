@@ -8,7 +8,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.advancements.AdvancementHolder;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.GsonHelper;
 
 import java.io.File;
@@ -88,7 +88,7 @@ public class PersistentData {
         return advancementPositions.containsKey(holder.id().toString());
     }
 
-    public static void setMemoryPosition(ResourceLocation id, int x, int y) {
+    public static void setMemoryPosition(Identifier id, int x, int y) {
         advancementPositions.put(id.toString(), new int[]{x, y});
     }
 
@@ -103,7 +103,7 @@ public class PersistentData {
                     JsonObject tObj = tabProperties.getAsJsonObject(id);
                     if (tObj.has("title")) tab.customTitle = tObj.get("title").getAsString();
                     if (tObj.has("background"))
-                        tab.customBackground = ResourceLocation.parse(tObj.get("background").getAsString());
+                        tab.customBackground = Identifier.parse(tObj.get("background").getAsString());
                     if (tObj.has("static_background"))
                         tab.isStaticBackground = tObj.get("static_background").getAsBoolean();
                     if (tObj.has("bg_width")) tab.bgWidth = tObj.get("bg_width").getAsInt();
@@ -119,7 +119,7 @@ public class PersistentData {
         }
     }
 
-    public static void setPosition(ResourceLocation id, int x, int y) {
+    public static void setPosition(Identifier id, int x, int y) {
         advancementPositions.put(id.toString(), new int[]{x, y});
         try {
             if (!FILE.exists()) {
@@ -151,7 +151,7 @@ public class PersistentData {
         }
     }
 
-    public static void removePosition(ResourceLocation id) {
+    public static void removePosition(Identifier id) {
         advancementPositions.remove(id.toString());
         try {
             if (FILE.exists()) {
@@ -168,7 +168,7 @@ public class PersistentData {
         }
     }
 
-    public static void removeTabProperties(ResourceLocation id) {
+    public static void removeTabProperties(Identifier id) {
         try {
             if (FILE.exists()) {
                 JsonObject json = GSON.fromJson(new FileReader(FILE), JsonObject.class);

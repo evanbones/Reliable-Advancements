@@ -14,13 +14,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(AdvancementType.class)
 public class AdvancementTypeMixin {
     @Inject(method = "createAnnouncement", at = @At("RETURN"), cancellable = true)
-    private void addClickEventToAnnouncement(final AdvancementHolder advancementHolder, final ServerPlayer serverPlayer, final CallbackInfoReturnable<MutableComponent> cir) {
+    private void addClickEventToAnnouncement(final AdvancementHolder holder, final ServerPlayer player, final CallbackInfoReturnable<MutableComponent> cir) {
         MutableComponent original = cir.getReturnValue();
         if (original != null) {
-            Style clickableStyle = original.getStyle().withClickEvent(new ClickEvent(
-                    ClickEvent.Action.RUN_COMMAND,
-                    "/!open_advancement " + advancementHolder.id()
-            ));
+            Style clickableStyle = original.getStyle()
+                    .withClickEvent(new ClickEvent.RunCommand("/!open_advancement " + holder.id()));
 
             cir.setReturnValue(original.copy().setStyle(clickableStyle));
         }

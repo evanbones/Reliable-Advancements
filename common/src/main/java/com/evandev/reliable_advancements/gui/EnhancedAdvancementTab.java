@@ -14,10 +14,12 @@ import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.core.ClientAsset;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.item.ItemStack;
@@ -25,7 +27,7 @@ import net.minecraft.world.item.ItemStack;
 import java.util.*;
 
 public class EnhancedAdvancementTab {
-    public static final Map<ResourceLocation, Tuple<Integer, Integer>> scrollHistory = Maps.newLinkedHashMap();
+    public static final Map<Identifier, Tuple<Integer, Integer>> scrollHistory = Maps.newLinkedHashMap();
     public final List<BackgroundRule> backgroundRules = new ArrayList<>();
     protected final Map<AdvancementHolder, EnhancedAdvancementWidget> widgets = Maps.newLinkedHashMap();
     private final Minecraft minecraft;
@@ -39,7 +41,7 @@ public class EnhancedAdvancementTab {
     public int scrollX;
     public int scrollY;
     public String customTitle = "";
-    public ResourceLocation customBackground = null;
+    public Identifier customBackground = null;
     public boolean isStaticBackground = false;
     public int bgWidth = 16;
     public int bgHeight = 16;
@@ -61,21 +63,21 @@ public class EnhancedAdvancementTab {
         this.index = index;
         this.rootNode = advancementNode;
         this.display = displayInfo;
-        this.icon = displayInfo.getIcon();
+        this.icon = displayInfo.getIcon().create();
         this.title = displayInfo.getTitle();
         this.displayInfos = new AdvancementDisplayInfoRegistry(advancementNode);
         this.root = new EnhancedAdvancementWidget(this, mc, advancementNode, displayInfo);
         this.addWidget(this.root, advancementNode.holder());
 
         String id = advancementNode.holder().id().toString();
-        switch (id) {
-            case "minecraft:story/root" -> this.customIndex = 0;
-            case "minecraft:adventure/root" -> this.customIndex = 1;
-            case "minecraft:husbandry/root" -> this.customIndex = 2;
-            case "minecraft:nether/root" -> this.customIndex = 3;
-            case "minecraft:end/root" -> this.customIndex = 4;
-            default -> this.customIndex = 5;
-        }
+        this.customIndex = switch (id) {
+            case "minecraft:story/root" -> 0;
+            case "minecraft:adventure/root" -> 1;
+            case "minecraft:husbandry/root" -> 2;
+            case "minecraft:nether/root" -> 3;
+            case "minecraft:end/root" -> 4;
+            default -> 5;
+        };
 
         PersistentData.loadTabProperties(this);
     }
@@ -125,15 +127,15 @@ public class EnhancedAdvancementTab {
         return this.title;
     }
 
-    public void drawTab(GuiGraphics guiGraphics, int left, int top, int width, int height, boolean selected) {
-        this.type.draw(guiGraphics, left, top, width, height, selected, this.index);
+    public void drawTab(GuiGraphicsExtractor guiGraphicsExtractor, int left, int top, int width, int height, boolean selected) {
+        this.type.draw(guiGraphicsExtractor, left, top, width, height, selected, this.index);
     }
 
-    public void drawIcon(GuiGraphics guiGraphics, int left, int top, int width, int height) {
-        this.type.drawIcon(guiGraphics, left, top, width, height, this.index, this.icon);
+    public void drawIcon(GuiGraphicsExtractor guiGraphicsExtractor, int left, int top, int width, int height) {
+        this.type.drawIcon(guiGraphicsExtractor, left, top, width, height, this.index, this.icon);
     }
 
-    public void drawContents(GuiGraphics guiGraphics, int left, int top, int width, int height, double mouseX, double mouseY) {
+    public void drawContents(GuiGraphicsExtractor guiGraphicsExtractor, int left, int top, int width, int height, double mouseX, double mouseY) {
         float zoom = this.screen.getZoom();
         int scaledWidth = (int) (width / zoom);
         int scaledHeight = (int) (height / zoom);
@@ -147,15 +149,19 @@ public class EnhancedAdvancementTab {
             this.centered = true;
         }
 
-        guiGraphics.enableScissor(left, top, left + width, top + height);
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(left, top, 0);
-        guiGraphics.pose().scale(zoom, zoom, 1.0F);
+        guiGraphicsExtractor.enableScissor(left, top, left + width, top + height);
+        guiGraphicsExtractor.pose().pushMatrix();
+        guiGraphicsExtractor.pose().translate((float) left, (float) top);
+        guiGraphicsExtractor.pose().scale(zoom, zoom);
 
-        ResourceLocation defaultRes = this.customBackground != null ? this.customBackground : this.display.getBackground().orElse(TextureManager.INTENTIONAL_MISSING_TEXTURE);
+        Identifier defaultRes = this.customBackground != null
+                ? this.customBackground
+                : this.display.getBackground()
+                .map(ClientAsset.Texture::texturePath)
+                .orElse(TextureManager.INTENTIONAL_MISSING_TEXTURE);
 
         if (this.isStaticBackground && this.bgWidth == 0 && this.bgHeight == 0) {
-            guiGraphics.blit(defaultRes, 0, 0, 0.0F, 0.0F, scaledWidth, scaledHeight, scaledWidth, scaledHeight);
+            guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, defaultRes, 0, 0, 0.0F, 0.0F, scaledWidth, scaledHeight, scaledWidth, scaledHeight);
         } else {
             int texW = this.bgWidth > 0 ? this.bgWidth : 16;
             int texH = this.bgHeight > 0 ? this.bgHeight : 16;
@@ -169,7 +175,7 @@ public class EnhancedAdvancementTab {
             for (; k <= 1 + scaledWidth / texW; k++) {
                 int l = -1;
                 for (; l <= 1 + scaledHeight / texH; l++) {
-                    ResourceLocation texToDraw = defaultRes;
+                    Identifier texToDraw = defaultRes;
 
                     if (!this.backgroundRules.isEmpty() && !this.isStaticBackground) {
                         int absoluteX = i + (texW * k) - this.scrollX;
@@ -192,7 +198,7 @@ public class EnhancedAdvancementTab {
                         }
                     }
 
-                    guiGraphics.blit(texToDraw, i + texW * k, j + texH * l, 0.0F, 0.0F, texW, texH, texW, texH);
+                    guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, texToDraw, i + texW * k, j + texH * l, 0.0F, 0.0F, texW, texH, texW, texH);
                 }
             }
         }
@@ -201,30 +207,29 @@ public class EnhancedAdvancementTab {
             int alpha = (int) (ModConfig.get().blurBackgroundOpacity / 100.0f * 255.0f);
             int color = (alpha << 24);
 
-            guiGraphics.fill(0, 0, scaledWidth, scaledHeight, color);
+            guiGraphicsExtractor.fill(0, 0, scaledWidth, scaledHeight, color);
         }
 
-        this.root.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, true);
-        this.root.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, false);
-        this.root.draw(guiGraphics, this.scrollX, this.scrollY, unzoomedX, unzoomedY);
+        this.root.drawConnectivity(guiGraphicsExtractor, this.scrollX, this.scrollY, true);
+        this.root.drawConnectivity(guiGraphicsExtractor, this.scrollX, this.scrollY, false);
+        this.root.draw(guiGraphicsExtractor, this.scrollX, this.scrollY, unzoomedX, unzoomedY);
 
         for (EnhancedAdvancementWidget advancementWidget : this.widgets.values()) {
             if (EnhancedAdvancementsScreen.selectedWidgets.contains(advancementWidget)) {
-                guiGraphics.fill(advancementWidget.getX() + this.scrollX + 1, advancementWidget.getY() + this.scrollY - 2, advancementWidget.getX() + this.scrollX + 31, advancementWidget.getY() + this.scrollY + 28, 0x6600FF00);
+                guiGraphicsExtractor.fill(advancementWidget.getX() + this.scrollX + 1, advancementWidget.getY() + this.scrollY - 2, advancementWidget.getX() + this.scrollX + 31, advancementWidget.getY() + this.scrollY + 28, 0x6600FF00);
             }
         }
-        guiGraphics.pose().popPose();
-        guiGraphics.disableScissor();
+        guiGraphicsExtractor.pose().popMatrix();
+        guiGraphicsExtractor.disableScissor();
     }
 
     public void setCentered(boolean centered) {
         this.centered = centered;
     }
 
-    public void drawToolTips(GuiGraphics guiGraphics, int mouseX, int mouseY, int left, int top, int width, int height) {
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0.0D, 0.0D, -200.0D);
-        guiGraphics.fill(0, 0, width, height, Mth.floor(this.fade * 255.0F) << 24);
+    public void drawToolTips(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, int left, int top, int width, int height) {
+        guiGraphicsExtractor.pose().pushMatrix();
+        guiGraphicsExtractor.fill(0, 0, width, height, Mth.floor(this.fade * 255.0F) << 24);
         boolean flag = false;
 
         float zoom = this.screen.getZoom();
@@ -235,16 +240,16 @@ public class EnhancedAdvancementTab {
             for (EnhancedAdvancementWidget advancementWidget : this.widgets.values()) {
                 if (advancementWidget.isMouseOver(this.scrollX, this.scrollY, scaledMouseX, scaledMouseY)) {
                     flag = true;
-                    guiGraphics.pose().pushPose();
-                    guiGraphics.pose().scale(zoom, zoom, 1.0F);
-                    advancementWidget.drawHover(guiGraphics, this.scrollX, this.scrollY, (int) (left / zoom), (int) (top / zoom));
-                    guiGraphics.pose().popPose();
+                    guiGraphicsExtractor.pose().pushMatrix();
+                    guiGraphicsExtractor.pose().scale(zoom, zoom);
+                    advancementWidget.drawHover(guiGraphicsExtractor, this.scrollX, this.scrollY, (int) (left / zoom), (int) (top / zoom));
+                    guiGraphicsExtractor.pose().popMatrix();
                     break;
                 }
             }
         }
 
-        guiGraphics.pose().popPose();
+        guiGraphicsExtractor.pose().popMatrix();
 
         if (ModConfig.get().doFade && flag) {
             this.fade = Mth.clamp(this.fade + 0.02F, 0.0F, 0.3F);
@@ -325,7 +330,7 @@ public class EnhancedAdvancementTab {
         public int maxY = Integer.MAX_VALUE;
         public float chance = 1.0f;
         public boolean absoluteY = false;
-        public ResourceLocation texture;
+        public Identifier texture;
 
         public static BackgroundRule fromJson(com.google.gson.JsonObject json) {
             BackgroundRule rule = new BackgroundRule();
@@ -333,7 +338,7 @@ public class EnhancedAdvancementTab {
             if (json.has("max_y")) rule.maxY = json.get("max_y").getAsInt();
             if (json.has("chance")) rule.chance = json.get("chance").getAsFloat();
             if (json.has("absolute_y")) rule.absoluteY = json.get("absolute_y").getAsBoolean();
-            if (json.has("texture")) rule.texture = ResourceLocation.parse(json.get("texture").getAsString());
+            if (json.has("texture")) rule.texture = Identifier.parse(json.get("texture").getAsString());
             return rule;
         }
     }

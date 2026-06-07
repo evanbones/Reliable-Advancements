@@ -27,12 +27,12 @@ public abstract class PlayerAdvancementsMixin {
     }
 
     @Inject(method = "revoke", at = @At("RETURN"))
-    private void onRevoke(AdvancementHolder advancement, String criterionKey, CallbackInfoReturnable<Boolean> cir) {
+    private void onRevoke(AdvancementHolder advancement, String criterion, CallbackInfoReturnable<Boolean> cir) {
         if (cir.getReturnValue()) {
             PlayerAdvancements advancements = (PlayerAdvancements) (Object) this;
             if (!advancements.getOrStartProgress(advancement).isDone()) {
-                RewardTrackerData.get(this.player.server).unclaim(this.player.getUUID(), advancement.id());
-                RewardTrackerData.get(this.player.server).syncToPlayer(this.player);
+                RewardTrackerData.get(this.player.level().getServer()).unclaim(this.player.getUUID(), advancement.id());
+                RewardTrackerData.get(this.player.level().getServer()).syncToPlayer(this.player);
             }
         }
     }

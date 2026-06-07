@@ -12,21 +12,21 @@ import com.evandev.reliable_advancements.util.CriterionGrid;
 import com.evandev.reliable_advancements.util.PersistentData;
 import com.evandev.reliable_advancements.util.RenderUtil;
 import com.google.common.collect.Lists;
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.StringSplitter;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.advancements.AdvancementWidgetType;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentUtils;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.Style;
+import net.minecraft.util.ARGB;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 
@@ -84,7 +84,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         this.criterionGrid = CriterionGrid.findOptimalCriterionGrid(this.advancementNode.holder(), this.advancementNode.advancement(), advancementProgress, screen.width / 2, mc.font);
         int maxWidth;
 
-        if (!ModConfig.get().requiresShift || Screen.hasShiftDown()) {
+        if (!ModConfig.get().requiresShift || EnhancedAdvancementsScreen.hasShiftDown()) {
             maxWidth = Math.max(titleWidth, this.criterionGrid.width);
         } else {
             maxWidth = titleWidth;
@@ -140,7 +140,6 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         if (ModConfig.get().discoveryMode) {
             if (this.parent == null) return true;
             boolean parentCompleted = this.parent.advancementProgress != null && this.parent.advancementProgress.isDone();
-
             boolean parentClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(this.parent.getAdvancement().holder().id());
 
             return parentCompleted && parentClaimed;
@@ -148,36 +147,26 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         return true;
     }
 
-    public void drawConnectivity(GuiGraphics guiGraphics, int scrollX, int scrollY, boolean drawInside) {
-        // Check if connections should be drawn at all
+    public void drawConnectivity(GuiGraphicsExtractor guiGraphicsExtractor, int scrollX, int scrollY, boolean drawInside) {
         if (this.shouldRender() && (EnhancedAdvancementsScreen.canEdit() || !this.enhancedDisplayInfo.hideLines())) {
-            // Draw connection to parent
             if (this.parent != null && this.parent.shouldRender()) {
-                this.drawConnection(guiGraphics, this.parent, scrollX, scrollY, drawInside);
+                this.drawConnection(guiGraphicsExtractor, this.parent, scrollX, scrollY, drawInside);
             }
-            // Create and post event to get extra connections
             IAdvancementDrawConnectionsEvent event = Services.PLATFORM.getEventHelper().postAdvancementDrawConnectionsEvent(this.advancementNode);
-            // Draw extra connections from event
             for (AdvancementHolder parent : event.getExtraConnections()) {
                 final EnhancedAdvancementWidget parentGui = this.advancementTabGui.getWidget(parent);
                 if (parentGui != null && parentGui.shouldRender()) {
-                    this.drawConnection(guiGraphics, parentGui, scrollX, scrollY, drawInside);
+                    this.drawConnection(guiGraphicsExtractor, parentGui, scrollX, scrollY, drawInside);
                 }
             }
         }
-        // Draw child connections
         for (EnhancedAdvancementWidget advancementWidget : this.children) {
-            advancementWidget.drawConnectivity(guiGraphics, scrollX, scrollY, drawInside);
+            advancementWidget.drawConnectivity(guiGraphicsExtractor, scrollX, scrollY, drawInside);
         }
     }
 
-    /**
-     * Draws connection line between this advancement and the advancement supplied in parent.
-     */
-    public void drawConnection(GuiGraphics guiGraphics, EnhancedAdvancementWidget parent, int scrollX, int scrollY, boolean drawInside) {
-        boolean parentCompleted = parent.advancementProgress != null && parent.advancementProgress.isDone();
+    public void drawConnection(GuiGraphicsExtractor guiGraphicsExtractor, EnhancedAdvancementWidget parent, int scrollX, int scrollY, boolean drawInside) {
         boolean parentClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(parent.getAdvancement().holder().id());
-
         boolean thisCompleted = this.advancementProgress != null && this.advancementProgress.isDone();
         boolean thisClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(this.advancementNode.holder().id());
 
@@ -208,12 +197,11 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
 
             if (!perpendicular) {
                 if (drawInside) {
-                    RenderUtil.drawRect(guiGraphics, x1 - 1, y1 - 1, x2 - 1, y2 - 1, 3, borderLineColor);
+                    RenderUtil.drawRect(guiGraphicsExtractor, x1 - 1, y1 - 1, x2 - 1, y2 - 1, 3, borderLineColor);
                 } else {
-                    RenderUtil.drawRect(guiGraphics, x1, y1, x2, y2, 1, innerLineColor);
+                    RenderUtil.drawRect(guiGraphicsExtractor, x1, y1, x2, y2, 1, innerLineColor);
                 }
 
-                // Angled Arrow Logic
                 if (ModConfig.get().drawArrows && !drawInside) {
                     float dx = x1 - x2;
                     float dy = y1 - y2;
@@ -237,7 +225,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                         float arrowY = y1 - offsetY;
                         float angle = (float) Math.atan2(dy, dx);
 
-                        RenderUtil.drawRotatedArrow(guiGraphics, arrowX, arrowY, angle, innerLineColor);
+                        RenderUtil.drawRotatedArrow(guiGraphicsExtractor, arrowX, arrowY, angle, innerLineColor);
                     }
                 }
             } else {
@@ -264,13 +252,12 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                 int thickness = drawInside ? 1 : 0;
                 int color = drawInside ? borderLineColor : innerLineColor;
 
-                RenderUtil.line(guiGraphics, startX, startY, startAnchorX, startAnchorY, thickness, color);
-                RenderUtil.line(guiGraphics, startAnchorX, startAnchorY, endAnchorX, endAnchorY, thickness, color);
-                RenderUtil.line(guiGraphics, endAnchorX, endAnchorY, endX, endY, thickness, color);
+                RenderUtil.line(guiGraphicsExtractor, startX, startY, startAnchorX, startAnchorY, thickness, color);
+                RenderUtil.line(guiGraphicsExtractor, startAnchorX, startAnchorY, endAnchorX, endAnchorY, thickness, color);
+                RenderUtil.line(guiGraphicsExtractor, endAnchorX, endAnchorY, endX, endY, thickness, color);
 
                 boolean showArrow = (verticalAnchors ? diffY : diffX) > 15;
 
-                // Orthogonal Direct Line Arrows
                 if (!drawInside && showArrow && ModConfig.get().drawArrows) {
                     int edgeDistanceX = ADVANCEMENT_SIZE / 2 + 3;
                     int edgeDistanceY = ADVANCEMENT_SIZE / 2 + 3;
@@ -278,11 +265,10 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                         edgeDistanceX += 2;
                         edgeDistanceY += 2;
                     }
-                    RenderUtil.drawArrow(guiGraphics, endX, endY, endAnchorX, endAnchorY, verticalAnchors, edgeDistanceX, edgeDistanceY, innerLineColor);
+                    RenderUtil.drawArrow(guiGraphicsExtractor, endX, endY, endAnchorX, endAnchorY, verticalAnchors, edgeDistanceX, edgeDistanceY, innerLineColor);
                 }
             }
         } else {
-            // Vanilla-style connection rendering
             int startX = scrollX + parent.x + ADVANCEMENT_SIZE / 2;
             int endXHalf = scrollX + parent.x + ADVANCEMENT_SIZE + 6;
             int startY = scrollY + parent.y + ADVANCEMENT_SIZE / 2;
@@ -290,20 +276,19 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             int endY = scrollY + this.y + ADVANCEMENT_SIZE / 2;
 
             if (drawInside) {
-                guiGraphics.hLine(endXHalf, startX, startY - 1, borderLineColor);
-                guiGraphics.hLine(endXHalf + 1, startX, startY, borderLineColor);
-                guiGraphics.hLine(endXHalf, startX, startY + 1, borderLineColor);
-                guiGraphics.hLine(endX, endXHalf - 1, endY - 1, borderLineColor);
-                guiGraphics.hLine(endX, endXHalf - 1, endY, borderLineColor);
-                guiGraphics.hLine(endX, endXHalf - 1, endY + 1, borderLineColor);
-                guiGraphics.vLine(endXHalf - 1, endY, startY, borderLineColor);
-                guiGraphics.vLine(endXHalf + 1, endY, startY, borderLineColor);
+                guiGraphicsExtractor.horizontalLine(endXHalf, startX, startY - 1, borderLineColor);
+                guiGraphicsExtractor.horizontalLine(endXHalf + 1, startX, startY, borderLineColor);
+                guiGraphicsExtractor.horizontalLine(endXHalf, startX, startY + 1, borderLineColor);
+                guiGraphicsExtractor.horizontalLine(endX, endXHalf - 1, endY - 1, borderLineColor);
+                guiGraphicsExtractor.horizontalLine(endX, endXHalf - 1, endY, borderLineColor);
+                guiGraphicsExtractor.horizontalLine(endX, endXHalf - 1, endY + 1, borderLineColor);
+                guiGraphicsExtractor.verticalLine(endXHalf - 1, endY, startY, borderLineColor);
+                guiGraphicsExtractor.verticalLine(endXHalf + 1, endY, startY, borderLineColor);
             } else {
-                guiGraphics.hLine(endXHalf, startX, startY, innerLineColor);
-                guiGraphics.hLine(endX, endXHalf, endY, innerLineColor);
-                guiGraphics.vLine(endXHalf, endY, startY, innerLineColor);
+                guiGraphicsExtractor.horizontalLine(endXHalf, startX, startY, innerLineColor);
+                guiGraphicsExtractor.horizontalLine(endX, endXHalf, endY, innerLineColor);
+                guiGraphicsExtractor.verticalLine(endXHalf, endY, startY, innerLineColor);
 
-                // Vanilla Line Arrows
                 if (ModConfig.get().drawArrows) {
                     int edgeDistanceX = ADVANCEMENT_SIZE / 2 + 3;
                     int edgeDistanceY = ADVANCEMENT_SIZE / 2 + 3;
@@ -311,13 +296,13 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                         edgeDistanceX += 2;
                         edgeDistanceY += 2;
                     }
-                    RenderUtil.drawArrow(guiGraphics, endX, endY, endXHalf, endY, false, edgeDistanceX, edgeDistanceY, innerLineColor);
+                    RenderUtil.drawArrow(guiGraphicsExtractor, endX, endY, endXHalf, endY, false, edgeDistanceX, edgeDistanceY, innerLineColor);
                 }
             }
         }
     }
 
-    public void draw(GuiGraphics guiGraphics, int scrollX, int scrollY, double unzoomedX, double unzoomedY) {
+    public void draw(GuiGraphicsExtractor guiGraphicsExtractor, int scrollX, int scrollY, double unzoomedX, double unzoomedY) {
         boolean isHovered = EnhancedAdvancementsScreen.canEdit() && !ModConfig.get().showTooltipsInEditMode && this.isMouseOver(scrollX, scrollY, unzoomedX, unzoomedY);
         if (isHovered) {
             hoverAnim = Math.min(1.0f, hoverAnim + 0.15f);
@@ -351,44 +336,36 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                 int g = (baseColor >> 8) & 255;
                 int b = baseColor & 255;
 
-                // Blend upwards of 40% towards white when fully hovered
                 r = (int) (r + (255 - r) * hoverAnim * 0.4f);
                 g = (int) (g + (255 - g) * hoverAnim * 0.4f);
                 b = (int) (b + (255 - b) * hoverAnim * 0.4f);
                 baseColor = 0xFF000000 | (r << 16) | (g << 8) | b;
             }
 
-            RenderUtil.setColor(baseColor);
-            RenderSystem.enableBlend();
-            guiGraphics.pose().pushPose();
+            int finalColor = isDimmed ? ARGB.multiply(baseColor, 0xFF808080) : baseColor;
 
-            if (isDimmed) {
-                RenderSystem.setShaderColor(0.5F, 0.5F, 0.5F, 1.0F);
-            }
+            guiGraphicsExtractor.pose().pushMatrix();
 
             float scale = 1.0f + (hoverAnim * 0.1f);
             float centerX = scrollX + this.x + 3 + ICON_SIZE / 2.0f;
             float centerY = scrollY + this.y + ICON_SIZE / 2.0f;
-            guiGraphics.pose().translate(centerX, centerY, 0);
-            guiGraphics.pose().scale(scale, scale, 1.0f);
-            guiGraphics.pose().translate(-centerX, -centerY, 0);
+            guiGraphicsExtractor.pose().translate(centerX, centerY);
+            guiGraphicsExtractor.pose().scale(scale, scale);
+            guiGraphicsExtractor.pose().translate(-centerX, -centerY);
 
-            guiGraphics.blitSprite(advancementState.frameSprite(this.displayInfo.getType()), scrollX + this.x + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE);
+            guiGraphicsExtractor.blitSprite(RenderPipelines.GUI_TEXTURED, advancementState.frameSprite(this.displayInfo.getType()), scrollX + this.x + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE, finalColor);
+
+            guiGraphicsExtractor.fakeItem(this.displayInfo.getIcon().create(), scrollX + this.x + 8, scrollY + this.y + 5);
 
             if (isDimmed) {
-                RenderSystem.setShaderColor(0.25F, 0.25F, 0.25F, 1.0F);
-            } else {
-                RenderUtil.setColor(enhancedDisplayInfo.defaultIconColor());
+                guiGraphicsExtractor.fill(RenderPipelines.GUI, scrollX + this.x + 8, scrollY + this.y + 5, scrollX + this.x + 24, scrollY + this.y + 21, 0x80000000);
             }
 
-            guiGraphics.renderFakeItem(this.displayInfo.getIcon(), scrollX + this.x + 8, scrollY + this.y + 5);
-
-            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-            guiGraphics.pose().popPose();
+            guiGraphicsExtractor.pose().popMatrix();
         }
 
         for (EnhancedAdvancementWidget advancementWidget : this.children) {
-            advancementWidget.draw(guiGraphics, scrollX, scrollY, unzoomedX, unzoomedY);
+            advancementWidget.draw(guiGraphicsExtractor, scrollX, scrollY, unzoomedX, unzoomedY);
         }
     }
 
@@ -401,7 +378,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         this.children.add(advancementEntryScreen);
     }
 
-    public void drawHover(GuiGraphics guiGraphics, int scrollX, int scrollY, int left, int top) {
+    public void drawHover(GuiGraphicsExtractor guiGraphicsExtractor, int scrollX, int scrollY, int left, int top) {
         if (EnhancedAdvancementsScreen.canEdit() && !ModConfig.get().showTooltipsInEditMode) {
             return;
         }
@@ -412,11 +389,10 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         int i = s == null ? 0 : this.minecraft.font.width(s);
         boolean drawTop;
 
-        if (!ModConfig.get().requiresShift || Screen.hasShiftDown()) {
+        if (!ModConfig.get().requiresShift || EnhancedAdvancementsScreen.hasShiftDown()) {
             if (this.criterionGrid.height < this.advancementTabGui.getScreen().height) {
                 drawTop = top + scrollY + this.y + this.description.size() * this.minecraft.font.lineHeight + this.criterionGrid.height + 50 >= this.advancementTabGui.getScreen().height;
             } else {
-                // Always draw on the bottom if the grid is larger than the screen
                 drawTop = false;
             }
         } else {
@@ -451,7 +427,6 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         }
 
         int k = this.width - j;
-        RenderSystem.enableBlend();
         int drawY = scrollY + this.y;
         int drawX;
 
@@ -462,7 +437,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         }
         int boxHeight;
 
-        if (!ModConfig.get().requiresShift || Screen.hasShiftDown()) {
+        if (!ModConfig.get().requiresShift || EnhancedAdvancementsScreen.hasShiftDown()) {
             boxHeight = TITLE_SIZE + this.description.size() * this.minecraft.font.lineHeight + this.criterionGrid.height;
         } else {
             boxHeight = TITLE_SIZE + this.description.size() * this.minecraft.font.lineHeight;
@@ -470,43 +445,43 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
 
         if (!this.description.isEmpty()) {
             if (drawTop) {
-                this.render9Sprite(guiGraphics, drawX, drawY + ADVANCEMENT_SIZE - boxHeight, this.width, boxHeight, CORNER_SIZE, WIDGET_WIDTH, WIDGET_HEIGHT, 0, 52);
+                this.render9Sprite(guiGraphicsExtractor, drawX, drawY + ADVANCEMENT_SIZE - boxHeight, this.width, boxHeight, CORNER_SIZE, WIDGET_WIDTH, WIDGET_HEIGHT, 0, 52);
             } else {
-                this.render9Sprite(guiGraphics, drawX, drawY, this.width, boxHeight, CORNER_SIZE, WIDGET_WIDTH, WIDGET_HEIGHT, 0, 52);
+                this.render9Sprite(guiGraphicsExtractor, drawX, drawY, this.width, boxHeight, CORNER_SIZE, WIDGET_WIDTH, WIDGET_HEIGHT, 0, 52);
             }
         }
 
         // Title left side
-        RenderUtil.setColor(enhancedDisplayInfo.getTitleColor(stateTitleLeft));
+        int colorLeft = enhancedDisplayInfo.getTitleColor(stateTitleLeft);
         int left_side = Math.min(j, WIDGET_WIDTH - 16);
-        guiGraphics.blit(Resources.Gui.WIDGETS, drawX, drawY, 0, enhancedDisplayInfo.getTitleYMultiplier(stateTitleLeft) * WIDGET_HEIGHT, left_side, WIDGET_HEIGHT);
+        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WIDGETS, drawX, drawY, 0f, (float) (enhancedDisplayInfo.getTitleYMultiplier(stateTitleLeft) * WIDGET_HEIGHT), left_side, WIDGET_HEIGHT, 256, 256, colorLeft);
         if (left_side < j) {
-            guiGraphics.blit(Resources.Gui.WIDGETS, drawX + left_side, drawY, 16, enhancedDisplayInfo.getTitleYMultiplier(stateTitleLeft) * WIDGET_HEIGHT, j - left_side, WIDGET_HEIGHT);
+            guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WIDGETS, drawX + left_side, drawY, 16f, (float) (enhancedDisplayInfo.getTitleYMultiplier(stateTitleLeft) * WIDGET_HEIGHT), j - left_side, WIDGET_HEIGHT, 256, 256, colorLeft);
         }
+
         // Title right side
-        RenderUtil.setColor(enhancedDisplayInfo.getTitleColor(stateTitleRight));
+        int colorRight = enhancedDisplayInfo.getTitleColor(stateTitleRight);
         int right_side = Math.min(k, WIDGET_WIDTH - 16);
-        guiGraphics.blit(Resources.Gui.WIDGETS, drawX + j, drawY, WIDGET_WIDTH - right_side, enhancedDisplayInfo.getTitleYMultiplier(stateTitleRight) * WIDGET_HEIGHT, right_side, WIDGET_HEIGHT);
+        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WIDGETS, drawX + j, drawY, (float) (WIDGET_WIDTH - right_side), (float) (enhancedDisplayInfo.getTitleYMultiplier(stateTitleRight) * WIDGET_HEIGHT), right_side, WIDGET_HEIGHT, 256, 256, colorRight);
         if (right_side < k) {
-            // + and - 2 is to create some overlap in the drawing when it extends past the max length of the texture
-            guiGraphics.blit(Resources.Gui.WIDGETS, drawX + j + right_side - 2, drawY, WIDGET_WIDTH - k + right_side - 2, enhancedDisplayInfo.getTitleYMultiplier(stateTitleRight) * WIDGET_HEIGHT, k - right_side + 2, WIDGET_HEIGHT);
+            guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WIDGETS, drawX + j + right_side - 2, drawY, (float) (WIDGET_WIDTH - k + right_side - 2), (float) (enhancedDisplayInfo.getTitleYMultiplier(stateTitleRight) * WIDGET_HEIGHT), k - right_side + 2, WIDGET_HEIGHT, 256, 256, colorRight);
         }
+
         // Advancement icon
-        RenderUtil.setColor(enhancedDisplayInfo.getIconColor(stateIcon));
-        guiGraphics.blitSprite(stateIcon.frameSprite(this.displayInfo.getType()), scrollX + this.x + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE);
-        RenderUtil.setColor(enhancedDisplayInfo.defaultIconColor());
+        int iconColor = enhancedDisplayInfo.getIconColor(stateIcon);
+        guiGraphicsExtractor.blitSprite(RenderPipelines.GUI_TEXTURED, stateIcon.frameSprite(this.displayInfo.getType()), scrollX + this.x + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE, iconColor);
 
         if (drawLeft) {
-            guiGraphics.drawString(this.minecraft.font, this.title, drawX + 5, scrollY + this.y + 9, -1);
+            guiGraphicsExtractor.text(this.minecraft.font, this.title, drawX + 5, scrollY + this.y + 9, -1);
 
             if (s != null) {
-                guiGraphics.drawString(this.minecraft.font, s, scrollX + this.x - i, scrollY + this.y + 9, -1);
+                guiGraphicsExtractor.text(this.minecraft.font, s, scrollX + this.x - i, scrollY + this.y + 9, -1);
             }
         } else {
-            guiGraphics.drawString(this.minecraft.font, this.title, scrollX + this.x + 32, scrollY + this.y + 9, -1);
+            guiGraphicsExtractor.text(this.minecraft.font, this.title, scrollX + this.x + 32, scrollY + this.y + 9, -1);
 
             if (s != null) {
-                guiGraphics.drawString(this.minecraft.font, s, scrollX + this.x + this.width - i - 5, scrollY + this.y + 9, -1);
+                guiGraphicsExtractor.text(this.minecraft.font, s, scrollX + this.x + this.width - i - 5, scrollY + this.y + 9, -1);
             }
         }
 
@@ -517,42 +492,44 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             yOffset = scrollY + this.y + 9 + 17;
         }
         for (int k1 = 0; k1 < this.description.size(); ++k1) {
-            guiGraphics.drawString(this.minecraft.font, this.description.get(k1), drawX + 5, yOffset + k1 * this.minecraft.font.lineHeight, -5592406, false);
+            guiGraphicsExtractor.text(this.minecraft.font, this.description.get(k1), drawX + 5, yOffset + k1 * this.minecraft.font.lineHeight, -5592406, false);
         }
-        if (this.criterionGrid != null && !ModConfig.get().requiresShift || Screen.hasShiftDown()) {
+        if (this.criterionGrid != null && (!ModConfig.get().requiresShift || EnhancedAdvancementsScreen.hasShiftDown())) {
             int xOffset = drawX + 5;
             yOffset += this.description.size() * this.minecraft.font.lineHeight;
             for (int colIndex = 0; colIndex < this.criterionGrid.columns.size(); colIndex++) {
                 CriterionGrid.Column col = this.criterionGrid.columns.get(colIndex);
                 for (int rowIndex = 0; rowIndex < col.cells().size(); rowIndex++) {
-                    guiGraphics.drawString(this.minecraft.font, col.cells().get(rowIndex), xOffset, yOffset + rowIndex * this.minecraft.font.lineHeight, -5592406, false);
+                    guiGraphicsExtractor.text(this.minecraft.font, col.cells().get(rowIndex), xOffset, yOffset + rowIndex * this.minecraft.font.lineHeight, -5592406, false);
                 }
                 xOffset += col.width();
             }
         }
 
-        guiGraphics.renderFakeItem(this.displayInfo.getIcon(), scrollX + this.x + 8, scrollY + this.y + 5);
+        guiGraphicsExtractor.fakeItem(this.displayInfo.getIcon().create(), scrollX + this.x + 8, scrollY + this.y + 5);
     }
 
-    protected void render9Sprite(GuiGraphics guiGraphics, int x, int y, int width, int height, int textureHeight, int textureWidth, int textureDistance, int textureX, int textureY) {
+    protected void render9Sprite(GuiGraphicsExtractor guiGraphicsExtractor, int x, int y, int width, int height, int textureHeight, int textureWidth, int textureDistance, int textureX, int textureY) {
+        int color = 0xFFFFFFFF;
+
         // Top left corner
-        guiGraphics.blit(Resources.Gui.WIDGETS, x, y, textureX, textureY, textureHeight, textureHeight);
+        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WIDGETS, x, y, (float) textureX, (float) textureY, textureHeight, textureHeight, 256, 256, color);
         // Top side
-        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphics, x + textureHeight, y, width - textureHeight - textureHeight, textureHeight, textureX + textureHeight, textureY, textureWidth - textureHeight - textureHeight, textureDistance);
+        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphicsExtractor, x + textureHeight, y, width - textureHeight - textureHeight, textureHeight, textureX + textureHeight, textureY, textureWidth - textureHeight - textureHeight, textureDistance);
         // Top right corner
-        guiGraphics.blit(Resources.Gui.WIDGETS, x + width - textureHeight, y, textureX + textureWidth - textureHeight, textureY, textureHeight, textureHeight);
+        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WIDGETS, x + width - textureHeight, y, (float) (textureX + textureWidth - textureHeight), (float) textureY, textureHeight, textureHeight, 256, 256, color);
         // Bottom left corner
-        guiGraphics.blit(Resources.Gui.WIDGETS, x, y + height - textureHeight, textureX, textureY + textureDistance - textureHeight, textureHeight, textureHeight);
+        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WIDGETS, x, y + height - textureHeight, (float) textureX, (float) (textureY + textureDistance - textureHeight), textureHeight, textureHeight, 256, 256, color);
         // Bottom side
-        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphics, x + textureHeight, y + height - textureHeight, width - textureHeight - textureHeight, textureHeight, textureX + textureHeight, textureY + textureDistance - textureHeight, textureWidth - textureHeight - textureHeight, textureDistance);
+        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphicsExtractor, x + textureHeight, y + height - textureHeight, width - textureHeight - textureHeight, textureHeight, textureX + textureHeight, textureY + textureDistance - textureHeight, textureWidth - textureHeight - textureHeight, textureDistance);
         // Bottom right corner
-        guiGraphics.blit(Resources.Gui.WIDGETS, x + width - textureHeight, y + height - textureHeight, textureX + textureWidth - textureHeight, textureY + textureDistance - textureHeight, textureHeight, textureHeight);
+        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WIDGETS, x + width - textureHeight, y + height - textureHeight, (float) (textureX + textureWidth - textureHeight), (float) (textureY + textureDistance - textureHeight), textureHeight, textureHeight, 256, 256, color);
         // Left side
-        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphics, x, y + textureHeight, textureHeight, height - textureHeight - textureHeight, textureX, textureY + textureHeight, textureWidth, textureDistance - textureHeight - textureHeight);
+        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphicsExtractor, x, y + textureHeight, textureHeight, height - textureHeight - textureHeight, textureX, textureY + textureHeight, textureWidth, textureDistance - textureHeight - textureHeight);
         // Center
-        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphics, x + textureHeight, y + textureHeight, width - textureHeight - textureHeight, height - textureHeight - textureHeight, textureX + textureHeight, textureY + textureHeight, textureWidth - textureHeight - textureHeight, textureDistance - textureHeight - textureHeight);
+        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphicsExtractor, x + textureHeight, y + textureHeight, width - textureHeight - textureHeight, height - textureHeight - textureHeight, textureX + textureHeight, textureY + textureHeight, textureWidth - textureHeight - textureHeight, textureDistance - textureHeight - textureHeight);
         // Right side
-        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphics, x + width - textureHeight, y + textureHeight, textureHeight, height - textureHeight - textureHeight, textureX + textureWidth - textureHeight, textureY + textureHeight, textureWidth, textureDistance - textureHeight - textureHeight);
+        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphicsExtractor, x + width - textureHeight, y + textureHeight, textureHeight, height - textureHeight - textureHeight, textureX + textureWidth - textureHeight, textureY + textureHeight, textureWidth, textureDistance - textureHeight - textureHeight);
     }
 
     public boolean isMouseOver(double scrollX, double scrollY, double mouseX, double mouseY) {

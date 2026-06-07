@@ -2,7 +2,7 @@ package com.evandev.reliable_advancements.gui.widgets;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
@@ -65,8 +65,8 @@ public class SuggestingEditBox extends EditBox {
     }
 
     @Override
-    public void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        super.renderWidget(gfx, mouseX, mouseY, partialTick);
+    public void extractWidgetRenderState(@NotNull GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+        super.extractWidgetRenderState(gfx, mouseX, mouseY, partialTick);
 
         if (this.isFocused() && !currentSuggestions.isEmpty()) {
             int dropX = this.getX();
@@ -74,19 +74,19 @@ public class SuggestingEditBox extends EditBox {
             int dropW = Math.max(this.getWidth(), 200);
             int dropH = currentSuggestions.size() * 14 + 4;
 
-            gfx.pose().pushPose();
+            gfx.pose().pushMatrix();
             gfx.pose().translate(0, 0, 500);
             gfx.fill(dropX, dropY, dropX + dropW, dropY + dropH, 0xF0101010);
-            gfx.renderOutline(dropX, dropY, dropW, dropH, 0xFFC8AA64);
+            gfx.outline(dropX, dropY, dropW, dropH, 0xFFC8AA64);
 
             for (int i = 0; i < currentSuggestions.size(); i++) {
                 int color = (i == suggestionIndex) ? 0xFF3A3A3A : 0xFFA08060;
                 if (i == suggestionIndex) {
                     gfx.fill(dropX + 1, dropY + 2 + i * 14, dropX + dropW - 1, dropY + 2 + (i + 1) * 14, 0xFFC8AA64);
                 }
-                gfx.drawString(Minecraft.getInstance().font, currentSuggestions.get(i), dropX + 4, dropY + 5 + i * 14, color, false);
+                gfx.text(Minecraft.getInstance().font, currentSuggestions.get(i), dropX + 4, dropY + 5 + i * 14, color, false);
             }
-            gfx.pose().popPose();
+            gfx.pose().popMatrix();
         }
     }
 }

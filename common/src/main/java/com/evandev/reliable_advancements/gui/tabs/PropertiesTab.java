@@ -7,7 +7,7 @@ import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
@@ -15,7 +15,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.RegistryOps;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -120,7 +120,7 @@ public class PropertiesTab implements IEditorTab {
         descriptionBox.setValue(description);
 
         iconBox = new SuggestingEditBox(font, x, y + 135, width, 20, Component.literal("Icon"),
-                () -> BuiltInRegistries.ITEM.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList()));
+                () -> BuiltInRegistries.ITEM.keySet().stream().map(Identifier::toString).collect(Collectors.toList()));
         iconBox.setMaxLength(512);
         iconBox.setValue(icon);
 
@@ -187,13 +187,13 @@ public class PropertiesTab implements IEditorTab {
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
-        gfx.drawString(font, "ID", startX, startY - 11, 0xFFA08060, false);
-        gfx.drawString(font, "Title", startX, startY + 34, 0xFFA08060, false);
-        gfx.drawString(font, "Description", startX, startY + 79, 0xFFA08060, false);
-        gfx.drawString(font, "Icon (Item ID)", startX, startY + 124, 0xFFA08060, false);
-        gfx.drawString(font, "Parent ID", startX, startY + 169, 0xFFA08060, false);
-        gfx.drawString(font, "Frame", startX, startY + 214, 0xFFA08060, false);
+    public void render(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
+        gfx.text(font, "ID", startX, startY - 11, 0xFFA08060, false);
+        gfx.text(font, "Title", startX, startY + 34, 0xFFA08060, false);
+        gfx.text(font, "Description", startX, startY + 79, 0xFFA08060, false);
+        gfx.text(font, "Icon (Item ID)", startX, startY + 124, 0xFFA08060, false);
+        gfx.text(font, "Parent ID", startX, startY + 169, 0xFFA08060, false);
+        gfx.text(font, "Frame", startX, startY + 214, 0xFFA08060, false);
     }
 
     @Override
