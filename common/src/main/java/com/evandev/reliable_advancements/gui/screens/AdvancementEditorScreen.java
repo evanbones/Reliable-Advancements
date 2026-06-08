@@ -179,8 +179,6 @@ public class AdvancementEditorScreen extends Screen {
 
     @Override
     public void extractRenderState(@NonNull GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
-        super.extractRenderState(gfx, mouseX, mouseY, partialTicks);
-
         gfx.fill(0, 0, this.width, this.height, COL_BG_OVERLAY);
         gfx.fill(uiX, uiY, uiX + uiW, uiY + uiH, 0xFF202020);
         gfx.fill(uiX, uiY, uiX + SIDEBAR_WIDTH, uiY + uiH, 0xFF181818);
@@ -217,9 +215,11 @@ public class AdvancementEditorScreen extends Screen {
             gfx.fill(scrollX + 1, thumbY, scrollX + 7, thumbY + thumbH, 0xFF888888);
         }
 
+        gfx.nextStratum();
         gfx.enableScissor(uiX + SIDEBAR_WIDTH, uiY + 32, uiX + uiW, uiY + uiH - 40);
         activeTab.render(gfx, mouseX, mouseY, partialTicks);
         super.extractRenderState(gfx, mouseX, mouseY, partialTicks);
+        gfx.nextStratum();
         gfx.disableScissor();
 
         if (saveBtn != null) saveBtn.extractRenderState(gfx, mouseX, mouseY, partialTicks);

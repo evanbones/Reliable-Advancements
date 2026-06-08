@@ -305,8 +305,6 @@ public class TabEditorScreen extends Screen {
 
     @Override
     public void extractRenderState(@NotNull GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
-        super.extractRenderState(gfx, mouseX, mouseY, partialTicks);
-
         gfx.fill(RenderPipelines.GUI, 0, 0, this.width, this.height, COL_BG_OVERLAY);
         gfx.fill(RenderPipelines.GUI, uiX, uiY, uiX + uiW, uiY + uiH, 0xFF202020);
 
@@ -324,6 +322,7 @@ public class TabEditorScreen extends Screen {
             gfx.fill(RenderPipelines.GUI, scrollX + 1, thumbY, scrollX + 7, thumbY + thumbH, 0xFF888888);
         }
 
+        gfx.nextStratum();
         gfx.enableScissor(uiX, uiY + 32, uiX + uiW - 14, uiY + uiH - 40);
 
         if (rulesBox != null)
@@ -345,6 +344,7 @@ public class TabEditorScreen extends Screen {
 
         super.extractRenderState(gfx, mouseX, mouseY, partialTicks);
 
+        gfx.nextStratum();
         gfx.disableScissor();
 
         if (saveBtn != null) saveBtn.extractRenderState(gfx, mouseX, mouseY, partialTicks);

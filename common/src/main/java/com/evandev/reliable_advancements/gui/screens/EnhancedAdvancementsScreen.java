@@ -835,7 +835,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             int startY = (int) ((this.linkingWidget.getY() + this.selectedTab.scrollY + (float) EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2) * zoom) + top + 2 * PADDING;
 
             RenderUtil.line(guiGraphicsExtractor, startX, startY, mouseX, mouseY, 2, 0xFF00FF00);
-            guiGraphicsExtractor.text(this.font, "Select parent to link...", mouseX + 15, mouseY + 10, 0x00FF00);
+            guiGraphicsExtractor.text(this.font, "Select parent to link...", mouseX + 15, mouseY + 10, 0xFF00FF00);
         }
 
         if (this.advConnectedToMouse == null && this.contextMenu == null) {
@@ -924,13 +924,13 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             if (this.advConnectedToMouse != null) {
                 int currentX = (int) ((this.advConnectedToMouse.getX() + this.selectedTab.scrollX + 4) * zoom) + left + PADDING;
                 int currentY = (int) ((this.advConnectedToMouse.getY() + this.selectedTab.scrollY) * zoom) + top + 2 * PADDING - font.lineHeight + 1;
-                guiGraphicsExtractor.text(font, this.advConnectedToMouse.getX() + "," + this.advConnectedToMouse.getY(), currentX, currentY, 0xFFFFFF);
+                guiGraphicsExtractor.text(font, this.advConnectedToMouse.getX() + "," + this.advConnectedToMouse.getY(), currentX, currentY, 0xFFFFFFFF);
             } else {
                 int xMouse = (int) ((mouseX - left - PADDING) / zoom);
                 int yMouse = (int) ((mouseY - top - 2 * PADDING) / zoom);
                 int currentX = xMouse - this.selectedTab.scrollX - 4;
                 int currentY = yMouse - this.selectedTab.scrollY - 1;
-                guiGraphicsExtractor.text(font, currentX + "," + currentY, mouseX, mouseY - font.lineHeight, 0xFFFFFF);
+                guiGraphicsExtractor.text(font, currentX + "," + currentY, mouseX, mouseY - font.lineHeight, 0xFFFFFFFF);
             }
         }
 
@@ -942,7 +942,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             int errW = this.font.width(this.linkingError);
             guiGraphicsExtractor.fill(mouseX + 10, mouseY - 15, mouseX + 16 + errW, mouseY + 1, 0xDD000000);
             guiGraphicsExtractor.outline(mouseX + 10, mouseY - 15, errW + 6, 16, 0xFFFF5555);
-            guiGraphicsExtractor.text(this.font, this.linkingError, mouseX + 13, mouseY - 11, 0xFF5555);
+            guiGraphicsExtractor.text(this.font, this.linkingError, mouseX + 13, mouseY - 11, 0xFFFF5555);
         }
     }
 
@@ -997,7 +997,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     selectedTab.getTitle().getVisualOrderText()
             );
         }
-        guiGraphicsExtractor.text(this.font, windowTitle, left + 8, top + 6, 4210752, false);
+        guiGraphicsExtractor.text(this.font, windowTitle, left + 8, top + 6, -12566464, false);
     }
 
     private void renderToolTips(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, int left, int top, int right, int bottom, int maxTabs, int skip) {

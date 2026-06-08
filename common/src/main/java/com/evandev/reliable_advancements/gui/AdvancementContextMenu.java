@@ -104,7 +104,7 @@ public class AdvancementContextMenu {
                 guiGraphics.fill(x + 1, optY, x + width - 1, optY + 20, option.isDestructive ? 0x80AA3333 : 0x80505050);
             }
 
-            int textColor = hovered ? (option.isDestructive ? 0xFF5555 : 0xFFFFAA) : 0xFFFFFF;
+            int textColor = hovered ? (option.isDestructive ? 0xFFFF5555 : 0xFFFFFFAA) : 0xFFFFFFFF;
             guiGraphics.text(font, option.label, x + 6, optY + 6, textColor);
         }
 

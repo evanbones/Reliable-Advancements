@@ -33,6 +33,8 @@ public class ServerAdvancementEditor {
 
         if (payload.advancementId().toString().equals("reliable_advancements:resync")) {
             player.getAdvancements().reload(server.getAdvancements());
+
+            player.getAdvancements().flushDirty(player, false);
             return;
         }
 
@@ -113,10 +115,8 @@ public class ServerAdvancementEditor {
             }
         }
 
-        server.reloadResources(server.getPackRepository().getSelectedIds()).thenAccept(v -> {
-            server.execute(() -> {
-                sendFullTreeToAll(server);
-            });
+        server.reloadResources(server.getPackRepository().getSelectedIds()).thenAccept(_ -> {
+            server.execute(() -> sendFullTreeToAll(server));
         });
     }
 
