@@ -10,6 +10,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.nio.file.Path;
@@ -30,7 +31,7 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
 
     @Override
     public boolean isDevelopmentEnvironment() {
-        return !FMLLoader.isProduction();
+        return !FMLLoader.getCurrent().isProduction();
     }
 
     @Override
@@ -40,7 +41,7 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
 
     @Override
     public boolean isPhysicalClient() {
-        return FMLLoader.getDist() == Dist.CLIENT;
+        return FMLLoader.getCurrent().getDist() == Dist.CLIENT;
     }
 
     @Override
@@ -62,7 +63,7 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
     @Override
     public void sendAdvancementEdit(EditAdvancementPayload payload) {
         if (canSendAdvancementEdit()) {
-            PacketDistributor.sendToServer(payload);
+            ClientPacketDistributor.sendToServer(payload);
         }
     }
 
@@ -70,10 +71,10 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
     public void sendAdvancementJsonRequest(RequestAdvancementJsonPayload payload) {
         var connection = Minecraft.getInstance().getConnection();
         if (connection != null && connection.hasChannel(RequestAdvancementJsonPayload.TYPE)) {
-            PacketDistributor.sendToServer(payload);
+            ClientPacketDistributor.sendToServer(payload);
         } else {
-            Minecraft.getInstance().player.displayClientMessage(
-                    Component.literal("§cThis server does not have Better Advancements installed. Editing is disabled."), false
+            Minecraft.getInstance().player.sendSystemMessage(
+                    Component.literal("§cThis server does not have Better Advancements installed. Editing is disabled.")
             );
         }
     }
@@ -82,7 +83,7 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
     public void sendLinkAdvancement(LinkAdvancementPayload payload) {
         var connection = Minecraft.getInstance().getConnection();
         if (connection != null && connection.hasChannel(LinkAdvancementPayload.TYPE)) {
-            PacketDistributor.sendToServer(payload);
+            ClientPacketDistributor.sendToServer(payload);
         }
     }
 
@@ -97,7 +98,7 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
     public void sendClaimReward(ClaimRewardPayload payload) {
         var connection = Minecraft.getInstance().getConnection();
         if (connection != null && connection.hasChannel(ClaimRewardPayload.TYPE)) {
-            PacketDistributor.sendToServer(payload);
+            ClientPacketDistributor.sendToServer(payload);
         }
     }
 
@@ -112,7 +113,7 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
     public void sendRequestFullTree() {
         var connection = Minecraft.getInstance().getConnection();
         if (connection != null && connection.hasChannel(RequestFullTreePayload.TYPE)) {
-            PacketDistributor.sendToServer(new RequestFullTreePayload());
+            ClientPacketDistributor.sendToServer(new RequestFullTreePayload());
         }
     }
 
@@ -120,7 +121,7 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
     public void sendResetTab(ResetTabPayload payload) {
         var connection = Minecraft.getInstance().getConnection();
         if (connection != null && connection.hasChannel(ResetTabPayload.TYPE)) {
-            PacketDistributor.sendToServer(payload);
+            ClientPacketDistributor.sendToServer(payload);
         }
     }
 }

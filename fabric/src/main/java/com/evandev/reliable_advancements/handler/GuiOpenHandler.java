@@ -9,6 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.NonNull;
 
 public class GuiOpenHandler implements ScreenEvents.AfterInit {
     public static final GuiOpenHandler instance = new GuiOpenHandler();
@@ -21,11 +22,11 @@ public class GuiOpenHandler implements ScreenEvents.AfterInit {
     }
 
     @Override
-    public void afterInit(Minecraft minecraft, Screen screen, int scaledWidth, int scaledHeight) {
+    public void afterInit(@NonNull Minecraft minecraft, @NonNull Screen screen, int scaledWidth, int scaledHeight) {
         if (screen instanceof InventoryScreen inventoryScreen) {
             if (ModConfig.get().addToInventory) {
 
-                Screens.getButtons(screen).add(new AdvancementsScreenButton(
+                Screens.getWidgets(screen).add(new AdvancementsScreenButton(
                         () -> {
                             int currentX = inventoryScreen.leftPos;
                             return ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON

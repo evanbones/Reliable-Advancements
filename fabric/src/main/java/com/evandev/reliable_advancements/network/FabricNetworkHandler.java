@@ -6,14 +6,14 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
 public class FabricNetworkHandler {
     public static void registerPayloads() {
-        PayloadTypeRegistry.playC2S().register(EditAdvancementPayload.TYPE, EditAdvancementPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(RequestAdvancementJsonPayload.TYPE, RequestAdvancementJsonPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(LinkAdvancementPayload.TYPE, LinkAdvancementPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(ClaimRewardPayload.TYPE, ClaimRewardPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(RequestFullTreePayload.TYPE, RequestFullTreePayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(ResetTabPayload.TYPE, ResetTabPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playS2C().register(AdvancementJsonPayload.TYPE, AdvancementJsonPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playS2C().register(SyncClaimedRewardsPayload.TYPE, SyncClaimedRewardsPayload.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(EditAdvancementPayload.TYPE, EditAdvancementPayload.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(RequestAdvancementJsonPayload.TYPE, RequestAdvancementJsonPayload.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(LinkAdvancementPayload.TYPE, LinkAdvancementPayload.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(ClaimRewardPayload.TYPE, ClaimRewardPayload.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(RequestFullTreePayload.TYPE, RequestFullTreePayload.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(ResetTabPayload.TYPE, ResetTabPayload.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(AdvancementJsonPayload.TYPE, AdvancementJsonPayload.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(SyncClaimedRewardsPayload.TYPE, SyncClaimedRewardsPayload.STREAM_CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(EditAdvancementPayload.TYPE, (payload, context) -> {
             context.server().execute(() -> ServerAdvancementEditor.saveAdvancementEdit(context.server(), context.player(), payload));

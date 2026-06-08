@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
 
@@ -46,7 +47,8 @@ public class SuggestingEditBox extends EditBox {
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyEvent event) {
+        int keyCode = event.key();
         if (this.isFocused() && !currentSuggestions.isEmpty()) {
             if (keyCode == 264) { // Down arrow
                 suggestionIndex = (suggestionIndex + 1) % currentSuggestions.size();
@@ -61,7 +63,7 @@ public class SuggestingEditBox extends EditBox {
                 return true;
             }
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 
     @Override
@@ -75,7 +77,6 @@ public class SuggestingEditBox extends EditBox {
             int dropH = currentSuggestions.size() * 14 + 4;
 
             gfx.pose().pushMatrix();
-            gfx.pose().translate(0, 0, 500);
             gfx.fill(dropX, dropY, dropX + dropW, dropY + dropH, 0xF0101010);
             gfx.outline(dropX, dropY, dropW, dropH, 0xFFC8AA64);
 

@@ -145,7 +145,8 @@ public class ServerAdvancementEditor {
                 true,
                 server.getAdvancements().getAllAdvancements(),
                 Set.of(),
-                progressMap
+                progressMap,
+                true
         ));
     }
 

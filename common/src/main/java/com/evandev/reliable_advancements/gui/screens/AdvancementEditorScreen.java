@@ -12,6 +12,8 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.NonNull;
@@ -32,7 +34,6 @@ public class AdvancementEditorScreen extends Screen {
     private static final int ROW_H = 24;
 
     private final EnhancedAdvancementsScreen parentScreen;
-    private final Identifier advId;
     private final AdvancementDraft draft;
     private final boolean isNew;
     private final int posX, posY;
@@ -52,7 +53,6 @@ public class AdvancementEditorScreen extends Screen {
     public AdvancementEditorScreen(EnhancedAdvancementsScreen parentScreen, Identifier id, boolean isNew, int posX, int posY, String initialTabName, String rawJsonFromServer) {
         super(Component.literal((isNew ? "Create" : "Edit") + " Advancement: " + id));
         this.parentScreen = parentScreen;
-        this.advId = id;
         this.isNew = isNew;
         this.posX = posX;
         this.posY = posY;
@@ -135,9 +135,9 @@ public class AdvancementEditorScreen extends Screen {
         int saveBtnX = uiX + uiW - btnW * 2 - 16;
         int saveBtnY = uiY + uiH - btnH - 10;
 
-        saveBtn = Button.builder(Component.literal("Save"), b -> saveAndClose())
+        saveBtn = Button.builder(Component.literal("Save"), _ -> saveAndClose())
                 .pos(saveBtnX, saveBtnY).size(btnW, btnH).build();
-        cancelBtn = Button.builder(Component.literal("Cancel"), b -> this.minecraft.setScreen(parentScreen))
+        cancelBtn = Button.builder(Component.literal("Cancel"), _ -> this.minecraft.setScreen(parentScreen))
                 .pos(saveBtnX + btnW + 6, saveBtnY).size(btnW, btnH).build();
 
         this.addRenderableWidget(saveBtn);
@@ -245,7 +245,11 @@ public class AdvancementEditorScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mx, double my, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mx = event.x();
+        double my = event.y();
+        int button = event.button();
+
         if (this.maxScroll > 0 && button == 0) {
             int scrollX = uiX + uiW - 12;
             int scrollY = uiY + 32;
@@ -272,37 +276,38 @@ public class AdvancementEditorScreen extends Screen {
         if (x > uiX + SIDEBAR_WIDTH && x < uiX + uiW) {
             if (y > uiY && y < uiY + 32) return false;
             if (y > uiY + uiH - 40 && y < uiY + uiH) {
-                if (saveBtn != null && saveBtn.isMouseOver(mx, my)) return saveBtn.mouseClicked(mx, my, button);
-                if (cancelBtn != null && cancelBtn.isMouseOver(mx, my)) return cancelBtn.mouseClicked(mx, my, button);
+                if (saveBtn != null && saveBtn.isMouseOver(mx, my)) return saveBtn.mouseClicked(event, doubleClick);
+                if (cancelBtn != null && cancelBtn.isMouseOver(mx, my))
+                    return cancelBtn.mouseClicked(event, doubleClick);
                 return false;
             }
         }
 
-        return super.mouseClicked(mx, my, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
-    public boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) {
+    public boolean mouseDragged(@NonNull MouseButtonEvent event, double dragX, double dragY) {
         if (this.isDraggingScrollbar) {
-            updateScrollFromMouse(my);
+            updateScrollFromMouse(event.y());
             return true;
         }
-        return super.mouseDragged(mx, my, button, dragX, dragY);
+        return super.mouseDragged(event, dragX, dragY);
     }
 
     @Override
-    public boolean mouseReleased(double mx, double my, int button) {
+    public boolean mouseReleased(@NonNull MouseButtonEvent event) {
         this.isDraggingScrollbar = false;
-        return super.mouseReleased(mx, my, button);
+        return super.mouseReleased(event);
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 256) {
+    public boolean keyPressed(KeyEvent event) {
+        if (event.key() == 256) {
             this.minecraft.setScreen(parentScreen);
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 
     @Override

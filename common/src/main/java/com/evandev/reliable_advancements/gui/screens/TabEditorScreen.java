@@ -14,9 +14,12 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -79,22 +82,26 @@ public class TabEditorScreen extends Screen {
     }
 
     @Override
-    public boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) {
+    public boolean mouseDragged(@NonNull MouseButtonEvent event, double dragX, double dragY) {
         if (this.isDraggingScrollbar) {
-            updateScrollFromMouse(my);
+            updateScrollFromMouse(event.y());
             return true;
         }
-        return super.mouseDragged(mx, my, button, dragX, dragY);
+        return super.mouseDragged(event, dragX, dragY);
     }
 
     @Override
-    public boolean mouseReleased(double mx, double my, int button) {
+    public boolean mouseReleased(@NonNull MouseButtonEvent event) {
         this.isDraggingScrollbar = false;
-        return super.mouseReleased(mx, my, button);
+        return super.mouseReleased(event);
     }
 
     @Override
-    public boolean mouseClicked(double mx, double my, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mx = event.x();
+        double my = event.y();
+        int button = event.button();
+
         if (this.maxScroll > 0 && button == 0) {
             int scrollX = uiX + uiW - 12;
             int scrollY = uiY + 32;
@@ -107,13 +114,13 @@ public class TabEditorScreen extends Screen {
         }
 
         if (my > uiY + uiH - 40 && my < uiY + uiH) {
-            if (saveBtn != null && saveBtn.isMouseOver(mx, my)) return saveBtn.mouseClicked(mx, my, button);
-            if (cancelBtn != null && cancelBtn.isMouseOver(mx, my)) return cancelBtn.mouseClicked(mx, my, button);
+            if (saveBtn != null && saveBtn.isMouseOver(mx, my)) return saveBtn.mouseClicked(event, doubleClick);
+            if (cancelBtn != null && cancelBtn.isMouseOver(mx, my)) return cancelBtn.mouseClicked(event, doubleClick);
             return false;
         }
         if (my < uiY + 32) return false;
 
-        return super.mouseClicked(mx, my, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
@@ -208,7 +215,11 @@ public class TabEditorScreen extends Screen {
             if (bTab.has("background_rules")) rulesStr = bTab.get("background_rules").getAsString();
         }
 
-        rulesBox = new MultiLineEditBox(this.font, startX, currentY, 200, 80, Component.literal("Background Rules JSON"), Component.empty());
+        rulesBox = MultiLineEditBox.builder()
+                .setX(startX)
+                .setY(currentY)
+                .setPlaceholder(Component.literal("Background Rules JSON"))
+                .build(this.font, 200, 80, Component.empty());
         rulesBox.setValue(rulesStr);
         this.addRenderableWidget(rulesBox);
         currentY += 85;
@@ -228,8 +239,8 @@ public class TabEditorScreen extends Screen {
         int saveBtnX = uiX + uiW - btnW * 2 - 20 - 6;
         int saveBtnY = uiY + uiH - 30;
 
-        saveBtn = Button.builder(Component.literal("Save"), b -> saveAndClose()).pos(saveBtnX, saveBtnY).size(btnW, btnH).build();
-        cancelBtn = Button.builder(Component.literal("Cancel"), b -> this.minecraft.setScreen(parentScreen)).pos(saveBtnX + btnW + 6, saveBtnY).size(btnW, btnH).build();
+        saveBtn = Button.builder(Component.literal("Save"), _ -> saveAndClose()).pos(saveBtnX, saveBtnY).size(btnW, btnH).build();
+        cancelBtn = Button.builder(Component.literal("Cancel"), _ -> this.minecraft.setScreen(parentScreen)).pos(saveBtnX + btnW + 6, saveBtnY).size(btnW, btnH).build();
 
         this.addRenderableWidget(saveBtn);
         this.addRenderableWidget(cancelBtn);
@@ -296,11 +307,11 @@ public class TabEditorScreen extends Screen {
     public void extractRenderState(@NotNull GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
         super.extractRenderState(gfx, mouseX, mouseY, partialTicks);
 
-        gfx.fill(0, 0, this.width, this.height, COL_BG_OVERLAY);
-        gfx.fill(uiX, uiY, uiX + uiW, uiY + uiH, 0xFF202020);
+        gfx.fill(RenderPipelines.GUI, 0, 0, this.width, this.height, COL_BG_OVERLAY);
+        gfx.fill(RenderPipelines.GUI, uiX, uiY, uiX + uiW, uiY + uiH, 0xFF202020);
 
         gfx.text(this.font, "Edit Tab Properties", uiX + 20, uiY + 15, COL_GOLD, false);
-        gfx.fill(uiX + 20, uiY + 30, uiX + uiW - 20, uiY + 31, 0x55808080);
+        gfx.fill(RenderPipelines.GUI, uiX + 20, uiY + 30, uiX + uiW - 20, uiY + 31, 0x55808080);
 
         if (this.maxScroll > 0) {
             int scrollX = uiX + uiW - 12;
@@ -309,8 +320,8 @@ public class TabEditorScreen extends Screen {
             int thumbH = Math.max(20, scrollH * scrollH / (scrollH + maxScroll));
             int thumbY = scrollY + (int) ((scrollH - thumbH) * (this.scrollOffset / (float) this.maxScroll));
 
-            gfx.fill(scrollX, scrollY, scrollX + 8, scrollY + scrollH, 0xFF000000);
-            gfx.fill(scrollX + 1, thumbY, scrollX + 7, thumbY + thumbH, 0xFF888888);
+            gfx.fill(RenderPipelines.GUI, scrollX, scrollY, scrollX + 8, scrollY + scrollH, 0xFF000000);
+            gfx.fill(RenderPipelines.GUI, scrollX + 1, thumbY, scrollX + 7, thumbY + thumbH, 0xFF888888);
         }
 
         gfx.enableScissor(uiX, uiY + 32, uiX + uiW - 14, uiY + uiH - 40);

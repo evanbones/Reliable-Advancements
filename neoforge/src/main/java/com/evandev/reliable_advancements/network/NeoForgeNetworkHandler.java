@@ -10,27 +10,27 @@ public class NeoForgeNetworkHandler {
         PayloadRegistrar registrar = event.registrar(Constants.MOD_ID).optional();
 
         registrar.playToServer(EditAdvancementPayload.TYPE, EditAdvancementPayload.STREAM_CODEC, (payload, context) -> {
-            context.enqueueWork(() -> ServerAdvancementEditor.saveAdvancementEdit(context.player().getServer(), (ServerPlayer) context.player(), payload));
+            context.enqueueWork(() -> ServerAdvancementEditor.saveAdvancementEdit(context.player().level().getServer(), (ServerPlayer) context.player(), payload));
         });
 
         registrar.playToServer(RequestAdvancementJsonPayload.TYPE, RequestAdvancementJsonPayload.STREAM_CODEC, (payload, context) -> {
-            context.enqueueWork(() -> ServerAdvancementEditor.handleJsonRequest(context.player().getServer(), (ServerPlayer) context.player(), payload));
+            context.enqueueWork(() -> ServerAdvancementEditor.handleJsonRequest(context.player().level().getServer(), (ServerPlayer) context.player(), payload));
         });
 
         registrar.playToServer(LinkAdvancementPayload.TYPE, LinkAdvancementPayload.STREAM_CODEC, (payload, context) -> {
-            context.enqueueWork(() -> ServerAdvancementEditor.handleLinkAdvancement(context.player().getServer(), (ServerPlayer) context.player(), payload));
+            context.enqueueWork(() -> ServerAdvancementEditor.handleLinkAdvancement(context.player().level().getServer(), (ServerPlayer) context.player(), payload));
         });
 
         registrar.playToServer(ClaimRewardPayload.TYPE, ClaimRewardPayload.STREAM_CODEC, (payload, context) -> {
-            context.enqueueWork(() -> ServerAdvancementEditor.handleRewardClaim(context.player().getServer(), (ServerPlayer) context.player(), payload));
+            context.enqueueWork(() -> ServerAdvancementEditor.handleRewardClaim(context.player().level().getServer(), (ServerPlayer) context.player(), payload));
         });
 
         registrar.playToServer(RequestFullTreePayload.TYPE, RequestFullTreePayload.STREAM_CODEC, (payload, context) -> {
-            context.enqueueWork(() -> ServerAdvancementEditor.handleRequestFullTree(context.player().getServer(), (ServerPlayer) context.player()));
+            context.enqueueWork(() -> ServerAdvancementEditor.handleRequestFullTree(context.player().level().getServer(), (ServerPlayer) context.player()));
         });
 
         registrar.playToServer(ResetTabPayload.TYPE, ResetTabPayload.STREAM_CODEC, (payload, context) -> {
-            context.enqueueWork(() -> ServerAdvancementEditor.handleResetTab(context.player().getServer(), (ServerPlayer) context.player(), payload));
+            context.enqueueWork(() -> ServerAdvancementEditor.handleResetTab(context.player().level().getServer(), (ServerPlayer) context.player(), payload));
         });
 
         registrar.playToClient(AdvancementJsonPayload.TYPE, AdvancementJsonPayload.STREAM_CODEC, (payload, context) -> {

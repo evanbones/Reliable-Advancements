@@ -52,7 +52,6 @@ public class AdvancementsScreenButton extends AbstractButton {
     public void extractContents(@NotNull GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
         if (!this.visible) return;
 
-        // Update positions/dimensions
         this.setX(calculateX(this.xSupplier.get()));
         this.setY(calculateY(this.ySupplier.get()));
         this.setWidth(calculateWidth());
@@ -61,7 +60,6 @@ public class AdvancementsScreenButton extends AbstractButton {
         Minecraft mc = Minecraft.getInstance();
         this.isHovered = mouseX >= this.getX() && mouseY >= this.getY() && mouseX < this.getX() + this.getWidth() && mouseY < this.getY() + this.getHeight();
 
-        // Rendering logic remains consistent with the previous port
         if (ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON) {
             if (ModConfig.get().customInventoryButtonTexture == null || ModConfig.get().customInventoryButtonTexture.isEmpty()) {
                 Identifier sprite = this.isHovered ? Identifier.withDefaultNamespace("widget/button_highlighted") : Identifier.withDefaultNamespace("widget/button");

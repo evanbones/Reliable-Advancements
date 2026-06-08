@@ -71,8 +71,8 @@ public class FabricPlatformHelper implements IPlatformHelper {
         if (ClientPlayNetworking.canSend(RequestAdvancementJsonPayload.TYPE)) {
             ClientPlayNetworking.send(payload);
         } else {
-            Minecraft.getInstance().player.displayClientMessage(
-                    Component.literal("§cThis server does not have " + Constants.MOD_NAME + " installed. Editing is disabled."), false
+            Minecraft.getInstance().player.sendSystemMessage(
+                    Component.literal("§cThis server does not have " + Constants.MOD_NAME + " installed. Editing is disabled.")
             );
         }
     }

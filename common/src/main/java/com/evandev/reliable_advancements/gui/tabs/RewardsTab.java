@@ -112,13 +112,7 @@ public class RewardsTab implements IEditorTab {
 
         for (int i = 0; i < recipeList.size(); i++) {
             final int index = i;
-            SuggestingEditBox box = new SuggestingEditBox(font, x, currentY, width - 25, 20, Component.literal("Recipe"), () -> {
-                if (Minecraft.getInstance().level != null) {
-                    return Minecraft.getInstance().level.getRecipeManager().getRecipes()
-                            .stream().map(r -> r.id().toString()).collect(Collectors.toList());
-                }
-                return List.of();
-            });
+            SuggestingEditBox box = new SuggestingEditBox(font, x, currentY, width - 25, 20, Component.literal("Recipe"), List::of);
             box.setValue(recipeList.get(i));
             box.setResponder(s -> recipeList.set(index, s));
 

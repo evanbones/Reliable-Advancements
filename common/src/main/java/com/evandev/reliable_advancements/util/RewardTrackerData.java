@@ -2,7 +2,7 @@ package com.evandev.reliable_advancements.util;
 
 import com.evandev.reliable_advancements.network.SyncClaimedRewardsPayload;
 import com.evandev.reliable_advancements.platform.Services;
-import net.minecraft.core.HolderLookup;
+import com.mojang.serialization.Codec;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
@@ -11,30 +11,42 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
 public class RewardTrackerData extends SavedData {
-    private static final String DATA_NAME = "reliable_advancements_claims";
+    public static final Codec<RewardTrackerData> CODEC = CompoundTag.CODEC.xmap(
+            RewardTrackerData::load,
+            RewardTrackerData::save
+    );
+    private static final Identifier DATA_ID = Identifier.parse("minecraft:reliable_advancements_claims");
+    public static final SavedDataType<RewardTrackerData> TYPE = new SavedDataType<>(
+            DATA_ID,
+            RewardTrackerData::new,
+            CODEC,
+            null
+    );
+
     private final Map<UUID, Set<Identifier>> claimedRewards = new HashMap<>();
 
     public static RewardTrackerData get(MinecraftServer server) {
-        return server.overworld().getDataStorage().computeIfAbsent(
-                new SavedData.Factory<>(RewardTrackerData::new, RewardTrackerData::load, null),
-                DATA_NAME
-        );
+        return server.overworld().getDataStorage().computeIfAbsent(TYPE);
     }
 
-    public static RewardTrackerData load(CompoundTag tag, HolderLookup.Provider provider) {
+    public static RewardTrackerData load(CompoundTag tag) {
         RewardTrackerData data = new RewardTrackerData();
-        for (String key : tag.getAllKeys()) {
+        for (String key : tag.keySet()) {
             try {
                 UUID uuid = UUID.fromString(key);
                 Set<Identifier> claims = new HashSet<>();
-                ListTag list = tag.getList(key, Tag.TAG_STRING);
-                for (int i = 0; i < list.size(); i++) {
-                    claims.add(Identifier.parse(list.getString(i)));
+
+                Tag t = tag.get(key);
+                if (t instanceof ListTag list) {
+                    for (Tag item : list) {
+                        item.asString().ifPresent(s -> claims.add(Identifier.parse(s)));
+                    }
                 }
                 data.claimedRewards.put(uuid, claims);
             } catch (IllegalArgumentException ignored) {
@@ -48,7 +60,7 @@ public class RewardTrackerData extends SavedData {
     }
 
     public void claim(UUID player, Identifier advancement) {
-        claimedRewards.computeIfAbsent(player, k -> new HashSet<>()).add(advancement);
+        claimedRewards.computeIfAbsent(player, _ -> new HashSet<>()).add(advancement);
         this.setDirty();
     }
 
@@ -64,8 +76,8 @@ public class RewardTrackerData extends SavedData {
         Services.PLATFORM.sendClaimedRewardsSync(player, new SyncClaimedRewardsPayload(new ArrayList<>(claims)));
     }
 
-    @Override
-    public @NotNull CompoundTag save(@NotNull CompoundTag tag, @NotNull HolderLookup.Provider provider) {
+    public @NotNull CompoundTag save() {
+        CompoundTag tag = new CompoundTag();
         for (Map.Entry<UUID, Set<Identifier>> entry : claimedRewards.entrySet()) {
             ListTag list = new ListTag();
             for (Identifier id : entry.getValue()) {

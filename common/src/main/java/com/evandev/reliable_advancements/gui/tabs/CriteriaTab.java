@@ -16,7 +16,6 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -170,11 +169,13 @@ public class CriteriaTab implements IEditorTab {
         if (criteriaList.isEmpty()) return;
         CriterionEntry active = criteriaList.get(selectedCriterion);
         for (int i = 0; i < conditionRows.size(); i++) {
-            if (i < active.conditions.size()) {
-                ConditionRow row = conditionRows.get(i);
-                active.conditions.get(i).key = row.keyBox.getValue();
-                active.conditions.get(i).value = row.valBox.getValue();
-            }
+            ConditionRow row = conditionRows.get(i);
+
+            if (i >= active.conditions.size()) continue;
+
+            ConditionData data = active.conditions.get(i);
+            data.key = row.keyBox.getValue();
+            data.value = row.valBox.getValue();
         }
     }
 
@@ -207,6 +208,9 @@ public class CriteriaTab implements IEditorTab {
         gfx.text(font, "Criteria " + (selectedCriterion + 1) + "/" + criteriaList.size(), startX, startY - 11, 0xFFA08060, false);
         gfx.text(font, "Trigger", startX, startY + 34, 0xFFA08060, false);
         gfx.text(font, "Conditions", startX, startY + 79, 0xFF55FF55, false);
+        for (ConditionRow row : conditionRows) {
+            row.valBox.renderOutline(gfx);
+        }
     }
 
     @Override
@@ -250,47 +254,67 @@ public class CriteriaTab implements IEditorTab {
         }
 
         List<GuiEventListener> getWidgets() {
-            return List.of(keyBox, valBox, removeBtn);
+            return List.of(keyBox, valBox.widget(), removeBtn);
         }
     }
 
-    private static class JsonMultiLineEditBox extends MultiLineEditBox {
-        private String lastText = null;
+    private static class JsonMultiLineEditBox {
+        private final MultiLineEditBox box;
         private boolean isValid = true;
 
         public JsonMultiLineEditBox(Font font, int x, int y, int width, int height, Component title) {
-            super(font, x, y, width, height, title, Component.empty());
+            box = MultiLineEditBox.builder()
+                    .setX(x)
+                    .setY(y)
+                    .setPlaceholder(title)
+                    .build(font, width, height, Component.empty());
+
+            box.setValueListener(this::validate);
         }
 
-        @Override
-        public void extractWidgetRenderState(@NotNull GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
-            String currentText = this.getValue();
-            if (lastText == null || !lastText.equals(currentText)) {
-                lastText = currentText;
-                validate(currentText);
-            }
+        public MultiLineEditBox widget() {
+            return box;
+        }
 
-            super.extractWidgetRenderState(gfx, mouseX, mouseY, partialTicks);
+        public String getValue() {
+            return box.getValue();
+        }
 
-            int outlineColor = isValid ? 0xFF00FF00 : 0xFFFF0000;
-            gfx.outline(getX() - 1, getY() - 1, getWidth() + 2, getHeight() + 2, outlineColor);
+        public void setValue(String value) {
+            box.setValue(value);
+        }
+
+        public void renderOutline(GuiGraphicsExtractor gfx) {
+            int color = isValid ? 0xFF00FF00 : 0xFFFF0000;
+
+            gfx.outline(
+                    box.getX() - 1,
+                    box.getY() - 1,
+                    box.getWidth() + 2,
+                    box.getHeight() + 2,
+                    color
+            );
         }
 
         private void validate(String text) {
             String trimmed = text.trim();
+
             if (trimmed.isEmpty()) {
                 isValid = true;
-                this.setTooltip(null);
+                box.setTooltip(null);
                 return;
             }
+
             try {
                 JsonParser.parseString(trimmed);
                 isValid = true;
-                this.setTooltip(null);
+                box.setTooltip(null);
             } catch (JsonSyntaxException e) {
                 isValid = false;
-                String errorMsg = e.getMessage();
-                this.setTooltip(Tooltip.create(Component.literal("Invalid JSON: " + errorMsg).withStyle(ChatFormatting.RED)));
+                box.setTooltip(Tooltip.create(
+                        Component.literal("Invalid JSON: " + e.getMessage())
+                                .withStyle(ChatFormatting.RED)
+                ));
             }
         }
     }

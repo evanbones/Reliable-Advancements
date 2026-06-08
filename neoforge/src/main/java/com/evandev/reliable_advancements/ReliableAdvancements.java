@@ -19,14 +19,14 @@ public class ReliableAdvancements {
         modEventBus.addListener(NeoForgeNetworkHandler::register);
         NeoForge.EVENT_BUS.addListener(this::onPlayerJoin);
 
-        if (FMLLoader.getDist() == Dist.CLIENT) {
+        if (FMLLoader.getCurrent().getDist() == Dist.CLIENT) {
             ClientSetup.init(container);
         }
     }
 
     private void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
-            RewardTrackerData.get(serverPlayer.server).syncToPlayer(serverPlayer);
+            RewardTrackerData.get(serverPlayer.level().getServer()).syncToPlayer(serverPlayer);
         }
     }
 }

@@ -4,7 +4,7 @@
   "version": "${version}",
   "name": "${mod_name}",
   "description": "${description}",
-  "accessWidener": "${mod_id}.accesswidener",
+  "accessWidener": "${mod_id}.classtweaker",
   "authors": [
     "${mod_author}"
   ],
