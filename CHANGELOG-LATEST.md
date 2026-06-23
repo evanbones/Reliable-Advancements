@@ -1,4 +1,3 @@
 ### Fixed
 
-- Fixed removed advancements not properly disappearing.
-- Fixed advancement tab layout desync with many tabs.
+- Fixed calculations for number of tabs.

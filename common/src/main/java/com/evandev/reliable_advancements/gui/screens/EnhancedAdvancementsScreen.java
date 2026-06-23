@@ -403,6 +403,9 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             tabPage = Math.min(tabPage, maxPages);
             addRenderableWidget(Button.builder(Component.literal("<"), b -> tabPage = Math.max(tabPage - 1, 0)).pos(left, bottom + 4).size(20, 20).build());
             addRenderableWidget(Button.builder(Component.literal(">"), b -> tabPage = Math.min(tabPage + 1, maxPages)).pos(right - 20, bottom + 4).size(20, 20).build());
+        } else {
+            maxPages = 0;
+            tabPage = 0;
         }
 
         if (ModConfig.get().showEditModeButton && this.minecraft.player != null && this.minecraft.player.hasPermissions(2)) {
