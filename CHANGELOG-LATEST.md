@@ -1,3 +1,3 @@
 ### Fixed
 
-- Fixed tab pagination on smaller GUI scales.
+- Fixed calculations for number of tabs.
