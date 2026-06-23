@@ -3,6 +3,7 @@
     "minVersion": "0.8",
     "package": "com.evandev.reliable_advancements.mixin",
     "compatibilityLevel": "JAVA_17",
+    "refmap": "${mod_id}.refmap.json",
     "mixins": [
     ],
     "client": [
