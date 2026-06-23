@@ -7,7 +7,7 @@ import com.evandev.reliable_advancements.reference.Constants;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 
@@ -22,7 +22,7 @@ public class PersistentData {
     public static final Gson GSON = new Gson().newBuilder().setPrettyPrinting().create();
     private static final Map<String, int[]> advancementPositions = new HashMap<>();
 
-    public static void save(Map<AdvancementHolder, EnhancedAdvancementTab> tabs) {
+    public static void save(Map<Advancement, EnhancedAdvancementTab> tabs) {
         try {
             JsonObject previousContents = FILE.exists() ? GSON.fromJson(new FileReader(FILE), JsonObject.class) : null;
             JsonObject json = new JsonObject();
@@ -32,12 +32,12 @@ public class PersistentData {
                     ? previousContents.getAsJsonObject("tab_properties") : new JsonObject();
 
             for (EnhancedAdvancementTab tab : tabs.values()) {
-                for (Map.Entry<AdvancementHolder, EnhancedAdvancementWidget> entry : tab.getWidgets().entrySet()) {
+                for (Map.Entry<Advancement, EnhancedAdvancementWidget> entry : tab.getWidgets().entrySet()) {
                     EnhancedAdvancementWidget widget = entry.getValue();
                     JsonArray arr = new JsonArray();
                     arr.add(widget.getX());
                     arr.add(widget.getY());
-                    positions.add(entry.getKey().id().toString(), arr);
+                    positions.add(entry.getKey().getId().toString(), arr);
                 }
 
                 JsonObject tObj = new JsonObject();
@@ -50,7 +50,7 @@ public class PersistentData {
                 tObj.addProperty("height", tab.customHeight);
                 tObj.addProperty("index", tab.customIndex);
                 tObj.addProperty("background_rules", tab.rawBackgroundRules);
-                tabProperties.add(tab.getRootNode().holder().id().toString(), tObj);
+                tabProperties.add(tab.getRootNode().getId().toString(), tObj);
             }
             json.add("positions", positions);
             json.add("tab_properties", tabProperties);
@@ -84,8 +84,8 @@ public class PersistentData {
         }
     }
 
-    public static boolean hasSavedPosition(AdvancementHolder holder) {
-        return advancementPositions.containsKey(holder.id().toString());
+    public static boolean hasSavedPosition(Advancement advancement) {
+        return advancementPositions.containsKey(advancement.getId().toString());
     }
 
     public static void setMemoryPosition(ResourceLocation id, int x, int y) {
@@ -93,7 +93,7 @@ public class PersistentData {
     }
 
     public static void loadTabProperties(EnhancedAdvancementTab tab) {
-        String id = tab.getRootNode().holder().id().toString();
+        String id = tab.getRootNode().getId().toString();
         try {
             if (!FILE.exists()) return;
             JsonObject json = GSON.fromJson(new FileReader(FILE), JsonObject.class);
@@ -103,7 +103,7 @@ public class PersistentData {
                     JsonObject tObj = tabProperties.getAsJsonObject(id);
                     if (tObj.has("title")) tab.customTitle = tObj.get("title").getAsString();
                     if (tObj.has("background"))
-                        tab.customBackground = ResourceLocation.parse(tObj.get("background").getAsString());
+                        tab.customBackground = new ResourceLocation(tObj.get("background").getAsString());
                     if (tObj.has("static_background"))
                         tab.isStaticBackground = tObj.get("static_background").getAsBoolean();
                     if (tObj.has("bg_width")) tab.bgWidth = tObj.get("bg_width").getAsInt();
@@ -142,8 +142,8 @@ public class PersistentData {
         }
     }
 
-    public static void loadSavedPosition(AdvancementHolder holder, EnhancedAdvancementWidget widget) {
-        String id = holder.id().toString();
+    public static void loadSavedPosition(Advancement advancement, EnhancedAdvancementWidget widget) {
+        String id = advancement.getId().toString();
         if (advancementPositions.containsKey(id)) {
             int[] pos = advancementPositions.get(id);
             widget.setX(pos[0]);

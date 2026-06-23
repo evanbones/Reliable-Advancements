@@ -2,14 +2,16 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.evandev.reliable_advancements.mixin",
-  "compatibilityLevel": "JAVA_18",
+  "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "AdvancementTypeMixin",
+    "AdvancementListAccessor",
+    "AdvancementMixin",
     "PlayerAdvancementsMixin",
     "ServerAdvancementManagerAccessor"
   ],
   "client": [
-    "ScreenMixin"
+    "ScreenMixin",
+    "AbstractContainerScreenAccessor"
   ],
   "server": [],
   "injectors": {

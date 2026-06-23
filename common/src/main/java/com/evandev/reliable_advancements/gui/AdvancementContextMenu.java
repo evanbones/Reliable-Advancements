@@ -54,7 +54,7 @@ public class AdvancementContextMenu {
     }
 
     private void openEditor(String tabName) {
-        ResourceLocation id = widget.getAdvancement().holder().id();
+        ResourceLocation id = widget.getAdvancement().getId();
         RequestAdvancementJsonPayload request = new RequestAdvancementJsonPayload(id, tabName);
 
         Services.PLATFORM.sendAdvancementJsonRequest(request);
@@ -70,10 +70,10 @@ public class AdvancementContextMenu {
                             List<ResourceLocation> idsToDelete = new ArrayList<>();
 
                             for (EnhancedAdvancementWidget w : parentScreen.selectedTab.getWidgets().values()) {
-                                idsToDelete.add(w.getAdvancement().holder().id());
-                                PersistentData.removePosition(w.getAdvancement().holder().id());
+                                idsToDelete.add(w.getAdvancement().getId());
+                                PersistentData.removePosition(w.getAdvancement().getId());
                             }
-                            PersistentData.removeTabProperties(parentScreen.selectedTab.getRootNode().holder().id());
+                            PersistentData.removeTabProperties(parentScreen.selectedTab.getRootNode().getId());
 
                             Services.PLATFORM.sendResetTab(new ResetTabPayload(idsToDelete));
                         }

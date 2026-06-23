@@ -3,16 +3,19 @@ package com.evandev.reliable_advancements.gui;
 import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.reference.Resources;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.advancements.AdvancementTabType;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
 public class EnhancedAdvancementTabType {
-    public static final EnhancedAdvancementTabType ABOVE = new EnhancedAdvancementTabType(0, 0, 28, 32, AdvancementTabType.ABOVE);
-    public static final EnhancedAdvancementTabType BELOW = new EnhancedAdvancementTabType(84, 0, 28, 32, AdvancementTabType.BELOW);
-    public static final EnhancedAdvancementTabType LEFT = new EnhancedAdvancementTabType(0, 64, 32, 28, AdvancementTabType.LEFT);
-    public static final EnhancedAdvancementTabType RIGHT = new EnhancedAdvancementTabType(96, 64, 32, 28, AdvancementTabType.RIGHT);
+    public enum TabType {
+        ABOVE, BELOW, LEFT, RIGHT
+    }
+
+    public static final EnhancedAdvancementTabType ABOVE = new EnhancedAdvancementTabType(0, 0, 28, 32, TabType.ABOVE);
+    public static final EnhancedAdvancementTabType BELOW = new EnhancedAdvancementTabType(84, 0, 28, 32, TabType.BELOW);
+    public static final EnhancedAdvancementTabType LEFT = new EnhancedAdvancementTabType(0, 64, 32, 28, TabType.LEFT);
+    public static final EnhancedAdvancementTabType RIGHT = new EnhancedAdvancementTabType(96, 64, 32, 28, TabType.RIGHT);
     // Below is not included in all as we will not be using it to leave space for pagination
     public static final List<EnhancedAdvancementTabType> ALL = List.of(ABOVE, RIGHT, LEFT);
 
@@ -20,9 +23,9 @@ public class EnhancedAdvancementTabType {
     private final int textureY;
     private final int width;
     private final int height;
-    private final AdvancementTabType tabType;
+    private final TabType tabType;
 
-    private EnhancedAdvancementTabType(int textureX, int textureY, int width, int height, AdvancementTabType tabType) {
+    private EnhancedAdvancementTabType(int textureX, int textureY, int width, int height, TabType tabType) {
         this.textureX = textureX;
         this.textureY = textureY;
         this.width = width;
@@ -126,7 +129,6 @@ public class EnhancedAdvancementTabType {
         return switch (tabType) {
             case LEFT, RIGHT -> height / 32;
             case ABOVE, BELOW -> width / 32;
-            default -> tabType.getMax();
         };
     }
 }

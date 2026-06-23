@@ -14,6 +14,7 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -72,8 +73,8 @@ public class AdvancementEditorScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        this.scrollOffset -= (int) (scrollY * 20);
+    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+        this.scrollOffset -= (int) (amount * 20);
         this.scrollOffset = Math.max(0, Math.min(this.scrollOffset, this.maxScroll));
 
         if (this.activeTab != null) {
@@ -157,7 +158,7 @@ public class AdvancementEditorScreen extends Screen {
     private void saveAndClose() {
         activeTab.saveState(draft);
 
-        ResourceLocation finalId = ResourceLocation.parse(draft.id);
+        ResourceLocation finalId = new ResourceLocation(draft.id);
 
         int finalX = posX;
         int finalY = posY;
@@ -177,12 +178,12 @@ public class AdvancementEditorScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void renderBackground(@NotNull GuiGraphics guiGraphics) {
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
-        super.renderBackground(gfx, mouseX, mouseY, partialTicks);
+    public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
+        this.renderBackground(gfx);
 
         gfx.fill(0, 0, this.width, this.height, COL_BG_OVERLAY);
         gfx.fill(uiX, uiY, uiX + uiW, uiY + uiH, 0xFF202020);

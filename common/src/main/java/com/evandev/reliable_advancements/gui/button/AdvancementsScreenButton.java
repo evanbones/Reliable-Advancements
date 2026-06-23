@@ -60,21 +60,21 @@ public class AdvancementsScreenButton extends AbstractButton {
         this.setX(calculateX(this.xSupplier.get()));
         this.setY(calculateY(this.ySupplier.get()));
         this.setWidth(calculateWidth());
-        this.setHeight(calculateHeight());
+        this.height = calculateHeight();
 
         Minecraft mc = Minecraft.getInstance();
         this.isHovered = mouseX >= this.getX() && mouseY >= this.getY() && mouseX < this.getX() + this.getWidth() && mouseY < this.getY() + this.getHeight();
 
         if (ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON) {
             if (ModConfig.get().customInventoryButtonTexture == null || ModConfig.get().customInventoryButtonTexture.isEmpty()) {
-                ResourceLocation sprite = this.isHovered ? ResourceLocation.withDefaultNamespace("widget/button_highlighted") : ResourceLocation.withDefaultNamespace("widget/button");
-                guiGraphics.blitSprite(sprite, this.getX(), this.getY(), this.getWidth(), this.getHeight());
+                ResourceLocation widgets = new ResourceLocation("textures/gui/widgets.png");
+                guiGraphics.blit(widgets, this.getX(), this.getY(), 0, this.isHovered ? 86 : 66, this.getWidth(), this.height);
             } else {
                 String texToUse = (this.isHovered && ModConfig.get().customInventoryButtonTextureHovered != null && !ModConfig.get().customInventoryButtonTextureHovered.isEmpty()) ? ModConfig.get().customInventoryButtonTextureHovered : ModConfig.get().customInventoryButtonTexture;
-                ResourceLocation tex = ResourceLocation.parse(texToUse);
+                ResourceLocation tex = new ResourceLocation(texToUse);
                 RenderSystem.enableBlend();
                 RenderSystem.defaultBlendFunc();
-                guiGraphics.blit(tex, this.getX(), this.getY(), 0, 0, this.getWidth(), this.getHeight(), this.getWidth(), this.getHeight());
+                guiGraphics.blit(tex, this.getX(), this.getY(), 0, 0, this.getWidth(), this.height, this.getWidth(), this.height);
                 RenderSystem.disableBlend();
             }
 
@@ -96,7 +96,7 @@ public class AdvancementsScreenButton extends AbstractButton {
         if (ModConfig.get().customInventoryButtonIcon == null || ModConfig.get().customInventoryButtonIcon.isEmpty())
             return ItemStack.EMPTY;
         try {
-            return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(ModConfig.get().customInventoryButtonIcon)));
+            return new ItemStack(BuiltInRegistries.ITEM.get(new ResourceLocation(ModConfig.get().customInventoryButtonIcon)));
         } catch (Exception e) {
             return new ItemStack(Items.BOOK);
         }

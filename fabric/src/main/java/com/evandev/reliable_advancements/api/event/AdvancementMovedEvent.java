@@ -1,7 +1,7 @@
 package com.evandev.reliable_advancements.api.event;
 
 import com.evandev.reliable_advancements.api.IAdvancementEntryGui;
-import net.minecraft.advancements.AdvancementNode;
+import net.minecraft.advancements.Advancement;
 
 /**
  * Event fired after an advancement has been moved in the gui and the mouse button has been released.
@@ -10,7 +10,7 @@ public class AdvancementMovedEvent implements IAdvancementMovedEvent {
     /**
      * Advancement that has been moved.
      */
-    private final AdvancementNode advancement;
+    private final Advancement advancement;
     /*
      * Coordinates the advancement was moved to.
      */
@@ -22,7 +22,7 @@ public class AdvancementMovedEvent implements IAdvancementMovedEvent {
         this.y = gui.getY();
     }
 
-    public AdvancementNode getAdvancement() {
+    public Advancement getAdvancement() {
         return this.advancement;
     }
 

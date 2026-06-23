@@ -1,26 +1,18 @@
 package com.evandev.reliable_advancements.network;
 
-import com.evandev.reliable_advancements.reference.Constants;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
-import org.jetbrains.annotations.NotNull;
 
-public record AdvancementJsonPayload(ResourceLocation advancementId, String jsonPayload,
-                                     String initialTab) implements CustomPacketPayload {
-    public static final Type<AdvancementJsonPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "advancement_json"));
+public record AdvancementJsonPayload(ResourceLocation advancementId, String jsonPayload, String initialTab) {
+    public static final ResourceLocation ID = new ResourceLocation(com.evandev.reliable_advancements.reference.Constants.MOD_ID, "advancement_json");
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, AdvancementJsonPayload> STREAM_CODEC = StreamCodec.composite(
-            ResourceLocation.STREAM_CODEC, AdvancementJsonPayload::advancementId,
-            ByteBufCodecs.stringUtf8(1048576), AdvancementJsonPayload::jsonPayload,
-            ByteBufCodecs.STRING_UTF8, AdvancementJsonPayload::initialTab,
-            AdvancementJsonPayload::new
-    );
+    public AdvancementJsonPayload(FriendlyByteBuf buf) {
+        this(buf.readResourceLocation(), buf.readUtf(1048576), buf.readUtf());
+    }
 
-    @Override
-    public @NotNull Type<? extends CustomPacketPayload> type() {
-        return TYPE;
+    public void write(FriendlyByteBuf buf) {
+        buf.writeResourceLocation(advancementId);
+        buf.writeUtf(jsonPayload, 1048576);
+        buf.writeUtf(initialTab);
     }
 }

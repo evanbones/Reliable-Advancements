@@ -1,24 +1,17 @@
 package com.evandev.reliable_advancements.network;
 
-import com.evandev.reliable_advancements.reference.Constants;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
-import org.jetbrains.annotations.NotNull;
 
-public record LinkAdvancementPayload(ResourceLocation childId,
-                                     ResourceLocation parentId) implements CustomPacketPayload {
-    public static final Type<LinkAdvancementPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "link_advancement"));
+public record LinkAdvancementPayload(ResourceLocation childId, ResourceLocation parentId) {
+    public static final ResourceLocation ID = new ResourceLocation(com.evandev.reliable_advancements.reference.Constants.MOD_ID, "link_advancement");
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, LinkAdvancementPayload> STREAM_CODEC = StreamCodec.composite(
-            ResourceLocation.STREAM_CODEC, LinkAdvancementPayload::childId,
-            ResourceLocation.STREAM_CODEC, LinkAdvancementPayload::parentId,
-            LinkAdvancementPayload::new
-    );
+    public LinkAdvancementPayload(FriendlyByteBuf buf) {
+        this(buf.readResourceLocation(), buf.readResourceLocation());
+    }
 
-    @Override
-    public @NotNull Type<? extends CustomPacketPayload> type() {
-        return TYPE;
+    public void write(FriendlyByteBuf buf) {
+        buf.writeResourceLocation(childId);
+        buf.writeResourceLocation(parentId);
     }
 }

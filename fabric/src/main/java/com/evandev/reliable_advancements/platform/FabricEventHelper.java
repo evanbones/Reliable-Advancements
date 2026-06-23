@@ -5,7 +5,7 @@ import com.evandev.reliable_advancements.api.event.AdvancementDrawConnectionsEve
 import com.evandev.reliable_advancements.api.event.IAdvancementDrawConnectionsEvent;
 import com.evandev.reliable_advancements.api.event.IAdvancementMovedEvent;
 import com.evandev.reliable_advancements.platform.services.IEventHelper;
-import net.minecraft.advancements.AdvancementNode;
+import net.minecraft.advancements.Advancement;
 
 public class FabricEventHelper implements IEventHelper {
     @Override
@@ -14,7 +14,7 @@ public class FabricEventHelper implements IEventHelper {
     }
 
     @Override
-    public IAdvancementDrawConnectionsEvent postAdvancementDrawConnectionsEvent(AdvancementNode advancement) {
+    public IAdvancementDrawConnectionsEvent postAdvancementDrawConnectionsEvent(Advancement advancement) {
         IAdvancementDrawConnectionsEvent event = new AdvancementDrawConnectionsEvent(advancement);
         // TODO send event to other mods
         return event;

@@ -16,7 +16,7 @@ import java.util.Map;
 
 public class TriggerSchemaManager {
     private static final Map<String, JsonObject> TRIGGERS = new HashMap<>();
-    private static final ResourceLocation SCHEMA_FILE = ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "trigger_schemas.json");
+    private static final ResourceLocation SCHEMA_FILE = new ResourceLocation(Constants.MOD_ID, "trigger_schemas.json");
 
     public static void load() {
         TRIGGERS.clear();

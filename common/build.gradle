@@ -1,10 +1,10 @@
 plugins {
     id 'multiloader-common'
-    id 'net.neoforged.moddev'
+    id 'net.neoforged.moddev.legacyforge'
 }
 
-neoForge {
-    neoFormVersion = neo_form_version
+legacyForge {
+    mcpVersion = minecraft_version
 
     def at = file('src/main/resources/META-INF/accesstransformer.cfg')
     if (at.exists()) {
@@ -18,13 +18,16 @@ neoForge {
 }
 
 dependencies {
-    compileOnly "me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}"
+    compileOnly "me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}"
 
+    compileOnly 'org.jetbrains:annotations:26.0.2-1'
     compileOnly group: 'org.spongepowered', name: 'mixin', version: '0.8.5'
     compileOnly group: 'org.ow2.asm', name: 'asm-tree', version: '9.6'
-    compileOnly group: 'io.github.llamalad7', name: 'mixinextras-common', version: '0.3.5'
-    annotationProcessor group: 'io.github.llamalad7', name: 'mixinextras-common', version: '0.3.5'
+    implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.1'
+    compileOnly "io.github.llamalad7:mixinextras-common:${mixinextras_version}"
 }
+
+sourceSets.main.resources.srcDir 'src/generated/resources'
 
 configurations {
     commonJava {
@@ -39,5 +42,7 @@ configurations {
 
 artifacts {
     commonJava sourceSets.main.java.sourceDirectories.singleFile
-    commonResources sourceSets.main.resources.sourceDirectories.singleFile
+    sourceSets.main.resources.srcDirs.each { dir ->
+        commonResources dir
+    }
 }

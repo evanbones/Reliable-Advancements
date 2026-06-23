@@ -1,252 +1,177 @@
 {
   "triggers": {
     "minecraft:allay_drop_item_on_block": {
-      "location": "object",
-      "player": "object"
+      "location": "object"
     },
-    "minecraft:any_block_use": {
-      "location": "object",
-      "player": "object"
-    },
-    "minecraft:avoid_vibration": {
-      "player": "object"
-    },
+    "minecraft:avoid_vibration": {},
     "minecraft:bee_nest_destroyed": {
-      "bees_inside": "object",
       "block": "object",
       "item": "object",
-      "player": "object"
+      "num_bees": "object"
     },
     "minecraft:bred_animals": {
       "parent": "object",
       "child": "object",
-      "partner": "object",
-      "player": "object"
+      "partner": "object"
     },
     "minecraft:brewed_potion": {
-      "player": "object",
       "potion": "object"
     },
     "minecraft:changed_dimension": {
       "from": "object",
-      "player": "object",
       "to": "object"
     },
     "minecraft:channeled_lightning": {
-      "player": "object",
-      "victims": "list"
+      "victims": "object"
     },
     "minecraft:construct_beacon": {
-      "level": "object",
-      "player": "object"
+      "level": "object"
     },
     "minecraft:consume_item": {
-      "item": "object",
-      "player": "object"
-    },
-    "minecraft:crafter_recipe_crafted": {
-      "ingredients": "list",
-      "player": "object",
-      "recipe_id": "resource_location"
+      "item": "object"
     },
     "minecraft:cured_zombie_villager": {
-      "player": "object",
       "villager": "object",
       "zombie": "object"
     },
-    "minecraft:default_block_use": {
-      "location": "object",
-      "player": "object"
-    },
     "minecraft:effects_changed": {
       "effects": "object",
-      "player": "object",
       "source": "object"
     },
     "minecraft:enchanted_item": {
       "item": "object",
-      "levels": "object",
-      "player": "object"
+      "levels": "object"
     },
     "minecraft:enter_block": {
       "block": "object",
-      "player": "object",
       "state": "object"
     },
     "minecraft:entity_hurt_player": {
-      "damage": "object",
-      "player": "object"
+      "damage": "object"
     },
     "minecraft:entity_killed_player": {
       "entity": "object",
-      "killing_blow": "object",
-      "player": "object"
-    },
-    "minecraft:fall_after_explosion": {
-      "cause": "object",
-      "distance": "object",
-      "player": "object",
-      "start_position": "object"
+      "killing_blow": "object"
     },
     "minecraft:fall_from_height": {
       "distance": "object",
-      "player": "object",
       "start_position": "object"
     },
     "minecraft:filled_bucket": {
-      "item": "object",
-      "player": "object"
+      "item": "object"
     },
     "minecraft:fishing_rod_hooked": {
       "entity": "object",
       "item": "object",
-      "player": "object",
       "rod": "object"
     },
-    "minecraft:hero_of_the_village": {
-      "player": "object"
-    },
+    "minecraft:hero_of_the_village": {},
     "minecraft:impossible": {},
     "minecraft:inventory_changed": {
-      "items": "list",
-      "player": "object",
-      "slots": "object"
+      "predicates": "object",
+      "slots_empty": "object",
+      "slots_full": "object",
+      "slots_occupied": "object"
     },
     "minecraft:item_durability_changed": {
       "delta": "object",
       "durability": "object",
-      "item": "object",
-      "player": "object"
+      "item": "object"
     },
     "minecraft:item_used_on_block": {
-      "location": "object",
-      "player": "object"
+      "location": "object"
     },
     "minecraft:kill_mob_near_sculk_catalyst": {
       "entity": "object",
-      "killing_blow": "object",
-      "player": "object"
+      "killing_blow": "object"
     },
     "minecraft:killed_by_crossbow": {
-      "player": "object",
       "unique_entity_types": "object",
-      "victims": "list"
+      "victims": "object"
     },
     "minecraft:levitation": {
       "distance": "object",
-      "duration": "object",
-      "player": "object"
+      "duration": "object"
     },
     "minecraft:lightning_strike": {
       "bystander": "object",
-      "lightning": "object",
-      "player": "object"
+      "lightning": "object"
     },
-    "minecraft:location": {
-      "player": "object"
-    },
+    "minecraft:location": {},
     "minecraft:nether_travel": {
       "distance": "object",
-      "player": "object",
       "start_position": "object"
     },
     "minecraft:placed_block": {
-      "location": "object",
-      "player": "object"
+      "location": "object"
     },
     "minecraft:player_generates_container_loot": {
-      "loot_table": "object",
-      "player": "object"
+      "loot_table": "resource_location"
     },
     "minecraft:player_hurt_entity": {
       "damage": "object",
-      "entity": "object",
-      "player": "object"
+      "entity": "object"
     },
     "minecraft:player_interacted_with_entity": {
       "entity": "object",
-      "item": "object",
-      "player": "object"
+      "item": "object"
     },
     "minecraft:player_killed_entity": {
       "entity": "object",
-      "killing_blow": "object",
-      "player": "object"
+      "killing_blow": "object"
     },
     "minecraft:recipe_crafted": {
-      "ingredients": "list",
-      "player": "object",
+      "predicates": "list",
       "recipe_id": "resource_location"
     },
     "minecraft:recipe_unlocked": {
-      "player": "object",
       "recipe": "resource_location"
     },
     "minecraft:ride_entity_in_lava": {
       "distance": "object",
-      "player": "object",
       "start_position": "object"
     },
     "minecraft:shot_crossbow": {
-      "item": "object",
-      "player": "object"
+      "item": "object"
     },
-    "minecraft:slept_in_bed": {
-      "player": "object"
-    },
+    "minecraft:slept_in_bed": {},
     "minecraft:slide_down_block": {
       "block": "object",
-      "player": "object",
       "state": "object"
     },
-    "minecraft:started_riding": {
-      "player": "object"
-    },
+    "minecraft:started_riding": {},
     "minecraft:summoned_entity": {
-      "entity": "object",
-      "player": "object"
+      "entity": "object"
     },
     "minecraft:tame_animal": {
-      "entity": "object",
-      "player": "object"
+      "entity": "object"
     },
     "minecraft:target_hit": {
-      "player": "object",
       "projectile": "object",
       "signal_strength": "object"
     },
     "minecraft:thrown_item_picked_up_by_entity": {
       "entity": "object",
-      "item": "object",
-      "player": "object"
+      "item": "object"
     },
     "minecraft:thrown_item_picked_up_by_player": {
       "entity": "object",
-      "item": "object",
-      "player": "object"
+      "item": "object"
     },
-    "minecraft:tick": {
-      "player": "object"
-    },
+    "minecraft:tick": {},
     "minecraft:used_ender_eye": {
-      "distance": "object",
-      "player": "object"
+      "level": "object"
     },
     "minecraft:used_totem": {
-      "item": "object",
-      "player": "object"
+      "item": "object"
     },
     "minecraft:using_item": {
-      "item": "object",
-      "player": "object"
+      "item": "object"
     },
     "minecraft:villager_trade": {
       "item": "object",
-      "player": "object",
       "villager": "object"
     },
-    "minecraft:voluntary_exile": {
-      "player": "object"
-    }
+    "minecraft:voluntary_exile": {}
   }
 }

@@ -2,7 +2,7 @@ package com.evandev.reliable_advancements.mixin;
 
 import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.util.RewardTrackerData;
-import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementRewards;
 import net.minecraft.server.PlayerAdvancements;
 import net.minecraft.server.level.ServerPlayer;
@@ -27,11 +27,11 @@ public abstract class PlayerAdvancementsMixin {
     }
 
     @Inject(method = "revoke", at = @At("RETURN"))
-    private void onRevoke(AdvancementHolder advancement, String criterionKey, CallbackInfoReturnable<Boolean> cir) {
+    private void onRevoke(Advancement advancement, String criterionKey, CallbackInfoReturnable<Boolean> cir) {
         if (cir.getReturnValue()) {
             PlayerAdvancements advancements = (PlayerAdvancements) (Object) this;
             if (!advancements.getOrStartProgress(advancement).isDone()) {
-                RewardTrackerData.get(this.player.server).unclaim(this.player.getUUID(), advancement.id());
+                RewardTrackerData.get(this.player.server).unclaim(this.player.getUUID(), advancement.getId());
                 RewardTrackerData.get(this.player.server).syncToPlayer(this.player);
             }
         }

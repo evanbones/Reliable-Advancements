@@ -4,7 +4,6 @@ import com.evandev.reliable_advancements.gui.model.AdvancementDraft;
 import com.evandev.reliable_advancements.gui.widgets.SuggestingEditBox;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.mojang.serialization.JsonOps;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -13,8 +12,6 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.ComponentSerialization;
-import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
@@ -41,12 +38,10 @@ public class PropertiesTab implements IEditorTab {
     public void loadState(AdvancementDraft draft) {
         this.id = draft.id;
         JsonObject display = draft.rootJson.has("display") ? draft.rootJson.getAsJsonObject("display") : new JsonObject();
-        RegistryOps<JsonElement> ops = Minecraft.getInstance().level.registryAccess().createSerializationContext(JsonOps.INSTANCE);
-
         try {
             if (display.has("title")) {
-                Component titleComp = ComponentSerialization.CODEC.parse(ops, display.get("title")).result().orElse(Component.empty());
-                this.title = titleComp.getString();
+                Component titleComp = Component.Serializer.fromJson(display.get("title"));
+                this.title = titleComp != null ? titleComp.getString() : "";
 
                 if (this.title.isEmpty() && display.get("title").isJsonPrimitive()) {
                     this.title = display.get("title").getAsString();
@@ -58,8 +53,8 @@ public class PropertiesTab implements IEditorTab {
 
         try {
             if (display.has("description")) {
-                Component descComp = ComponentSerialization.CODEC.parse(ops, display.get("description")).result().orElse(Component.empty());
-                this.description = descComp.getString();
+                Component descComp = Component.Serializer.fromJson(display.get("description"));
+                this.description = descComp != null ? descComp.getString() : "";
 
                 if (this.description.isEmpty() && display.get("description").isJsonPrimitive()) {
                     this.description = display.get("description").getAsString();
@@ -70,8 +65,18 @@ public class PropertiesTab implements IEditorTab {
         }
 
         try {
-            this.icon = display.has("icon") && display.getAsJsonObject("icon").has("id")
-                    ? display.getAsJsonObject("icon").get("id").getAsString() : "minecraft:stone";
+            if (display.has("icon")) {
+                JsonObject iconObj = display.getAsJsonObject("icon");
+                if (iconObj.has("item")) {
+                    this.icon = iconObj.get("item").getAsString();
+                } else if (iconObj.has("id")) {
+                    this.icon = iconObj.get("id").getAsString();
+                } else {
+                    this.icon = "minecraft:stone";
+                }
+            } else {
+                this.icon = "minecraft:stone";
+            }
         } catch (Exception e) {
             this.icon = "minecraft:stone";
         }
@@ -164,6 +169,7 @@ public class PropertiesTab implements IEditorTab {
 
         if (iconBox != null) {
             JsonObject iconObj = display.has("icon") ? display.getAsJsonObject("icon") : new JsonObject();
+            iconObj.addProperty("item", iconBox.getValue());
             iconObj.addProperty("id", iconBox.getValue());
             display.add("icon", iconObj);
         }

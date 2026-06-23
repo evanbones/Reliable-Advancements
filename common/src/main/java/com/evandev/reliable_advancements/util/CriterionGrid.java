@@ -49,21 +49,20 @@ public class CriterionGrid {
      * Of all the possible grids whose aspect ratio is less than the maximum, this method returns the one with the smallest number of rows.
      * If there is no such grid, this method returns a single-column grid.
      */
-    public static CriterionGrid findOptimalCriterionGrid(AdvancementHolder holder, Advancement advancement, AdvancementProgress progress, int maxWidth, Font font) {
+    public static CriterionGrid findOptimalCriterionGrid(Advancement holder, Advancement advancement, AdvancementProgress progress, int maxWidth, Font font) {
         if (progress == null || progress.isDone() || CriteriaDetail.fromName(ModConfig.get().criteriaDetail) == CriteriaDetail.OFF) {
             return CriterionGrid.empty;
         }
-        AdvancementRequirements requirements = advancement.requirements();
-        if (requirements.size() <= 1) {
+        if (advancement.getCriteria().size() <= 1) {
             return CriterionGrid.empty;
         }
         int numUnobtained = 0;
         List<Component> cellContents = new ArrayList<>();
         CriteriaDetail currentDetail = CriteriaDetail.fromName(ModConfig.get().criteriaDetail);
 
-        for (String criterion : requirements.names()) {
+        for (String criterion : advancement.getCriteria().keySet()) {
             CriterionProgress criterionProgress = progress.getCriterion(criterion);
-            String criterionKey = Constants.MOD_ID + ".criterion." + holder.id() + "." + criterion;
+            String criterionKey = Constants.MOD_ID + ".criterion." + holder.getId() + "." + criterion;
 
             if (criterionProgress != null && criterionProgress.isDone()) {
                 if (currentDetail.showObtained()) {

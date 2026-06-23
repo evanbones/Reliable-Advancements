@@ -1,9 +1,9 @@
 package com.evandev.reliable_advancements.api.event;
 
-import net.minecraft.advancements.AdvancementNode;
+import net.minecraft.advancements.Advancement;
 
 public interface IAdvancementMovedEvent {
-    AdvancementNode getAdvancement();
+    Advancement getAdvancement();
 
     int getX();
 

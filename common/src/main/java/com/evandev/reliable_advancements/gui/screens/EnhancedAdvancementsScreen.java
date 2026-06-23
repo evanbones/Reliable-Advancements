@@ -20,8 +20,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
-import net.minecraft.advancements.AdvancementHolder;
-import net.minecraft.advancements.AdvancementNode;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.client.GameNarrator;
 import net.minecraft.client.Minecraft;
@@ -56,7 +55,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     private static int tabPage, maxPages;
     private static ResourceLocation savedSelectedTab = null;
     private final ClientAdvancements clientAdvancements;
-    private final Map<AdvancementHolder, EnhancedAdvancementTab> tabs = Maps.newLinkedHashMap();
+    private final Map<Advancement, EnhancedAdvancementTab> tabs = Maps.newLinkedHashMap();
     public EnhancedAdvancementWidget linkingWidget = null;
     public EnhancedAdvancementTab selectedTab;
     public int internalWidth;
@@ -96,24 +95,27 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     public void centerOnAdvancement(ResourceLocation id) {
-        AdvancementNode node = this.clientAdvancements.getTree().get(id);
+        Advancement node = this.clientAdvancements.getAdvancements().get(id);
         if (node == null) return;
-        AdvancementNode root = node.root();
-        EnhancedAdvancementTab targetTab = this.tabs.get(root.holder());
-
+        Advancement root = node;
+        while (root.getParent() != null) {
+            root = root.getParent();
+        }
+        EnhancedAdvancementTab targetTab = this.tabs.get(root);
+ 
         if (targetTab != null) {
             this.selectedTab = targetTab;
-            this.clientAdvancements.setSelectedTab(root.holder(), true);
-            EnhancedAdvancementWidget widget = targetTab.getWidgets().get(node.holder());
-
+            this.clientAdvancements.setSelectedTab(root, true);
+            EnhancedAdvancementWidget widget = targetTab.getWidgets().get(node);
+ 
             if (widget != null) {
                 int boxWidth = getTabInternalWidth() - 2 * SIDE - 2 * PADDING;
                 int boxHeight = getTabInternalHeight() - TOP - SIDE - 3 * PADDING;
-
+ 
                 float currentZoom = getZoom();
                 int scaledWidth = (int) (boxWidth / currentZoom);
                 int scaledHeight = (int) (boxHeight / currentZoom);
-
+ 
                 targetTab.scrollX = (scaledWidth / 2) - (widget.getX() + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2);
                 targetTab.scrollY = (scaledHeight / 2) - (widget.getY() + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2);
                 targetTab.setCentered(true);
@@ -126,27 +128,27 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         return false;
     }
 
-    public Map<AdvancementHolder, EnhancedAdvancementTab> getTabs() {
+    public Map<Advancement, EnhancedAdvancementTab> getTabs() {
         return this.tabs;
     }
-
+ 
     public void editTabProperties() {
         if (this.selectedTab != null) {
-            ResourceLocation id = this.selectedTab.getRootNode().holder().id();
+            ResourceLocation id = this.selectedTab.getRootNode().getId();
             Services.PLATFORM.sendAdvancementJsonRequest(new RequestAdvancementJsonPayload(id, "TabProperties"));
         }
         this.contextMenu = null;
     }
-
+ 
     public void sortTabs() {
-        List<Map.Entry<AdvancementHolder, EnhancedAdvancementTab>> list = new ArrayList<>(this.tabs.entrySet());
-        list.sort(Comparator.comparingInt((Map.Entry<AdvancementHolder, EnhancedAdvancementTab> e) -> e.getValue().customIndex)
+        List<Map.Entry<Advancement, EnhancedAdvancementTab>> list = new ArrayList<>(this.tabs.entrySet());
+        list.sort(Comparator.comparingInt((Map.Entry<Advancement, EnhancedAdvancementTab> e) -> e.getValue().customIndex)
                 .thenComparing(e -> ModConfig.get().orderTabsAlphabetically ? e.getValue().getTitle().getString() : ""));
         this.tabs.clear();
         int newIndex = 0;
         int tabW = getTabInternalWidth();
         int tabH = getTabInternalHeight();
-        for (Map.Entry<AdvancementHolder, EnhancedAdvancementTab> e : list) {
+        for (Map.Entry<Advancement, EnhancedAdvancementTab> e : list) {
             EnhancedAdvancementTab tab = e.getValue();
             tab.updateIndex(newIndex, tabW - 2 * 30, tabH - 40 - 30);
             this.tabs.put(e.getKey(), tab);
@@ -168,7 +170,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     public void removeWidgetFromClient(EnhancedAdvancementWidget widget) {
         if (selectedTab != null) {
-            selectedTab.getWidgets().remove(widget.getAdvancement().holder());
+            selectedTab.getWidgets().remove(widget.getAdvancement());
             if (widget.getParent() != null) {
                 widget.getParent().getChildren().remove(widget);
             }
@@ -186,7 +188,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     public void copyAdvancement(EnhancedAdvancementWidget widget) {
-        ResourceLocation id = widget.getAdvancement().holder().id();
+        ResourceLocation id = widget.getAdvancement().getId();
         Services.PLATFORM.sendAdvancementJsonRequest(new RequestAdvancementJsonPayload(id, "Copy"));
     }
 
@@ -195,14 +197,14 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                 (confirmed) -> {
                     if (confirmed) {
                         String dummyJson = "{\"criteria\":{\"impossible\":{\"trigger\":\"minecraft:impossible\"}}}";
-                        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), dummyJson, false);
+                        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().getId(), dummyJson, false);
 
                         if (Services.PLATFORM.canSendAdvancementEdit()) {
                             Services.PLATFORM.sendAdvancementEdit(payload);
                         }
-                        PersistentData.removePosition(widget.getAdvancement().holder().id());
-                        if (this.selectedTab != null && widget.getAdvancement().holder().id().equals(this.selectedTab.getRootNode().holder().id())) {
-                            PersistentData.removeTabProperties(this.selectedTab.getRootNode().holder().id());
+                        PersistentData.removePosition(widget.getAdvancement().getId());
+                        if (this.selectedTab != null && widget.getAdvancement().getId().equals(this.selectedTab.getRootNode().getId())) {
+                            PersistentData.removeTabProperties(this.selectedTab.getRootNode().getId());
                         }
                         removeWidgetFromClient(widget);
                     }
@@ -218,13 +220,13 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         this.minecraft.setScreen(new ConfirmScreen(
                 (confirmed) -> {
                     if (confirmed) {
-                        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), "{}", true);
+                        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().getId(), "{}", true);
                         if (Services.PLATFORM.canSendAdvancementEdit()) {
                             Services.PLATFORM.sendAdvancementEdit(payload);
                         }
-                        PersistentData.removePosition(widget.getAdvancement().holder().id());
-                        if (this.selectedTab != null && widget.getAdvancement().holder().id().equals(this.selectedTab.getRootNode().holder().id())) {
-                            PersistentData.removeTabProperties(this.selectedTab.getRootNode().holder().id());
+                        PersistentData.removePosition(widget.getAdvancement().getId());
+                        if (this.selectedTab != null && widget.getAdvancement().getId().equals(this.selectedTab.getRootNode().getId())) {
+                            PersistentData.removeTabProperties(this.selectedTab.getRootNode().getId());
                         }
 
                         Services.PLATFORM.sendRequestFullTree();
@@ -248,10 +250,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
         while (true) {
             String suffix = counter == 1 ? "_copy" : "_copy" + counter;
-            ResourceLocation testId = ResourceLocation.fromNamespaceAndPath(namespace, path + suffix);
+            ResourceLocation testId = new ResourceLocation(namespace, path + suffix);
 
-            boolean exists = this.tabs.keySet().stream().anyMatch(h -> h.id().equals(testId)) ||
-                    (this.selectedTab != null && this.selectedTab.getWidgets().keySet().stream().anyMatch(h -> h.id().equals(testId)));
+            boolean exists = this.tabs.keySet().stream().anyMatch(h -> h.getId().equals(testId)) ||
+                    (this.selectedTab != null && this.selectedTab.getWidgets().keySet().stream().anyMatch(h -> h.getId().equals(testId)));
 
             if (!exists) {
                 newId = testId;
@@ -275,7 +277,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         PersistentData.setPosition(newId, newPosX, newPosY);
 
         if (this.selectedTab != null) {
-            root.addProperty("parent", this.selectedTab.getRootNode().holder().id().toString());
+            root.addProperty("parent", this.selectedTab.getRootNode().getId().toString());
         } else {
             root.remove("parent");
         }
@@ -292,9 +294,9 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
         while (true) {
             String suffix = counter == 1 ? "" : "_" + counter;
-            ResourceLocation testId = ResourceLocation.fromNamespaceAndPath("minecraft", "new_advancement" + suffix);
+            ResourceLocation testId = new ResourceLocation("minecraft", "new_advancement" + suffix);
 
-            boolean exists = this.selectedTab != null && this.selectedTab.getWidgets().keySet().stream().anyMatch(h -> h.id().equals(testId));
+            boolean exists = this.selectedTab != null && this.selectedTab.getWidgets().keySet().stream().anyMatch(h -> h.getId().equals(testId));
 
             if (!exists) {
                 newId = testId;
@@ -316,6 +318,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         JsonObject root = new JsonObject();
         JsonObject display = new JsonObject();
         JsonObject icon = new JsonObject();
+        icon.addProperty("item", "minecraft:stone");
         icon.addProperty("id", "minecraft:stone");
         display.add("icon", icon);
 
@@ -335,7 +338,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         root.add("criteria", criteria);
 
         if (this.selectedTab != null) {
-            root.addProperty("parent", this.selectedTab.getRootNode().holder().id().toString());
+            root.addProperty("parent", this.selectedTab.getRootNode().getId().toString());
         }
 
         AdvancementEditorScreen editor = new AdvancementEditorScreen(
@@ -352,7 +355,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
         if (this.selectedTab != null) {
             this.selectedTab.storeScroll();
-            savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+            savedSelectedTab = this.selectedTab.getRootNode().getId();
         }
         PersistentData.load();
         this.internalHeight = this.height * ModConfig.get().uiScaling / 100;
@@ -369,7 +372,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
         if (savedSelectedTab != null) {
             for (EnhancedAdvancementTab tab : this.tabs.values()) {
-                if (tab.getRootNode().holder().id().equals(savedSelectedTab)) {
+                if (tab.getRootNode().getId().equals(savedSelectedTab)) {
                     this.selectedTab = tab;
                     break;
                 }
@@ -381,7 +384,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
 
         if (this.selectedTab != null) {
-            this.clientAdvancements.setSelectedTab(this.selectedTab.getRootNode().holder(), true);
+            this.clientAdvancements.setSelectedTab(this.selectedTab.getRootNode(), true);
             this.selectedTab.loadScroll();
         }
 
@@ -412,7 +415,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                 } else {
                     clientHasFullTree = false;
                     Services.PLATFORM.sendAdvancementJsonRequest(new RequestAdvancementJsonPayload(
-                            ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "resync"), "Resync"));
+                            new ResourceLocation(Constants.MOD_ID, "resync"), "Resync"));
                 }
                 b.setMessage(Component.literal("Edit: " + (ModConfig.get().enableEditMode ? "ON" : "OFF")));
             }).pos(this.width - editBtnWidth - 30, 10).size(editBtnWidth, 20).build());
@@ -483,9 +486,9 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     return true;
                 }
 
-                ResourceLocation id = linkingWidget.getAdvancement().holder().id();
+                ResourceLocation id = linkingWidget.getAdvancement().getId();
 
-                ResourceLocation parentResId = target.getAdvancement().holder().id();
+                ResourceLocation parentResId = target.getAdvancement().getId();
                 LinkAdvancementPayload payload = new LinkAdvancementPayload(id, parentResId);
                 Services.PLATFORM.sendLinkAdvancement(payload);
 
@@ -508,12 +511,12 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                 EnhancedAdvancementWidget hovered = getHoveredWidget(mouseX, mouseY);
                 if (hovered != null && ModConfig.get().requireRewardClaiming) {
                     boolean isCompleted = hovered.advancementProgress != null && hovered.advancementProgress.isDone();
-                    boolean isClaimed = ClientRewardTracker.isClaimed(hovered.getAdvancement().holder().id());
+                    boolean isClaimed = ClientRewardTracker.isClaimed(hovered.getAdvancement().getId());
 
                     if (isCompleted && !isClaimed) {
                         Minecraft.getInstance().player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0F, 1.0F);
 
-                        Services.PLATFORM.sendClaimReward(new ClaimRewardPayload(hovered.getAdvancement().holder().id()));
+                        Services.PLATFORM.sendClaimReward(new ClaimRewardPayload(hovered.getAdvancement().getId()));
                         return true;
                     }
                 }
@@ -524,7 +527,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
             for (EnhancedAdvancementTab tab : this.tabs.values().stream().skip(skip).limit(maxTabs).toList()) {
                 if (tab.isMouseOver(left, top, getTabInternalWidth() - 2 * SIDE, getTabInternalHeight() - top - BOTTOM, mouseX, mouseY)) {
-                    this.clientAdvancements.setSelectedTab(tab.getRootNode().holder(), true);
+                    this.clientAdvancements.setSelectedTab(tab.getRootNode(), true);
                     break;
                 }
             }
@@ -558,7 +561,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
         if (this.contextMenu != null) this.contextMenu = null;
 
         if (this.selectedTab != null) {
@@ -570,7 +573,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                 double relMouseY = mouseY - (top + 2 * PADDING);
 
                 float oldZoom = this.zoom;
-                this.zoom = Mth.clamp(this.zoom + (float) scrollY * ZOOM_STEP, MIN_ZOOM, MAX_ZOOM);
+                this.zoom = Mth.clamp(this.zoom + (float) amount * ZOOM_STEP, MIN_ZOOM, MAX_ZOOM);
 
                 if (this.zoom != oldZoom) {
                     double shiftX = (relMouseX / this.zoom) - (relMouseX / oldZoom);
@@ -578,9 +581,9 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     this.selectedTab.scroll(shiftX, shiftY, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
                 }
             } else if (Screen.hasShiftDown()) {
-                this.selectedTab.scroll(scrollY * 20.0 / this.zoom, 0, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
+                this.selectedTab.scroll(amount * 20.0 / this.zoom, 0, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
             } else {
-                this.selectedTab.scroll(scrollX * 20.0 / this.zoom, scrollY * 20.0 / this.zoom, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
+                this.selectedTab.scroll(0, amount * 20.0 / this.zoom, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
             }
             return true;
         }
@@ -605,7 +608,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                         w.setX(w.getX() + dx);
                         w.setY(w.getY() + dy);
                         Services.PLATFORM.getEventHelper().postAdvancementMovementEvent(w);
-                        PersistentData.setMemoryPosition(w.getAdvancement().holder().id(), w.getX(), w.getY());
+                        PersistentData.setMemoryPosition(w.getAdvancement().getId(), w.getX(), w.getY());
                     }
                     PersistentData.save(this.tabs);
                     return true;
@@ -653,11 +656,11 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             if (selectedWidgets.contains(this.advConnectedToMouse)) {
                 for (EnhancedAdvancementWidget w : selectedWidgets) {
                     Services.PLATFORM.getEventHelper().postAdvancementMovementEvent(w);
-                    PersistentData.setMemoryPosition(w.getAdvancement().holder().id(), w.getX(), w.getY());
+                    PersistentData.setMemoryPosition(w.getAdvancement().getId(), w.getX(), w.getY());
                 }
             } else {
                 Services.PLATFORM.getEventHelper().postAdvancementMovementEvent(this.advConnectedToMouse);
-                PersistentData.setMemoryPosition(this.advConnectedToMouse.getAdvancement().holder().id(), this.advConnectedToMouse.getX(), this.advConnectedToMouse.getY());
+                PersistentData.setMemoryPosition(this.advConnectedToMouse.getAdvancement().getId(), this.advConnectedToMouse.getX(), this.advConnectedToMouse.getY());
             }
             this.advConnectedToMouse = null;
             if (EnhancedAdvancementsScreen.canEdit()) {
@@ -674,7 +677,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             PersistentData.save(this.tabs);
         }
         if (this.selectedTab != null) {
-            savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+            savedSelectedTab = this.selectedTab.getRootNode().getId();
         }
         super.removed();
     }
@@ -764,7 +767,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     @Override
-    public void renderBackground(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void renderBackground(@NotNull GuiGraphics guiGraphics) {
     }
 
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
@@ -779,7 +782,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         int maxTabs = EnhancedAdvancementTabType.getMaxTabs(width, height);
         int skip = tabPage * maxTabs;
 
-        super.renderBackground(guiGraphics, mouseX, mouseY, partialTicks);
+        this.renderBackground(guiGraphics);
 
         if (maxPages != 0) {
             Component page = Component.literal(String.format("%d / %d", tabPage + 1, maxPages + 1));
@@ -1017,8 +1020,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         int counter = 1;
         while (true) {
             String suffix = counter == 1 ? "" : "_" + counter;
-            ResourceLocation testId = ResourceLocation.fromNamespaceAndPath("minecraft", "new_tab" + suffix);
-            boolean exists = this.tabs.keySet().stream().anyMatch(h -> h.id().equals(testId));
+            ResourceLocation testId = new ResourceLocation("minecraft", "new_tab" + suffix);
+            boolean exists = this.tabs.keySet().stream().anyMatch(h -> h.getId().equals(testId));
             if (!exists) {
                 newId = testId;
                 break;
@@ -1030,6 +1033,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         JsonObject display = new JsonObject();
         JsonObject icon = new JsonObject();
 
+        icon.addProperty("item", "minecraft:stone");
         icon.addProperty("id", "minecraft:stone");
         display.add("icon", icon);
 
@@ -1060,7 +1064,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     @Override
     public void onAdvancementsCleared() {
         if (this.selectedTab != null) {
-            savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+            savedSelectedTab = this.selectedTab.getRootNode().getId();
             this.selectedTab.storeScroll();
         }
         this.tabs.clear();
@@ -1072,26 +1076,26 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     @Override
-    public void onAddAdvancementRoot(@NotNull AdvancementNode advancement) {
+    public void onAddAdvancementRoot(@NotNull Advancement advancement) {
         EnhancedAdvancementTab betterAdvancementTabGui = EnhancedAdvancementTab.create(this.minecraft, this, this.tabs.size(), advancement, internalWidth - 2 * SIDE, internalHeight - TOP - SIDE);
         if (betterAdvancementTabGui != null) {
-            this.tabs.put(advancement.holder(), betterAdvancementTabGui);
+            this.tabs.put(advancement, betterAdvancementTabGui);
             sortTabs();
-            if (advancement.holder().id().equals(savedSelectedTab) || this.selectedTab == null) {
+            if (advancement.getId().equals(savedSelectedTab) || this.selectedTab == null) {
                 this.selectedTab = betterAdvancementTabGui;
-                this.clientAdvancements.setSelectedTab(advancement.holder(), true);
+                this.clientAdvancements.setSelectedTab(advancement, true);
                 this.selectedTab.loadScroll();
             }
         }
-
+ 
         if (!this.isInitializing) {
             this.isDirty = true;
         }
     }
-
+ 
     @Override
-    public void onRemoveAdvancementRoot(@NotNull AdvancementNode advancement) {
-        EnhancedAdvancementTab tab = this.tabs.remove(advancement.holder());
+    public void onRemoveAdvancementRoot(@NotNull Advancement advancement) {
+        EnhancedAdvancementTab tab = this.tabs.remove(advancement);
         if (tab != null && tab == this.selectedTab) {
             if (!this.tabs.isEmpty()) {
                 this.selectedTab = this.tabs.values().iterator().next();
@@ -1099,69 +1103,69 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                 this.selectedTab = null;
             }
         }
-
+ 
         if (!this.isInitializing) {
             this.isDirty = true;
         }
     }
-
+ 
     @Override
-    public void onAddAdvancementTask(@NotNull AdvancementNode advancement) {
+    public void onAddAdvancementTask(@NotNull Advancement advancement) {
         EnhancedAdvancementTab betterAdvancementTabGui = this.getTab(advancement);
         if (betterAdvancementTabGui != null) {
-
-            ResourceLocation id = advancement.holder().id();
+ 
+            ResourceLocation id = advancement.getId();
             EnhancedAdvancementWidget oldWidget = null;
             for (EnhancedAdvancementWidget w : betterAdvancementTabGui.getWidgets().values()) {
-                if (w.getAdvancement().holder().id().equals(id)) {
+                if (w.getAdvancement().getId().equals(id)) {
                     oldWidget = w;
                     break;
                 }
             }
-
+ 
             if (oldWidget != null) {
-                betterAdvancementTabGui.getWidgets().remove(oldWidget.getAdvancement().holder());
+                betterAdvancementTabGui.getWidgets().remove(oldWidget.getAdvancement());
                 if (oldWidget.getParent() != null) {
                     oldWidget.getParent().getChildren().remove(oldWidget);
                 }
             }
-
+ 
             betterAdvancementTabGui.addAdvancement(advancement);
         }
-
+ 
         if (!this.isInitializing) {
             this.isDirty = true;
         }
     }
-
+ 
     @Override
-    public void onRemoveAdvancementTask(@NotNull AdvancementNode advancement) {
+    public void onRemoveAdvancementTask(@NotNull Advancement advancement) {
         EnhancedAdvancementTab betterAdvancementTabGui = this.getTab(advancement);
         if (betterAdvancementTabGui != null) {
-            EnhancedAdvancementWidget widget = betterAdvancementTabGui.getWidget(advancement.holder());
+            EnhancedAdvancementWidget widget = betterAdvancementTabGui.getWidget(advancement);
             if (widget != null) {
-                betterAdvancementTabGui.getWidgets().remove(advancement.holder());
+                betterAdvancementTabGui.getWidgets().remove(advancement);
                 if (widget.getParent() != null) {
                     widget.getParent().getChildren().remove(widget);
                 }
             }
         }
-
+ 
         if (!this.isInitializing) {
             this.isDirty = true;
         }
     }
-
+ 
     @Override
-    public void onUpdateAdvancementProgress(@NotNull AdvancementNode advancement, @NotNull AdvancementProgress advancementProgress) {
+    public void onUpdateAdvancementProgress(@NotNull Advancement advancement, @NotNull AdvancementProgress advancementProgress) {
         EnhancedAdvancementWidget betterAdvancementEntryScreen = this.getAdvancementWidget(advancement);
         if (betterAdvancementEntryScreen != null) {
             betterAdvancementEntryScreen.getAdvancementProgress(advancementProgress);
         }
     }
-
+ 
     @Override
-    public void onSelectedTabChanged(AdvancementHolder advancement) {
+    public void onSelectedTabChanged(Advancement advancement) {
         if (this.selectedTab != null) {
             this.selectedTab.storeScroll();
         }
@@ -1170,14 +1174,17 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             this.selectedTab.loadScroll();
         }
     }
-
-    public EnhancedAdvancementWidget getAdvancementWidget(AdvancementNode advancement) {
+ 
+    public EnhancedAdvancementWidget getAdvancementWidget(Advancement advancement) {
         EnhancedAdvancementTab betterAdvancementTab = this.getTab(advancement);
-        return betterAdvancementTab == null ? null : betterAdvancementTab.getWidget(advancement.holder());
+        return betterAdvancementTab == null ? null : betterAdvancementTab.getWidget(advancement);
     }
-
-    private EnhancedAdvancementTab getTab(AdvancementNode advancement) {
-        AdvancementNode advancementNode = advancement.root();
-        return this.tabs.get(advancementNode.holder());
+ 
+    private EnhancedAdvancementTab getTab(Advancement advancement) {
+        Advancement root = advancement;
+        while (root.getParent() != null) {
+            root = root.getParent();
+        }
+        return this.tabs.get(root);
     }
 }

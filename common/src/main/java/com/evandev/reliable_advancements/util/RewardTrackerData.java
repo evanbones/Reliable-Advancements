@@ -2,7 +2,6 @@ package com.evandev.reliable_advancements.util;
 
 import com.evandev.reliable_advancements.network.SyncClaimedRewardsPayload;
 import com.evandev.reliable_advancements.platform.Services;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
@@ -21,12 +20,13 @@ public class RewardTrackerData extends SavedData {
 
     public static RewardTrackerData get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(
-                new SavedData.Factory<>(RewardTrackerData::new, RewardTrackerData::load, null),
+                RewardTrackerData::load,
+                RewardTrackerData::new,
                 DATA_NAME
         );
     }
 
-    public static RewardTrackerData load(CompoundTag tag, HolderLookup.Provider provider) {
+    public static RewardTrackerData load(CompoundTag tag) {
         RewardTrackerData data = new RewardTrackerData();
         for (String key : tag.getAllKeys()) {
             try {
@@ -34,7 +34,7 @@ public class RewardTrackerData extends SavedData {
                 Set<ResourceLocation> claims = new HashSet<>();
                 ListTag list = tag.getList(key, Tag.TAG_STRING);
                 for (int i = 0; i < list.size(); i++) {
-                    claims.add(ResourceLocation.parse(list.getString(i)));
+                    claims.add(new ResourceLocation(list.getString(i)));
                 }
                 data.claimedRewards.put(uuid, claims);
             } catch (IllegalArgumentException ignored) {
@@ -65,7 +65,7 @@ public class RewardTrackerData extends SavedData {
     }
 
     @Override
-    public @NotNull CompoundTag save(@NotNull CompoundTag tag, @NotNull HolderLookup.Provider provider) {
+    public @NotNull CompoundTag save(@NotNull CompoundTag tag) {
         for (Map.Entry<UUID, Set<ResourceLocation>> entry : claimedRewards.entrySet()) {
             ListTag list = new ListTag();
             for (ResourceLocation id : entry.getValue()) {

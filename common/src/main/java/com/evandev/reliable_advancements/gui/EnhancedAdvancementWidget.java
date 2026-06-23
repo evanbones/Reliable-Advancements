@@ -13,10 +13,10 @@ import com.evandev.reliable_advancements.util.PersistentData;
 import com.evandev.reliable_advancements.util.RenderUtil;
 import com.google.common.collect.Lists;
 import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.advancements.AdvancementHolder;
-import net.minecraft.advancements.AdvancementNode;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.advancements.DisplayInfo;
+import net.minecraft.advancements.FrameType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.StringSplitter;
 import net.minecraft.client.gui.GuiGraphics;
@@ -42,7 +42,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     private static final int ICON_SIZE = 26;
     public final AdvancementDisplayInfo enhancedDisplayInfo;
     private final EnhancedAdvancementTab advancementTabGui;
-    private final AdvancementNode advancementNode;
+    private final Advancement advancementNode;
     private final DisplayInfo displayInfo;
     private final String title;
     private final Minecraft minecraft;
@@ -55,7 +55,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     private EnhancedAdvancementWidget parent;
     private float hoverAnim = 0.0f;
 
-    public EnhancedAdvancementWidget(EnhancedAdvancementTab advancementTabGui, Minecraft mc, AdvancementNode advancementNode, DisplayInfo displayInfo) {
+    public EnhancedAdvancementWidget(EnhancedAdvancementTab advancementTabGui, Minecraft mc, Advancement advancementNode, DisplayInfo displayInfo) {
         this.advancementTabGui = advancementTabGui;
         this.advancementNode = advancementNode;
         this.enhancedDisplayInfo = advancementTabGui.getDisplayInfo(this.advancementNode);
@@ -64,10 +64,10 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         this.title = displayInfo.getTitle().getString(163);
         this.x = this.enhancedDisplayInfo.getPosX() != null ? this.enhancedDisplayInfo.getPosX() : Mth.floor(displayInfo.getX() * 32.0F);
         this.y = this.enhancedDisplayInfo.getPosY() != null ? this.enhancedDisplayInfo.getPosY() : Mth.floor(displayInfo.getY() * 27.0F);
-        if (PersistentData.hasSavedPosition(this.advancementNode.holder())) {
-            PersistentData.loadSavedPosition(this.advancementNode.holder(), this);
+        if (PersistentData.hasSavedPosition(this.advancementNode)) {
+            PersistentData.loadSavedPosition(this.advancementNode, this);
         } else {
-            PersistentData.setMemoryPosition(this.advancementNode.holder().id(), this.x, this.y);
+            PersistentData.setMemoryPosition(this.advancementNode.getId(), this.x, this.y);
         }
         this.refreshHover();
     }
@@ -75,13 +75,13 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     private void refreshHover() {
         Minecraft mc = this.minecraft;
         int k = 0;
-        if (this.advancementNode.advancement().requirements().size() > 1) {
-            int strLengthRequirementCount = String.valueOf(this.advancementNode.advancement().requirements().size()).length();
+        if (this.advancementNode.getCriteria().size() > 1) {
+            int strLengthRequirementCount = String.valueOf(this.advancementNode.getCriteria().size()).length();
             k = mc.font.width("  ") + mc.font.width("0") * strLengthRequirementCount * 2 + mc.font.width("/");
         }
         int titleWidth = 29 + mc.font.width(this.title) + k;
         EnhancedAdvancementsScreen screen = advancementTabGui.getScreen();
-        this.criterionGrid = CriterionGrid.findOptimalCriterionGrid(this.advancementNode.holder(), this.advancementNode.advancement(), advancementProgress, screen.width / 2, mc.font);
+        this.criterionGrid = CriterionGrid.findOptimalCriterionGrid(this.advancementNode, this.advancementNode, advancementProgress, screen.width / 2, mc.font);
         int maxWidth;
 
         if (!ModConfig.get().requiresShift || Screen.hasShiftDown()) {
@@ -92,7 +92,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         this.description = Language.getInstance().getVisualOrder(
                 this.findOptimalLines(ComponentUtils.mergeStyles(
                         displayInfo.getDescription().copy(),
-                        Style.EMPTY.withColor(displayInfo.getType().getChatColor())
+                        Style.EMPTY.withColor(displayInfo.getFrame().getChatColor())
                 ), maxWidth));
 
         for (FormattedCharSequence line : this.description) {
@@ -120,13 +120,13 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         }
     }
 
-    private EnhancedAdvancementWidget getFirstVisibleParent(AdvancementNode advancement) {
+    private EnhancedAdvancementWidget getFirstVisibleParent(Advancement advancement) {
         do {
-            advancement = advancement.parent();
-        } while (advancement != null && advancement.advancement().display().isEmpty());
+            advancement = advancement.getParent();
+        } while (advancement != null && advancement.getDisplay() == null);
 
-        if (advancement != null && advancement.advancement().display().isPresent()) {
-            return this.advancementTabGui.getWidget(advancement.holder());
+        if (advancement != null && advancement.getDisplay() != null) {
+            return this.advancementTabGui.getWidget(advancement);
         } else {
             return null;
         }
@@ -141,7 +141,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             if (this.parent == null) return true;
             boolean parentCompleted = this.parent.advancementProgress != null && this.parent.advancementProgress.isDone();
 
-            boolean parentClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(this.parent.getAdvancement().holder().id());
+            boolean parentClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(this.parent.getAdvancement().getId());
 
             return parentCompleted && parentClaimed;
         }
@@ -158,7 +158,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             // Create and post event to get extra connections
             IAdvancementDrawConnectionsEvent event = Services.PLATFORM.getEventHelper().postAdvancementDrawConnectionsEvent(this.advancementNode);
             // Draw extra connections from event
-            for (AdvancementHolder parent : event.getExtraConnections()) {
+            for (Advancement parent : event.getExtraConnections()) {
                 final EnhancedAdvancementWidget parentGui = this.advancementTabGui.getWidget(parent);
                 if (parentGui != null && parentGui.shouldRender()) {
                     this.drawConnection(guiGraphics, parentGui, scrollX, scrollY, drawInside);
@@ -176,10 +176,10 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
      */
     public void drawConnection(GuiGraphics guiGraphics, EnhancedAdvancementWidget parent, int scrollX, int scrollY, boolean drawInside) {
         boolean parentCompleted = parent.advancementProgress != null && parent.advancementProgress.isDone();
-        boolean parentClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(parent.getAdvancement().holder().id());
+        boolean parentClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(parent.getAdvancement().getId());
 
         boolean thisCompleted = this.advancementProgress != null && this.advancementProgress.isDone();
-        boolean thisClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(this.advancementNode.holder().id());
+        boolean thisClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(this.advancementNode.getId());
 
         int innerLineColor;
         int borderLineColor = 0xFF000000;
@@ -222,7 +222,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                     if (distance > ADVANCEMENT_SIZE) {
                         float offsetX, offsetY;
 
-                        if (this.displayInfo.getType() == net.minecraft.advancements.AdvancementType.GOAL) {
+                        if (this.displayInfo.getFrame() == FrameType.GOAL) {
                             float radius = ADVANCEMENT_SIZE / 2.0F + 5.0F;
                             offsetX = (dx / distance) * radius;
                             offsetY = (dy / distance) * radius;
@@ -274,7 +274,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                 if (!drawInside && showArrow && ModConfig.get().drawArrows) {
                     int edgeDistanceX = ADVANCEMENT_SIZE / 2 + 3;
                     int edgeDistanceY = ADVANCEMENT_SIZE / 2 + 3;
-                    if (this.displayInfo.getType() == net.minecraft.advancements.AdvancementType.GOAL) {
+                    if (this.displayInfo.getFrame() == FrameType.GOAL) {
                         edgeDistanceX += 2;
                         edgeDistanceY += 2;
                     }
@@ -307,7 +307,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                 if (ModConfig.get().drawArrows) {
                     int edgeDistanceX = ADVANCEMENT_SIZE / 2 + 3;
                     int edgeDistanceY = ADVANCEMENT_SIZE / 2 + 3;
-                    if (this.displayInfo.getType() == net.minecraft.advancements.AdvancementType.GOAL) {
+                    if (this.displayInfo.getFrame() == FrameType.GOAL) {
                         edgeDistanceX += 2;
                         edgeDistanceY += 2;
                     }
@@ -327,7 +327,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
 
         if (this.shouldRender()) {
             boolean isCompleted = this.advancementProgress != null && this.advancementProgress.isDone();
-            boolean isClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(this.advancementNode.holder().id());
+            boolean isClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(this.advancementNode.getId());
 
             AdvancementWidgetType advancementState;
             boolean isDimmed = false;
@@ -373,7 +373,9 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             guiGraphics.pose().scale(scale, scale, 1.0f);
             guiGraphics.pose().translate(-centerX, -centerY, 0);
 
-            guiGraphics.blitSprite(advancementState.frameSprite(this.displayInfo.getType()), scrollX + this.x + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE);
+            int u = this.displayInfo.getFrame().getTexture();
+            int v = 128 + advancementState.getIndex() * 26;
+            guiGraphics.blit(Resources.Gui.WIDGETS, scrollX + this.x + 3, scrollY + this.y, u, v, ICON_SIZE, ICON_SIZE);
 
             if (isDimmed) {
                 RenderSystem.setShaderColor(0.25F, 0.25F, 0.25F, 1.0F);
@@ -408,7 +410,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
 
         this.refreshHover();
         boolean drawLeft = left + scrollX + this.x + this.width + ADVANCEMENT_SIZE >= this.advancementTabGui.getScreen().internalWidth;
-        String s = this.advancementProgress == null || this.advancementProgress.getProgressText() == null ? null : this.advancementProgress.getProgressText().getString();
+        String s = this.advancementProgress == null ? null : this.advancementProgress.getProgressText();
         int i = s == null ? 0 : this.minecraft.font.width(s);
         boolean drawTop;
 
@@ -493,7 +495,9 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         }
         // Advancement icon
         RenderUtil.setColor(enhancedDisplayInfo.getIconColor(stateIcon));
-        guiGraphics.blitSprite(stateIcon.frameSprite(this.displayInfo.getType()), scrollX + this.x + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE);
+        int u = this.displayInfo.getFrame().getTexture();
+        int v = 128 + stateIcon.getIndex() * 26;
+        guiGraphics.blit(Resources.Gui.WIDGETS, scrollX + this.x + 3, scrollY + this.y, u, v, ICON_SIZE, ICON_SIZE);
         RenderUtil.setColor(enhancedDisplayInfo.defaultIconColor());
 
         if (drawLeft) {
@@ -568,7 +572,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     }
 
     public void attachToParent() {
-        if (this.parent == null && advancementNode.advancement().parent().isPresent()) {
+        if (this.parent == null && advancementNode.getParent() != null) {
             this.parent = this.getFirstVisibleParent(advancementNode);
 
             if (this.parent != null) {
@@ -608,7 +612,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     }
 
     @Override
-    public AdvancementNode getAdvancement() {
+    public Advancement getAdvancement() {
         return this.advancementNode;
     }
 }

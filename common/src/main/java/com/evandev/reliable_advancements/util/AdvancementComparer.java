@@ -1,32 +1,28 @@
 package com.evandev.reliable_advancements.util;
 
 import net.minecraft.advancements.Advancement;
-import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.DisplayInfo;
 
 import java.util.Comparator;
-import java.util.Optional;
 
 public class AdvancementComparer {
-    public static Comparator<AdvancementNode> sortByTitle() {
-        return (n1, n2) -> {
-            Advancement a1 = n1.advancement();
-            Advancement a2 = n2.advancement();
+    public static Comparator<Advancement> sortByTitle() {
+        return (a1, a2) -> {
             if (a1 == a2) {
                 return 0;
             } else {
-                Optional<DisplayInfo> info1 = a1.display();
-                Optional<DisplayInfo> info2 = a2.display();
+                DisplayInfo info1 = a1.getDisplay();
+                DisplayInfo info2 = a2.getDisplay();
 
-                if (info1.isEmpty() && info2.isEmpty()) {
+                if (info1 == null && info2 == null) {
                     return 0;
-                } else if (info1.isEmpty()) {
+                } else if (info1 == null) {
                     return 1;
-                } else if (info2.isEmpty()) {
+                } else if (info2 == null) {
                     return -1;
                 } else {
-                    String title1 = info1.get().getTitle().getString().toLowerCase();
-                    String title2 = info2.get().getTitle().getString().toLowerCase();
+                    String title1 = info1.getTitle().getString().toLowerCase();
+                    String title2 = info2.getTitle().getString().toLowerCase();
                     return title1.compareTo(title2);
                 }
             }

@@ -10,8 +10,7 @@ import com.google.common.collect.Maps;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
-import net.minecraft.advancements.AdvancementHolder;
-import net.minecraft.advancements.AdvancementNode;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -27,10 +26,10 @@ import java.util.*;
 public class EnhancedAdvancementTab {
     public static final Map<ResourceLocation, Tuple<Integer, Integer>> scrollHistory = Maps.newLinkedHashMap();
     public final List<BackgroundRule> backgroundRules = new ArrayList<>();
-    protected final Map<AdvancementHolder, EnhancedAdvancementWidget> widgets = Maps.newLinkedHashMap();
+    protected final Map<Advancement, EnhancedAdvancementWidget> widgets = Maps.newLinkedHashMap();
     private final Minecraft minecraft;
     private final EnhancedAdvancementsScreen screen;
-    private final AdvancementNode rootNode;
+    private final Advancement rootNode;
     private final DisplayInfo display;
     private final ItemStack icon;
     private final Component title;
@@ -54,20 +53,20 @@ public class EnhancedAdvancementTab {
     private float fade;
     private boolean centered;
 
-    protected EnhancedAdvancementTab(Minecraft mc, EnhancedAdvancementsScreen advancementsScreen, EnhancedAdvancementTabType type, int index, AdvancementNode advancementNode, DisplayInfo displayInfo) {
+    protected EnhancedAdvancementTab(Minecraft mc, EnhancedAdvancementsScreen advancementsScreen, EnhancedAdvancementTabType type, int index, Advancement advancement, DisplayInfo displayInfo) {
         this.minecraft = mc;
         this.screen = advancementsScreen;
         this.type = type;
         this.index = index;
-        this.rootNode = advancementNode;
+        this.rootNode = advancement;
         this.display = displayInfo;
         this.icon = displayInfo.getIcon();
         this.title = displayInfo.getTitle();
-        this.displayInfos = new AdvancementDisplayInfoRegistry(advancementNode);
-        this.root = new EnhancedAdvancementWidget(this, mc, advancementNode, displayInfo);
-        this.addWidget(this.root, advancementNode.holder());
+        this.displayInfos = new AdvancementDisplayInfoRegistry(advancement);
+        this.root = new EnhancedAdvancementWidget(this, mc, advancement, displayInfo);
+        this.addWidget(this.root, advancement);
 
-        String id = advancementNode.holder().id().toString();
+        String id = advancement.getId().toString();
         switch (id) {
             case "minecraft:story/root" -> this.customIndex = 0;
             case "minecraft:adventure/root" -> this.customIndex = 1;
@@ -80,16 +79,16 @@ public class EnhancedAdvancementTab {
         PersistentData.loadTabProperties(this);
     }
 
-    public static EnhancedAdvancementTab create(Minecraft mc, EnhancedAdvancementsScreen advancementsScreen, int index, AdvancementNode advancementNode, int width, int height) {
-        Optional<DisplayInfo> optional = advancementNode.advancement().display();
-        if (optional.isEmpty()) {
+    public static EnhancedAdvancementTab create(Minecraft mc, EnhancedAdvancementsScreen advancementsScreen, int index, Advancement advancement, int width, int height) {
+        DisplayInfo displayInfo = advancement.getDisplay();
+        if (displayInfo == null) {
             return null;
         } else {
             EnhancedAdvancementTabType advancementTabType = EnhancedAdvancementTabType.getTabType(width, height, index);
             if (advancementTabType == null) {
                 return null;
             } else {
-                return new EnhancedAdvancementTab(mc, advancementsScreen, advancementTabType, index, advancementNode, optional.get());
+                return new EnhancedAdvancementTab(mc, advancementsScreen, advancementTabType, index, advancement, displayInfo);
             }
         }
     }
@@ -112,11 +111,11 @@ public class EnhancedAdvancementTab {
         this.type = EnhancedAdvancementTabType.getTabType(width, height, index);
     }
 
-    public Map<AdvancementHolder, EnhancedAdvancementWidget> getWidgets() {
+    public Map<Advancement, EnhancedAdvancementWidget> getWidgets() {
         return this.widgets;
     }
 
-    public AdvancementNode getRootNode() {
+    public Advancement getRootNode() {
         return this.rootNode;
     }
 
@@ -152,7 +151,7 @@ public class EnhancedAdvancementTab {
         guiGraphics.pose().translate(left, top, 0);
         guiGraphics.pose().scale(zoom, zoom, 1.0F);
 
-        ResourceLocation defaultRes = this.customBackground != null ? this.customBackground : this.display.getBackground().orElse(TextureManager.INTENTIONAL_MISSING_TEXTURE);
+        ResourceLocation defaultRes = this.customBackground != null ? this.customBackground : (this.display.getBackground() != null ? this.display.getBackground() : TextureManager.INTENTIONAL_MISSING_TEXTURE);
 
         if (this.isStaticBackground && this.bgWidth == 0 && this.bgHeight == 0) {
             guiGraphics.blit(defaultRes, 0, 0, 0.0F, 0.0F, scaledWidth, scaledHeight, scaledWidth, scaledHeight);
@@ -269,16 +268,16 @@ public class EnhancedAdvancementTab {
         this.scrollY = (int) Math.round(Mth.clamp(this.scrollY + scrollY, -(this.maxY - marginY), -this.minY + marginY));
     }
 
-    public void addAdvancement(AdvancementNode advancementNode) {
-        Optional<DisplayInfo> optional = advancementNode.advancement().display();
-        if (optional.isPresent()) {
-            EnhancedAdvancementWidget advancementEntryScreen = new EnhancedAdvancementWidget(this, this.minecraft, advancementNode, optional.get());
-            this.addWidget(advancementEntryScreen, advancementNode.holder());
+    public void addAdvancement(Advancement advancement) {
+        DisplayInfo displayInfo = advancement.getDisplay();
+        if (displayInfo != null) {
+            EnhancedAdvancementWidget advancementEntryScreen = new EnhancedAdvancementWidget(this, this.minecraft, advancement, displayInfo);
+            this.addWidget(advancementEntryScreen, advancement);
         }
     }
 
-    private void addWidget(EnhancedAdvancementWidget advancementEntryScreen, AdvancementHolder advancementHolder) {
-        this.widgets.put(advancementHolder, advancementEntryScreen);
+    private void addWidget(EnhancedAdvancementWidget advancementEntryScreen, Advancement advancement) {
+        this.widgets.put(advancement, advancementEntryScreen);
         int left = advancementEntryScreen.getX();
         int right = left + 28;
         int top = advancementEntryScreen.getY();
@@ -293,26 +292,26 @@ public class EnhancedAdvancementTab {
         }
     }
 
-    public EnhancedAdvancementWidget getWidget(AdvancementHolder advancementHolder) {
-        return this.widgets.get(advancementHolder);
+    public EnhancedAdvancementWidget getWidget(Advancement advancement) {
+        return this.widgets.get(advancement);
     }
 
     public EnhancedAdvancementsScreen getScreen() {
         return this.screen;
     }
 
-    public AdvancementDisplayInfo getDisplayInfo(AdvancementNode advancementNode) {
-        return displayInfos.get(advancementNode.holder());
+    public AdvancementDisplayInfo getDisplayInfo(Advancement advancement) {
+        return displayInfos.get(advancement);
     }
 
     public void storeScroll() {
         if (this.centered) {
-            scrollHistory.put(this.rootNode.holder().id(), new Tuple<>(scrollX, scrollY));
+            scrollHistory.put(this.rootNode.getId(), new Tuple<>(scrollX, scrollY));
         }
     }
 
     public void loadScroll() {
-        Tuple<Integer, Integer> scroll = scrollHistory.get(this.rootNode.holder().id());
+        Tuple<Integer, Integer> scroll = scrollHistory.get(this.rootNode.getId());
         if (scroll != null) {
             this.centered = true;
             this.scrollX = scroll.getA();
@@ -333,7 +332,7 @@ public class EnhancedAdvancementTab {
             if (json.has("max_y")) rule.maxY = json.get("max_y").getAsInt();
             if (json.has("chance")) rule.chance = json.get("chance").getAsFloat();
             if (json.has("absolute_y")) rule.absoluteY = json.get("absolute_y").getAsBoolean();
-            if (json.has("texture")) rule.texture = ResourceLocation.parse(json.get("texture").getAsString());
+            if (json.has("texture")) rule.texture = new ResourceLocation(json.get("texture").getAsString());
             return rule;
         }
     }

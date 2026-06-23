@@ -3,6 +3,7 @@ package com.evandev.reliable_advancements.handler;
 import com.evandev.reliable_advancements.config.InventoryButtonStyle;
 import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.gui.button.AdvancementsScreenButton;
+import com.evandev.reliable_advancements.mixin.AbstractContainerScreenAccessor;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.Minecraft;
@@ -25,15 +26,16 @@ public class GuiOpenHandler implements ScreenEvents.AfterInit {
         if (screen instanceof InventoryScreen inventoryScreen) {
             if (ModConfig.get().addToInventory) {
 
+                AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) inventoryScreen;
                 Screens.getButtons(screen).add(new AdvancementsScreenButton(
                         () -> {
-                            int currentX = inventoryScreen.leftPos;
+                            int currentX = accessor.getLeftPos();
                             return ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON
                                     ? currentX + 126
-                                    : currentX + inventoryScreen.imageWidth;
+                                    : currentX + accessor.getImageWidth();
                         },
                         () -> {
-                            int currentY = inventoryScreen.topPos;
+                            int currentY = accessor.getTopPos();
                             return ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON
                                     ? currentY + 61
                                     : currentY;

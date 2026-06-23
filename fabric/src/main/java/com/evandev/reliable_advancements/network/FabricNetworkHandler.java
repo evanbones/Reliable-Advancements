@@ -1,52 +1,50 @@
 package com.evandev.reliable_advancements.network;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
 public class FabricNetworkHandler {
     public static void registerPayloads() {
-        PayloadTypeRegistry.playC2S().register(EditAdvancementPayload.TYPE, EditAdvancementPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(RequestAdvancementJsonPayload.TYPE, RequestAdvancementJsonPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(LinkAdvancementPayload.TYPE, LinkAdvancementPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(ClaimRewardPayload.TYPE, ClaimRewardPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(RequestFullTreePayload.TYPE, RequestFullTreePayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(ResetTabPayload.TYPE, ResetTabPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playS2C().register(AdvancementJsonPayload.TYPE, AdvancementJsonPayload.STREAM_CODEC);
-        PayloadTypeRegistry.playS2C().register(SyncClaimedRewardsPayload.TYPE, SyncClaimedRewardsPayload.STREAM_CODEC);
-
-        ServerPlayNetworking.registerGlobalReceiver(EditAdvancementPayload.TYPE, (payload, context) -> {
-            context.server().execute(() -> ServerAdvancementEditor.saveAdvancementEdit(context.server(), context.player(), payload));
+        ServerPlayNetworking.registerGlobalReceiver(EditAdvancementPayload.ID, (server, player, handler, buf, responseSender) -> {
+            EditAdvancementPayload payload = new EditAdvancementPayload(buf);
+            server.execute(() -> ServerAdvancementEditor.saveAdvancementEdit(server, player, payload));
         });
 
-        ServerPlayNetworking.registerGlobalReceiver(RequestAdvancementJsonPayload.TYPE, (payload, context) -> {
-            context.server().execute(() -> ServerAdvancementEditor.handleJsonRequest(context.server(), context.player(), payload));
+        ServerPlayNetworking.registerGlobalReceiver(RequestAdvancementJsonPayload.ID, (server, player, handler, buf, responseSender) -> {
+            RequestAdvancementJsonPayload payload = new RequestAdvancementJsonPayload(buf);
+            server.execute(() -> ServerAdvancementEditor.handleJsonRequest(server, player, payload));
         });
 
-        ServerPlayNetworking.registerGlobalReceiver(LinkAdvancementPayload.TYPE, (payload, context) -> {
-            context.server().execute(() -> ServerAdvancementEditor.handleLinkAdvancement(context.server(), context.player(), payload));
+        ServerPlayNetworking.registerGlobalReceiver(LinkAdvancementPayload.ID, (server, player, handler, buf, responseSender) -> {
+            LinkAdvancementPayload payload = new LinkAdvancementPayload(buf);
+            server.execute(() -> ServerAdvancementEditor.handleLinkAdvancement(server, player, payload));
         });
 
-        ServerPlayNetworking.registerGlobalReceiver(ClaimRewardPayload.TYPE, (payload, context) -> {
-            context.server().execute(() -> ServerAdvancementEditor.handleRewardClaim(context.server(), context.player(), payload));
+        ServerPlayNetworking.registerGlobalReceiver(ClaimRewardPayload.ID, (server, player, handler, buf, responseSender) -> {
+            ClaimRewardPayload payload = new ClaimRewardPayload(buf);
+            server.execute(() -> ServerAdvancementEditor.handleRewardClaim(server, player, payload));
         });
 
-        ServerPlayNetworking.registerGlobalReceiver(RequestFullTreePayload.TYPE, (payload, context) -> {
-            context.server().execute(() -> ServerAdvancementEditor.handleRequestFullTree(context.server(), context.player()));
+        ServerPlayNetworking.registerGlobalReceiver(RequestFullTreePayload.ID, (server, player, handler, buf, responseSender) -> {
+            new RequestFullTreePayload(buf);
+            server.execute(() -> ServerAdvancementEditor.handleRequestFullTree(server, player));
         });
 
-        ServerPlayNetworking.registerGlobalReceiver(ResetTabPayload.TYPE, (payload, context) -> {
-            context.server().execute(() -> ServerAdvancementEditor.handleResetTab(context.server(), context.player(), payload));
+        ServerPlayNetworking.registerGlobalReceiver(ResetTabPayload.ID, (server, player, handler, buf, responseSender) -> {
+            ResetTabPayload payload = new ResetTabPayload(buf);
+            server.execute(() -> ServerAdvancementEditor.handleResetTab(server, player, payload));
         });
     }
 
     public static void registerClientReceivers() {
-        ClientPlayNetworking.registerGlobalReceiver(AdvancementJsonPayload.TYPE, (payload, context) -> {
-            context.client().execute(() -> ClientNetworkHandler.handleAdvancementJson(payload));
+        ClientPlayNetworking.registerGlobalReceiver(AdvancementJsonPayload.ID, (client, handler, buf, responseSender) -> {
+            AdvancementJsonPayload payload = new AdvancementJsonPayload(buf);
+            client.execute(() -> ClientNetworkHandler.handleAdvancementJson(payload));
         });
 
-        ClientPlayNetworking.registerGlobalReceiver(SyncClaimedRewardsPayload.TYPE, (payload, context) -> {
-            context.client().execute(() -> ClientNetworkHandler.handleSyncClaimedRewards(payload));
+        ClientPlayNetworking.registerGlobalReceiver(SyncClaimedRewardsPayload.ID, (client, handler, buf, responseSender) -> {
+            SyncClaimedRewardsPayload payload = new SyncClaimedRewardsPayload(buf);
+            client.execute(() -> ClientNetworkHandler.handleSyncClaimedRewards(payload));
         });
     }
 }

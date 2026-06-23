@@ -12,7 +12,7 @@ public class ClientNetworkHandler {
         Minecraft mc = Minecraft.getInstance();
         if (mc.screen instanceof EnhancedAdvancementsScreen mainScreen) {
             if ("TabProperties".equals(payload.initialTab())) {
-                if (mainScreen.selectedTab != null && mainScreen.selectedTab.getRootNode().holder().id().equals(payload.advancementId())) {
+                if (mainScreen.selectedTab != null && mainScreen.selectedTab.getRootNode().getId().equals(payload.advancementId())) {
                     mc.setScreen(new TabEditorScreen(mainScreen, mainScreen.selectedTab, payload.jsonPayload()));
                 }
                 return;
@@ -27,7 +27,7 @@ public class ClientNetworkHandler {
             }
             if (mainScreen.selectedTab != null) {
                 mainScreen.selectedTab.getWidgets().values().stream()
-                        .filter(w -> w.getAdvancement().holder().id().equals(payload.advancementId()))
+                        .filter(w -> w.getAdvancement().getId().equals(payload.advancementId()))
                         .findFirst().ifPresent(widget -> mc.setScreen(new AdvancementEditorScreen(
                                 mainScreen, payload.advancementId(), false, widget.getX(), widget.getY(), payload.initialTab(), payload.jsonPayload()
                         )));

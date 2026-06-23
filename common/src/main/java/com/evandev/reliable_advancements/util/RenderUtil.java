@@ -41,23 +41,24 @@ public class RenderUtil {
             y2 = tempY;
             x2 = tempX;
         }
-        Tesselator tesselator = RenderSystem.renderThreadTesselator();
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder bufferbuilder = tesselator.getBuilder();
         RenderSystem.enableBlend();
         RenderSystem.blendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
 
         RenderSystem.setShader(GameRenderer::getPositionShader);
         RenderUtil.setColor(color);
 
-        BufferBuilder bufferbuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION);
+        bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION);
         Matrix4f matrix = guiGraphics.pose().last().pose();
         boolean xHigh = x < x2;
 
-        bufferbuilder.addVertex(matrix, x, xHigh ? y + width : y, 0.0F);
-        bufferbuilder.addVertex(matrix, x2, xHigh ? y2 + width : y2, 0.0F);
-        bufferbuilder.addVertex(matrix, x2 + width, xHigh ? y2 : y2 + width, 0.0F);
-        bufferbuilder.addVertex(matrix, x + width, xHigh ? y : y + width, 0.0F);
+        bufferbuilder.vertex(matrix, x, xHigh ? y + width : y, 0.0F).endVertex();
+        bufferbuilder.vertex(matrix, x2, xHigh ? y2 + width : y2, 0.0F).endVertex();
+        bufferbuilder.vertex(matrix, x2 + width, xHigh ? y2 : y2 + width, 0.0F).endVertex();
+        bufferbuilder.vertex(matrix, x + width, xHigh ? y : y + width, 0.0F).endVertex();
 
-        BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
+        BufferUploader.drawWithShader(bufferbuilder.end());
 
         RenderSystem.disableBlend();
     }

@@ -1,9 +1,9 @@
 package com.evandev.reliable_advancements.api;
 
-import net.minecraft.advancements.AdvancementNode;
+import net.minecraft.advancements.Advancement;
 
 public interface IAdvancementEntryGui {
-    AdvancementNode getAdvancement();
+    Advancement getAdvancement();
 
     int getX();
 

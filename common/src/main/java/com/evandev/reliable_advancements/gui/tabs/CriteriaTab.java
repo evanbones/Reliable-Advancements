@@ -13,7 +13,8 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.advancements.CriterionTrigger;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
@@ -99,7 +100,7 @@ public class CriteriaTab implements IEditorTab {
         widgets.add(Button.builder(Component.literal("-"), b -> removeCriterion(reinitScreen)).pos(x + width - 25, y).size(20, 20).build());
 
         triggerBox = new SuggestingEditBox(font, x, y + 45, width, 20, Component.literal("Trigger"),
-                () -> BuiltInRegistries.TRIGGER_TYPES.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList()));
+                () -> java.util.stream.StreamSupport.stream(CriteriaTriggers.all().spliterator(), false).map(CriterionTrigger::getId).map(ResourceLocation::toString).collect(Collectors.toList()));
         triggerBox.setMaxLength(256);
         triggerBox.setValue(active.trigger);
         triggerBox.setResponder(s -> active.trigger = s);
@@ -143,7 +144,7 @@ public class CriteriaTab implements IEditorTab {
                 conds.add(data.key, parseValue(data.value));
             }
 
-            if (!conds.isEmpty()) {
+            if (!conds.entrySet().isEmpty()) {
                 crit.add("conditions", conds);
             }
 

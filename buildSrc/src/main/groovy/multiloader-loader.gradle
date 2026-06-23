@@ -34,7 +34,7 @@ processResources {
 
 publishMods {
     changelog = rootProject.file("CHANGELOG-LATEST.md").text
-    type = STABLE
+    type = BETA
     version = "${project.version}-${minecraft_version}-${project.name}"
     displayName = "${mod_name} ${project.name.capitalize()} ${minecraft_version} - ${project.version}"
     modLoaders.add(project.name)
@@ -43,8 +43,6 @@ publishMods {
         accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
         projectId = "1527472"
         minecraftVersions.add("${minecraft_version}")
-        clientRequired = true
-        serverRequired = false
 
         requires("cloth-config")
     }

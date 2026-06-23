@@ -147,7 +147,7 @@ public class ClothConfigScreen {
 
                     if (previous && !newValue) {
                         EnhancedAdvancementsScreen.clientHasFullTree = false;
-                        Services.PLATFORM.sendAdvancementJsonRequest(new RequestAdvancementJsonPayload(ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "resync"), "Resync"));
+                        Services.PLATFORM.sendAdvancementJsonRequest(new RequestAdvancementJsonPayload(new ResourceLocation(Constants.MOD_ID, "resync"), "Resync"));
                     } else if (!previous && newValue) {
                         EnhancedAdvancementsScreen.clientHasFullTree = true;
                         Services.PLATFORM.sendRequestFullTree();

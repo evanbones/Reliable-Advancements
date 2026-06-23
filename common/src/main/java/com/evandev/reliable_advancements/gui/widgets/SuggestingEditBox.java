@@ -56,7 +56,7 @@ public class SuggestingEditBox extends EditBox {
                 return true;
             } else if (keyCode == 257 || keyCode == 335 || keyCode == 258) { // Enter or Tab
                 this.setValue(currentSuggestions.get(suggestionIndex));
-                this.moveCursorToEnd(false);
+                this.moveCursorToEnd();
                 currentSuggestions = List.of();
                 return true;
             }

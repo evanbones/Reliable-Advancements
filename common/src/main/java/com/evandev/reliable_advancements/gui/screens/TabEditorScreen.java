@@ -50,15 +50,15 @@ public class TabEditorScreen extends Screen {
     private boolean isDraggingScrollbar = false;
 
     public TabEditorScreen(EnhancedAdvancementsScreen parentScreen, EnhancedAdvancementTab tab, String rawJsonFromServer) {
-        super(Component.literal("Edit Tab: " + tab.getRootNode().holder().id()));
+        super(Component.literal("Edit Tab: " + tab.getRootNode().getId()));
         this.parentScreen = parentScreen;
         this.tab = tab;
-        this.draft = new AdvancementDraft(rawJsonFromServer, tab.getRootNode().holder().id().toString(), false);
+        this.draft = new AdvancementDraft(rawJsonFromServer, tab.getRootNode().getId().toString(), false);
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        this.scrollOffset -= (int) (scrollY * 20);
+    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+        this.scrollOffset -= (int) (amount * 20);
         this.scrollOffset = Math.max(0, Math.min(this.scrollOffset, this.maxScroll));
         this.saveCurrentState();
         this.init();
@@ -242,7 +242,7 @@ public class TabEditorScreen extends Screen {
         PersistentData.save(parentScreen.getTabs());
 
         String payloadStr = new GsonBuilder().setPrettyPrinting().create().toJson(draft.rootJson);
-        EditAdvancementPayload payload = new EditAdvancementPayload(tab.getRootNode().holder().id(), payloadStr, false);
+        EditAdvancementPayload payload = new EditAdvancementPayload(tab.getRootNode().getId(), payloadStr, false);
 
         if (Services.PLATFORM.canSendAdvancementEdit()) {
             Services.PLATFORM.sendAdvancementEdit(payload);
@@ -272,7 +272,7 @@ public class TabEditorScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void renderBackground(@NotNull GuiGraphics guiGraphics) {
     }
 
     private void saveCurrentState() {
@@ -283,7 +283,7 @@ public class TabEditorScreen extends Screen {
             JsonObject bTab = getBTab();
             draft.rootJson.add("better_tab", bTab);
             tab.customTitle = nameBox.getValue();
-            tab.customBackground = bgBox.getValue().isEmpty() ? null : ResourceLocation.parse(bgBox.getValue());
+            tab.customBackground = bgBox.getValue().isEmpty() ? null : new ResourceLocation(bgBox.getValue());
             tab.isStaticBackground = isStaticBg;
             try {
                 tab.bgWidth = bgWidthBox.getValue().isEmpty() ? 16 : Integer.parseInt(bgWidthBox.getValue());
@@ -298,7 +298,7 @@ public class TabEditorScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
-        super.renderBackground(gfx, mouseX, mouseY, partialTicks);
+        this.renderBackground(gfx);
 
         gfx.fill(0, 0, this.width, this.height, COL_BG_OVERLAY);
         gfx.fill(uiX, uiY, uiX + uiW, uiY + uiH, 0xFF202020);

@@ -5,7 +5,6 @@ import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.util.ColorHelper;
 import com.google.gson.JsonObject;
 import net.minecraft.advancements.Advancement;
-import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.gui.screens.advancements.AdvancementWidgetType;
 import net.minecraft.resources.ResourceLocation;
@@ -18,7 +17,7 @@ public class AdvancementDisplayInfo implements IDisplayInfo {
     private static final int minecraftCompletedTitleColor = ColorHelper.RGB(defaultMinecraftCompletedTitleColor);
     private static final int minecraftUncompletedTitleColor = ColorHelper.RGB(defaultMinecraftUncompletedTitleColor);
     private static final int WHITE = ColorHelper.RGB(1F, 1F, 1F);
-    private ResourceLocation id;
+    private final ResourceLocation id;
     private int completedIconColor, unCompletedIconColor;
     private int completedTitleColor, unCompletedTitleColor;
     private boolean drawDirectLines;
@@ -27,15 +26,14 @@ public class AdvancementDisplayInfo implements IDisplayInfo {
     private boolean hideLines;
     private boolean allowDragging;
 
-    public AdvancementDisplayInfo(AdvancementHolder advancementHolder) {
-        this(advancementHolder.id());
-        Advancement advancement = advancementHolder.value();
+    public AdvancementDisplayInfo(Advancement advancement) {
+        this(advancement.getId());
 //        TODO: Fix checking this
 //        if (advancement instanceof IDisplayInfo) {
 //            parseIDisplayInfo((IDisplayInfo) advancement);
 //        }
-        if (advancement.display().isPresent()) {
-            DisplayInfo displayInfo = advancement.display().get();
+        DisplayInfo displayInfo = advancement.getDisplay();
+        if (displayInfo != null) {
             if (displayInfo instanceof IDisplayInfo) {
                 parseIDisplayInfo((IDisplayInfo) displayInfo);
             }
