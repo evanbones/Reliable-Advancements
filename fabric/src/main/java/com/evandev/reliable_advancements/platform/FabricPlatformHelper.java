@@ -1,7 +1,6 @@
 package com.evandev.reliable_advancements.platform;
 
 import com.evandev.reliable_advancements.network.*;
-import com.evandev.reliable_advancements.platform.services.IAdvancementVisitor;
 import com.evandev.reliable_advancements.platform.services.IEventHelper;
 import com.evandev.reliable_advancements.platform.services.IPlatformHelper;
 import com.evandev.reliable_advancements.reference.Constants;
