@@ -1,3 +1,4 @@
 ### Fixed
 
-- Fixed startup crash on legacyforge.
+- Fixed removed advancements not properly disappearing.
+- Fixed advancement tab layout desync with many tabs.

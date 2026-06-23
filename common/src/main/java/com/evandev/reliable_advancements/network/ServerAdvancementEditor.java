@@ -65,7 +65,7 @@ public class ServerAdvancementEditor {
         if (player != null && !player.hasPermissions(2)) return;
         try {
             File datapackDir = new File(server.getWorldPath(LevelResource.DATAPACK_DIR).toFile(), Constants.MOD_ID + "_edits");
-            File dataDir = new File(datapackDir, "data/" + payload.advancementId().getNamespace() + "/advancement");
+            File dataDir = new File(datapackDir, "data/" + payload.advancementId().getNamespace() + "/advancements");
             File advFile = new File(dataDir, payload.advancementId().getPath() + ".json");
 
             if (payload.isDelete()) {
@@ -113,7 +113,7 @@ public class ServerAdvancementEditor {
         File datapackDir = new File(server.getWorldPath(LevelResource.DATAPACK_DIR).toFile(), Constants.MOD_ID + "_edits");
 
         for (ResourceLocation id : payload.advancementIds()) {
-            File advFile = new File(datapackDir, "data/" + id.getNamespace() + "/advancement/" + id.getPath() + ".json");
+            File advFile = new File(datapackDir, "data/" + id.getNamespace() + "/advancements/" + id.getPath() + ".json");
             if (advFile.exists()) {
                 advFile.delete();
             }
