@@ -3,6 +3,7 @@ package com.evandev.reliable_advancements.platform;
 import com.evandev.reliable_advancements.network.*;
 import com.evandev.reliable_advancements.platform.services.IEventHelper;
 import com.evandev.reliable_advancements.platform.services.IPlatformHelper;
+import com.evandev.reliable_advancements.reference.Constants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -16,7 +17,6 @@ import java.nio.file.Path;
 
 public class NeoForgePlatformHelper implements IPlatformHelper {
     private final NeoForgeEventHelper eventHelper = new NeoForgeEventHelper();
-    private final NeoForgeAdvancementVisitor advancementVisitor = new NeoForgeAdvancementVisitor();
 
     @Override
     public String getPlatformName() {
@@ -49,11 +49,6 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
     }
 
     @Override
-    public NeoForgeAdvancementVisitor getAdvancementVisitor() {
-        return advancementVisitor;
-    }
-
-    @Override
     public boolean canSendAdvancementEdit() {
         var connection = Minecraft.getInstance().getConnection();
         return connection != null && connection.hasChannel(EditAdvancementPayload.TYPE);
@@ -73,7 +68,7 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
             PacketDistributor.sendToServer(payload);
         } else {
             Minecraft.getInstance().player.displayClientMessage(
-                    Component.literal("§cThis server does not have Better Advancements installed. Editing is disabled."), false
+                    Component.literal("§cThis server does not have " + Constants.MOD_NAME + " installed. Editing is disabled."), false
             );
         }
     }

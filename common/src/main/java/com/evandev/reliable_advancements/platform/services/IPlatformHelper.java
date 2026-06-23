@@ -54,8 +54,6 @@ public interface IPlatformHelper {
 
     IEventHelper getEventHelper();
 
-    IAdvancementVisitor getAdvancementVisitor();
-
     boolean canSendAdvancementEdit();
 
     void sendAdvancementEdit(EditAdvancementPayload payload);
