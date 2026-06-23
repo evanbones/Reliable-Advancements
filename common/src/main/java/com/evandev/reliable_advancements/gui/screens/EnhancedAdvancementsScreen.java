@@ -399,10 +399,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         int maxTabs = EnhancedAdvancementTabType.getMaxTabs(width, height);
 
         if (this.tabs.size() > maxTabs) {
+            maxPages = (this.tabs.size() - 1) / maxTabs;
+            tabPage = Math.min(tabPage, maxPages);
             addRenderableWidget(Button.builder(Component.literal("<"), b -> tabPage = Math.max(tabPage - 1, 0)).pos(left, bottom + 4).size(20, 20).build());
             addRenderableWidget(Button.builder(Component.literal(">"), b -> tabPage = Math.min(tabPage + 1, maxPages)).pos(right - 20, bottom + 4).size(20, 20).build());
-            maxPages = this.tabs.size() / maxTabs;
-            tabPage = Math.min(tabPage, maxPages);
         }
 
         if (ModConfig.get().showEditModeButton && this.minecraft.player != null && this.minecraft.player.hasPermissions(2)) {
@@ -526,7 +526,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             int skip = tabPage * maxTabs;
 
             for (EnhancedAdvancementTab tab : this.tabs.values().stream().skip(skip).limit(maxTabs).toList()) {
-                if (tab.isMouseOver(left, top, getTabInternalWidth() - 2 * SIDE, getTabInternalHeight() - top - BOTTOM, mouseX, mouseY)) {
+                if (tab.isMouseOver(left, top, width, height, mouseX, mouseY)) {
                     this.clientAdvancements.setSelectedTab(tab.getRootNode(), true);
                     break;
                 }
