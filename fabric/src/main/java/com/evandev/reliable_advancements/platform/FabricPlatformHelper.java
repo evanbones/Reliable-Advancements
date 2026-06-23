@@ -17,7 +17,6 @@ import java.nio.file.Path;
 
 public class FabricPlatformHelper implements IPlatformHelper {
     private final FabricEventHelper eventHelper = new FabricEventHelper();
-    private final FabricAdvancementVisitor advancementVisitor = new FabricAdvancementVisitor();
 
     @Override
     public String getPlatformName() {
@@ -47,11 +46,6 @@ public class FabricPlatformHelper implements IPlatformHelper {
     @Override
     public IEventHelper getEventHelper() {
         return eventHelper;
-    }
-
-    @Override
-    public IAdvancementVisitor getAdvancementVisitor() {
-        return advancementVisitor;
     }
 
     @Override
