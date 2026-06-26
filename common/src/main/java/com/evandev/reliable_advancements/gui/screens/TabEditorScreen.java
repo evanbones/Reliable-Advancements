@@ -48,6 +48,7 @@ public class TabEditorScreen extends Screen {
     private int scrollOffset = 0;
     private int maxScroll = 0;
     private boolean isDraggingScrollbar = false;
+    private List<String> textureSuggestionsCache = null;
 
     public TabEditorScreen(EnhancedAdvancementsScreen parentScreen, EnhancedAdvancementTab tab, String rawJsonFromServer) {
         super(Component.literal("Edit Tab: " + tab.getRootNode().getId()));
@@ -157,11 +158,13 @@ public class TabEditorScreen extends Screen {
 
         currentY += 45;
 
-        List<String> textureSuggestions = this.minecraft.getResourceManager()
-                .listResources("textures", loc -> loc.getPath().endsWith(".png"))
-                .keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+        if (this.textureSuggestionsCache == null) {
+            this.textureSuggestionsCache = this.minecraft.getResourceManager()
+                    .listResources("textures", loc -> loc.getPath().endsWith(".png"))
+                    .keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
+        }
 
-        bgBox = new SuggestingEditBox(this.font, startX, currentY, 200, 20, Component.literal("Background Texture"), () -> textureSuggestions);
+        bgBox = new SuggestingEditBox(this.font, startX, currentY, 200, 20, Component.literal("Background Texture"), () -> this.textureSuggestionsCache);
         bgBox.setMaxLength(256);
         bgBox.setValue(bg);
         bgBox.setTooltip(Tooltip.create(Component.literal("Format: namespace:textures/...\\nExample: minecraft:textures/gui/advancements/backgrounds/stone.png")));

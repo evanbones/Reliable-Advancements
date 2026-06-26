@@ -1,3 +1,3 @@
 ### Fixed
 
-- Fixed calculations for number of tabs.
+- Fixed lag inside the Tab Properties screen.
