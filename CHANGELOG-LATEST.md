@@ -1,3 +1,4 @@
 ### Fixed
 
-- Fixed lag inside the Tab Properties screen.
+- Fixed all criteria displaying an additional empty `player:null` condition on 1.20.
+- Fixed criteria triggers not autofilling until you start typing.

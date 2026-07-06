@@ -25,6 +25,16 @@ public class SuggestingEditBox extends EditBox {
     }
 
     @Override
+    public void setFocused(boolean focused) {
+        super.setFocused(focused);
+        if (focused) {
+            internalResponder(this.getValue());
+        } else {
+            currentSuggestions = List.of();
+        }
+    }
+
+    @Override
     public void setResponder(@NotNull Consumer<String> responder) {
         this.externalResponder = responder;
     }
@@ -33,15 +43,18 @@ public class SuggestingEditBox extends EditBox {
         if (this.externalResponder != null) {
             this.externalResponder.accept(text);
         }
-        if (text.isEmpty()) {
-            currentSuggestions = List.of();
-            suggestionIndex = -1;
-            return;
-        }
+
         List<String> allOptions = suggestionSupplier.get();
-        currentSuggestions = allOptions.stream()
-                .filter(id -> id.toLowerCase().contains(text.toLowerCase()))
-                .limit(6).collect(Collectors.toList());
+
+        if (text.isEmpty()) {
+            currentSuggestions = allOptions.stream()
+                    .limit(6).collect(Collectors.toList());
+        } else {
+            currentSuggestions = allOptions.stream()
+                    .filter(id -> id.toLowerCase().contains(text.toLowerCase()))
+                    .limit(6).collect(Collectors.toList());
+        }
+
         suggestionIndex = currentSuggestions.isEmpty() ? -1 : 0;
     }
 

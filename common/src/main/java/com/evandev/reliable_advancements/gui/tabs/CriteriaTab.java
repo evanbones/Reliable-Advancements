@@ -22,6 +22,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class CriteriaTab implements IEditorTab {
@@ -56,8 +57,15 @@ public class CriteriaTab implements IEditorTab {
                     if (critObj.has("conditions")) {
                         JsonObject conds = critObj.getAsJsonObject("conditions");
                         for (Map.Entry<String, JsonElement> cond : conds.entrySet()) {
-                            String valStr;
 
+                            if (cond.getKey().equals("player")) {
+                                JsonElement playerEl = cond.getValue();
+                                if (playerEl.isJsonNull() || (playerEl.isJsonObject() && playerEl.getAsJsonObject().size() == 0)) {
+                                    continue;
+                                }
+                            }
+
+                            String valStr;
                             if (cond.getValue().isJsonPrimitive() && cond.getValue().getAsJsonPrimitive().isString()) {
                                 valStr = "\"" + cond.getValue().getAsString() + "\"";
                             } else if (cond.getValue().isJsonPrimitive()) {
@@ -110,11 +118,14 @@ public class CriteriaTab implements IEditorTab {
 
         for (int i = 0; i < active.conditions.size(); i++) {
             ConditionData data = active.conditions.get(i);
-            ConditionRow row = new ConditionRow(data, x, currentY, width, active.trigger, () -> {
+
+            // --- CHANGED: Passing a Supplier instead of a static String ---
+            ConditionRow row = new ConditionRow(data, x, currentY, width, () -> triggerBox.getValue(), () -> {
                 syncActiveConditions();
                 active.conditions.remove(data);
                 reinitScreen.run();
             });
+
             conditionRows.add(row);
             widgets.addAll(row.getWidgets());
             currentY += 155;
@@ -236,9 +247,9 @@ public class CriteriaTab implements IEditorTab {
         JsonMultiLineEditBox valBox;
         Button removeBtn;
 
-        ConditionRow(ConditionData data, int x, int y, int width, String trigger, Runnable onRemove) {
+        ConditionRow(ConditionData data, int x, int y, int width, Supplier<String> triggerSupplier, Runnable onRemove) {
             keyBox = new SuggestingEditBox(Minecraft.getInstance().font, x, y, width - 25, 20, Component.literal("Key"), () -> {
-                String parentType = TriggerSchemaManager.getRootType(trigger);
+                String parentType = TriggerSchemaManager.getRootType(triggerSupplier.get());
                 return TriggerSchemaManager.getFields(parentType);
             });
             keyBox.setValue(data.key);
