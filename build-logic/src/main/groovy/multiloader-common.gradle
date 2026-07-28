@@ -14,54 +14,21 @@ java {
 
 repositories {
     mavenCentral()
-    exclusiveContent {
-        forRepository {
-            maven {
-                name = 'Sponge'
-                url = 'https://repo.spongepowered.org/repository/maven-public'
-            }
-        }
-        filter { includeGroupAndSubgroups('org.spongepowered') }
-    }
-
     maven {
-        name = 'BlameJared'
-        url = 'https://maven.blamejared.com'
+        name = "Xander's Maven"
+        url = "https://maven.isxander.dev/releases"
     }
-
-    exclusiveContent {
-        forRepository {
-            maven {
-                name = "Modrinth"
-                url = "https://api.modrinth.com/maven"
-            }
-        }
-        filter {
-            includeGroup "maven.modrinth"
-        }
-    }
-
     maven {
-        name = 'Fabric'
-        url = 'https://maven.fabricmc.net/'
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
     }
-
-    maven {
-        name = "TerraformersMC"
-        url = "https://maven.terraformersmc.com/"
-    }
-
-    maven {
-        name = "ClothConfig"
-        url = "https://maven.shedaniel.me/"
-    }
-
     maven {
         name = "Cassian's Maven"
-        url = uri("https://maven.cassian.cc")
-        content {
-            includeGroupAndSubgroups("cc.cassian")
-        }
+        url = "https://maven.cassian.cc/"
+    }
+    maven {
+        name = "TerraformersMC"
+        url = "https://maven.terraformersmc.com/releases/"
     }
 }
 
@@ -117,7 +84,8 @@ processResources {
             'neoforge_version'             : neoforge_version,
             'neoforge_loader_version_range': neoforge_loader_version_range,
             'credits'                      : credits,
-            'java_version'                 : java_version
+            'java_version'                 : java_version,
+            'yacl_version'                 : yacl_version
     ]
 
     var jsonExpandProps = expandProps.collectEntries {

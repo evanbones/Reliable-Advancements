@@ -1,3 +1,1 @@
-### Fixed
-
-- Fixed Fabric crash.
+- 26.2 port.

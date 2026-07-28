@@ -2,9 +2,7 @@ package com.evandev.reliable_advancements.datagen;
 
 import com.evandev.reliable_advancements.reference.Constants;
 import com.google.gson.JsonObject;
-import net.minecraft.advancements.CriteriaTriggers;
-import net.minecraft.advancements.CriterionTrigger;
-import net.minecraft.advancements.criterion.*;
+import net.minecraft.advancements.triggers.*;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataProvider;

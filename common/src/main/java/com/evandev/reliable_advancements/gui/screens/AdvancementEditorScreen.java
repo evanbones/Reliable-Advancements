@@ -137,7 +137,7 @@ public class AdvancementEditorScreen extends Screen {
 
         saveBtn = Button.builder(Component.literal("Save"), _ -> saveAndClose())
                 .pos(saveBtnX, saveBtnY).size(btnW, btnH).build();
-        cancelBtn = Button.builder(Component.literal("Cancel"), _ -> this.minecraft.setScreen(parentScreen))
+        cancelBtn = Button.builder(Component.literal("Cancel"), _ -> this.minecraft.setScreenAndShow(parentScreen))
                 .pos(saveBtnX + btnW + 6, saveBtnY).size(btnW, btnH).build();
 
         this.addRenderableWidget(saveBtn);
@@ -174,7 +174,7 @@ public class AdvancementEditorScreen extends Screen {
         if (Services.PLATFORM.canSendAdvancementEdit()) {
             Services.PLATFORM.sendAdvancementEdit(payload);
         }
-        this.minecraft.setScreen(parentScreen);
+        this.minecraft.setScreenAndShow(parentScreen);
     }
 
     @Override
@@ -304,7 +304,7 @@ public class AdvancementEditorScreen extends Screen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (event.key() == 256) {
-            this.minecraft.setScreen(parentScreen);
+            this.minecraft.setScreenAndShow(parentScreen);
             return true;
         }
         return super.keyPressed(event);

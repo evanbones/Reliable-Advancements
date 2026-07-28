@@ -1,6 +1,6 @@
 package com.evandev.reliable_advancements.client;
 
-import com.evandev.reliable_advancements.client.config.ClothConfigScreen;
+import com.evandev.reliable_advancements.client.config.YaclConfigScreen;
 import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.handler.GuiOpenHandler;
 import net.neoforged.fml.ModContainer;
@@ -12,8 +12,6 @@ public class ClientSetup {
         ModConfig.load();
         NeoForge.EVENT_BUS.register(GuiOpenHandler.instance);
 
-        container.registerExtensionPoint(IConfigScreenFactory.class, (client, parent) -> {
-            return ClothConfigScreen.create(parent, ModConfig::save);
-        });
+        container.registerExtensionPoint(IConfigScreenFactory.class, (_, parent) -> YaclConfigScreen.create(parent, ModConfig::save));
     }
 }

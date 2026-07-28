@@ -64,7 +64,7 @@ public class AdvancementContextMenu {
     }
 
     private void resetEntireTab() {
-        Minecraft.getInstance().setScreen(new ConfirmScreen(
+        Minecraft.getInstance().setScreenAndShow(new ConfirmScreen(
                 (confirmed) -> {
                     if (confirmed) {
                         if (parentScreen.selectedTab != null) {
@@ -79,7 +79,7 @@ public class AdvancementContextMenu {
                             Services.PLATFORM.sendResetTab(new ResetTabPayload(idsToDelete));
                         }
                     }
-                    Minecraft.getInstance().setScreen(parentScreen);
+                    Minecraft.getInstance().setScreenAndShow(parentScreen);
                 },
                 Component.literal("Reset Entire Tab?"),
                 Component.literal("Are you sure you want to reset ALL advancements in this tab? This cannot be undone.")

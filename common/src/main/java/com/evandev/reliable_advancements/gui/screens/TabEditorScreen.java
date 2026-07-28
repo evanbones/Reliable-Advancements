@@ -240,7 +240,7 @@ public class TabEditorScreen extends Screen {
         int saveBtnY = uiY + uiH - 30;
 
         saveBtn = Button.builder(Component.literal("Save"), _ -> saveAndClose()).pos(saveBtnX, saveBtnY).size(btnW, btnH).build();
-        cancelBtn = Button.builder(Component.literal("Cancel"), _ -> this.minecraft.setScreen(parentScreen)).pos(saveBtnX + btnW + 6, saveBtnY).size(btnW, btnH).build();
+        cancelBtn = Button.builder(Component.literal("Cancel"), _ -> this.minecraft.setScreenAndShow(parentScreen)).pos(saveBtnX + btnW + 6, saveBtnY).size(btnW, btnH).build();
 
         this.addRenderableWidget(saveBtn);
         this.addRenderableWidget(cancelBtn);
@@ -258,7 +258,7 @@ public class TabEditorScreen extends Screen {
         if (Services.PLATFORM.canSendAdvancementEdit()) {
             Services.PLATFORM.sendAdvancementEdit(payload);
         }
-        this.minecraft.setScreen(parentScreen);
+        this.minecraft.setScreenAndShow(parentScreen);
     }
 
     private @NotNull JsonObject getBTab() {

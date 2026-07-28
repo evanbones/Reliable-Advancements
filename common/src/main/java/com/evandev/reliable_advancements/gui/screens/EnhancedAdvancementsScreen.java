@@ -108,7 +108,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         super.tick();
         if (this.isDirty) {
             this.isDirty = false;
-            this.minecraft.setScreen(new EnhancedAdvancementsScreen(this.clientAdvancements));
+            this.minecraft.setScreenAndShow(new EnhancedAdvancementsScreen(this.clientAdvancements));
         }
     }
 
@@ -203,7 +203,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     public void deleteAdvancement(EnhancedAdvancementWidget widget) {
-        this.minecraft.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
+        this.minecraft.setScreenAndShow(new ConfirmScreen(
                 (confirmed) -> {
                     if (confirmed) {
                         String dummyJson = "{\"criteria\":{\"impossible\":{\"trigger\":\"minecraft:impossible\"}}}";
@@ -218,7 +218,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                         }
                         removeWidgetFromClient(widget);
                     }
-                    this.minecraft.setScreen(this);
+                    this.minecraft.setScreenAndShow(this);
                 },
                 Component.literal("Delete Advancement?"),
                 Component.literal("Are you sure you want to delete this advancement from the game? This cannot be undone.")
@@ -227,7 +227,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     public void resetAdvancement(EnhancedAdvancementWidget widget) {
-        this.minecraft.setScreen(new ConfirmScreen(
+        this.minecraft.setScreenAndShow(new ConfirmScreen(
                 (confirmed) -> {
                     if (confirmed) {
                         EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), "{}", true);
@@ -241,7 +241,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
                         Services.PLATFORM.sendRequestFullTree();
                     }
-                    this.minecraft.setScreen(this);
+                    this.minecraft.setScreenAndShow(this);
                 },
                 Component.literal("Reset Advancement?"),
                 Component.literal("Are you sure you want to reset this advancement to its vanilla state? Any edits will be lost.")
@@ -353,7 +353,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         AdvancementEditorScreen editor = new AdvancementEditorScreen(
                 this, newId, true, newPosX, newPosY, "Properties", root.toString()
         );
-        Minecraft.getInstance().setScreen(editor);
+        Minecraft.getInstance().setScreenAndShow(editor);
         this.contextMenu = null;
     }
 
@@ -660,7 +660,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
 
         if (this.minecraft.options.keyAdvancements.matches(event)) {
-            this.minecraft.setScreen(null);
+            this.minecraft.setScreenAndShow(null);
             this.minecraft.mouseHandler.grabMouse();
             return true;
         } else {
@@ -1065,7 +1065,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         AdvancementEditorScreen editor = new AdvancementEditorScreen(
                 this, newId, true, 0, 0, "Properties", root.toString()
         );
-        Minecraft.getInstance().setScreen(editor);
+        Minecraft.getInstance().setScreenAndShow(editor);
         this.contextMenu = null;
     }
 

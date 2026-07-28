@@ -32,7 +32,7 @@ public class GuiOpenHandler {
         if (event.getScreen() instanceof AdvancementsScreen) {
             event.setCanceled(true);
             Minecraft mc = Minecraft.getInstance();
-            mc.setScreen(new EnhancedAdvancementsScreen(mc.player.connection.getAdvancements()));
+            mc.setScreenAndShow(new EnhancedAdvancementsScreen(mc.player.connection.getAdvancements()));
         }
     }
 

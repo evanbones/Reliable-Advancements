@@ -42,10 +42,10 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
     // RRV
-    runtimeOnly("cc.cassian.rrv:reliable-recipe-viewer-neoforge:${rrv_version}")
+    implementation "cc.cassian.rrv:reliable-recipe-viewer-neoforge:${rrv_version}"
 
-    // Cloth Config
-    implementation "me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}"
+    // YACL
+    implementation "dev.isxander:yet-another-config-lib:${yacl_version}-neoforge"
 }
 
 def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)

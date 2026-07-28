@@ -21,13 +21,13 @@ import net.minecraft.core.ClientAsset;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
-import net.minecraft.util.Tuple;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.*;
 
 public class EnhancedAdvancementTab {
-    public static final Map<Identifier, Tuple<Integer, Integer>> scrollHistory = Maps.newLinkedHashMap();
+    public record ScrollPos(int getA, int getB) {}
+    public static final Map<Identifier, ScrollPos> scrollHistory = Maps.newLinkedHashMap();
     public final List<BackgroundRule> backgroundRules = new ArrayList<>();
     protected final Map<AdvancementHolder, EnhancedAdvancementWidget> widgets = Maps.newLinkedHashMap();
     private final Minecraft minecraft;
@@ -312,12 +312,12 @@ public class EnhancedAdvancementTab {
 
     public void storeScroll() {
         if (this.centered) {
-            scrollHistory.put(this.rootNode.holder().id(), new Tuple<>(scrollX, scrollY));
+            scrollHistory.put(this.rootNode.holder().id(), new ScrollPos(scrollX, scrollY));
         }
     }
 
     public void loadScroll() {
-        Tuple<Integer, Integer> scroll = scrollHistory.get(this.rootNode.holder().id());
+        ScrollPos scroll = scrollHistory.get(this.rootNode.holder().id());
         if (scroll != null) {
             this.centered = true;
             this.scrollX = scroll.getA();

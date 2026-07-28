@@ -29,7 +29,7 @@ public class ScreenMixin {
                         Minecraft mc = Minecraft.getInstance();
                         if (mc.player != null) {
                             EnhancedAdvancementsScreen screen = new EnhancedAdvancementsScreen(mc.player.connection.getAdvancements());
-                            mc.setScreen(screen);
+                            mc.setScreenAndShow(screen);
                             screen.centerOnAdvancement(id);
                         }
                     }
