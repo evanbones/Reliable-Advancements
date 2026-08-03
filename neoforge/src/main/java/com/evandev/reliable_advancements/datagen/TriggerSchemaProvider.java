@@ -1,6 +1,7 @@
 package com.evandev.reliable_advancements.datagen;
 
 import com.evandev.reliable_advancements.reference.Constants;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.advancements.CriterionTrigger;
@@ -13,11 +14,11 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
 
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.RecordComponent;
-import java.lang.reflect.Type;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class TriggerSchemaProvider implements DataProvider {
@@ -39,12 +40,12 @@ public class TriggerSchemaProvider implements DataProvider {
             Class<?> recordClass = manualMap.get(trigger);
 
             if (recordClass != null && recordClass.isRecord()) {
-                JsonObject fields = new JsonObject();
-                for (RecordComponent component : recordClass.getRecordComponents()) {
-                    String fieldType = simplifyType(component.getGenericType());
-                    String jsonKey = getJsonKey(component.getName());
-                    fields.addProperty(jsonKey, fieldType);
-                }
+                JsonArray fields = new JsonArray();
+                Arrays.stream(recordClass.getRecordComponents())
+                        .map(RecordComponent::getName)
+                        .map(this::getJsonKey)
+                        .sorted()
+                        .forEach(fields::add);
                 triggers.add(id.toString(), fields);
             }
         }
@@ -63,30 +64,9 @@ public class TriggerSchemaProvider implements DataProvider {
             case "playerPredicate" -> "player";
             case "locationPredicate" -> "location";
             case "killingBlow" -> "killing_blow";
+            case "beesInside" -> "num_bees_inside";
             default -> fieldName.replaceAll("([a-z])([A-Z]+)", "$1_$2").toLowerCase();
         };
-    }
-
-    private String simplifyType(Type type) {
-        if (type instanceof Class<?> clazz) {
-            if (clazz == String.class) return "string";
-            if (clazz == Integer.class || clazz == int.class) return "integer";
-            if (clazz == Boolean.class || clazz == boolean.class) return "boolean";
-            if (clazz == Float.class || clazz == float.class || clazz == Double.class || clazz == double.class)
-                return "float";
-            if (clazz == ResourceLocation.class) return "resource_location";
-            return "object";
-        } else if (type instanceof ParameterizedType pType) {
-            Class<?> rawType = (Class<?>) pType.getRawType();
-            if (rawType == Optional.class) {
-                return simplifyType(pType.getActualTypeArguments()[0]);
-            } else if (rawType == List.class || rawType == Set.class) {
-                return "list";
-            } else if (rawType == Map.class) {
-                return "object";
-            }
-        }
-        return "object";
     }
 
     private Map<CriterionTrigger<?>, Class<?>> getManualMapping() {

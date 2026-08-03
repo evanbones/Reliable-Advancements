@@ -1,3 +1,8 @@
+### Changed
+
+- Improved error reporting.
+- Reworked advancement arrows.
+
 ### Fixed
 
-- Fixed calculations for number of tabs.
+- Fixed scrolling working strangely on certain tabs.

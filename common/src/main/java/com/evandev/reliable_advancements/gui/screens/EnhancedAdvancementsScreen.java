@@ -86,6 +86,15 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         return ModConfig.get().enableEditMode && Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasPermissions(2);
     }
 
+    private static int tabSortOrdinal(AdvancementHolder root) {
+        List<String> order = ModConfig.get().tabSortOrder;
+        if (order == null || order.isEmpty()) {
+            return Integer.MAX_VALUE;
+        }
+        int index = order.indexOf(root.id().toString());
+        return index < 0 ? Integer.MAX_VALUE : index;
+    }
+
     @Override
     public void tick() {
         super.tick();
@@ -140,7 +149,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     public void sortTabs() {
         List<Map.Entry<AdvancementHolder, EnhancedAdvancementTab>> list = new ArrayList<>(this.tabs.entrySet());
-        list.sort(Comparator.comparingInt((Map.Entry<AdvancementHolder, EnhancedAdvancementTab> e) -> e.getValue().customIndex)
+        list.sort(Comparator.comparingInt((Map.Entry<AdvancementHolder, EnhancedAdvancementTab> e) -> tabSortOrdinal(e.getKey()))
+                .thenComparingInt(e -> e.getValue().customIndex)
                 .thenComparing(e -> ModConfig.get().orderTabsAlphabetically ? e.getValue().getTitle().getString() : ""));
         this.tabs.clear();
         int newIndex = 0;
@@ -814,7 +824,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             int startY = (int) ((this.linkingWidget.getY() + this.selectedTab.scrollY + (float) EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2) * zoom) + top + 2 * PADDING;
 
             RenderSystem.disableDepthTest();
-            RenderUtil.line(guiGraphics, startX, startY, mouseX, mouseY, 2, 0xFF00FF00);
+            RenderUtil.line(guiGraphics, startX, startY, mouseX, mouseY, 1, 0xFF00FF00);
             RenderSystem.enableDepthTest();
 
             guiGraphics.drawString(this.font, "Select parent to link...", mouseX + 15, mouseY + 10, 0x00FF00);

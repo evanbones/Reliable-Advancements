@@ -69,6 +69,18 @@ public class ClothConfigScreen {
                 .setSaveConsumer(newValue -> config.orderTabsAlphabetically = newValue)
                 .build());
 
+        general.addEntry(entryBuilder.startStrList(Component.translatable("config.reliable_advancements.tabSortOrder"), config.tabSortOrder)
+                .setDefaultValue(defaults.tabSortOrder)
+                .setTooltip(Component.translatable("config.reliable_advancements.tabSortOrder.tooltip"))
+                .setSaveConsumer(newValue -> config.tabSortOrder = newValue)
+                .build());
+
+        general.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.reliable_advancements.unclampedScrolling"), config.unclampedScrolling)
+                .setDefaultValue(defaults.unclampedScrolling)
+                .setTooltip(Component.translatable("config.reliable_advancements.unclampedScrolling.tooltip"))
+                .setSaveConsumer(newValue -> config.unclampedScrolling = newValue)
+                .build());
+
         general.addEntry(entryBuilder.startIntSlider(Component.translatable("config.reliable_advancements.uiScaling"), config.uiScaling, 1, 100)
                 .setDefaultValue(defaults.uiScaling)
                 .setTooltip(Component.translatable("config.reliable_advancements.uiScaling.tooltip"))

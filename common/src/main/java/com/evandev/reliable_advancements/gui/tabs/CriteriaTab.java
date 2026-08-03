@@ -2,6 +2,7 @@ package com.evandev.reliable_advancements.gui.tabs;
 
 import com.evandev.reliable_advancements.gui.model.AdvancementDraft;
 import com.evandev.reliable_advancements.gui.widgets.SuggestingEditBox;
+import com.evandev.reliable_advancements.util.CriterionValidator;
 import com.evandev.reliable_advancements.util.TriggerSchemaManager;
 import com.google.gson.*;
 import net.minecraft.ChatFormatting;
@@ -18,14 +19,14 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class CriteriaTab implements IEditorTab {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final String IMPOSSIBLE_TRIGGER = "minecraft:impossible";
 
     private final Font font;
     private final List<GuiEventListener> widgets = new ArrayList<>();
@@ -36,18 +37,37 @@ public class CriteriaTab implements IEditorTab {
     private EditBox nameBox;
     private SuggestingEditBox triggerBox;
     private Button addConditionBtn;
+    private JsonElement loadedRequirements;
+    private String lastValidated;
+    private String generalError;
 
     public CriteriaTab(Font font) {
         this.font = font;
     }
 
+    private static boolean coversExactly(JsonElement requirements, List<String> names) {
+        if (requirements == null || !requirements.isJsonArray()) return false;
+
+        Set<String> referenced = new HashSet<>();
+        for (JsonElement group : requirements.getAsJsonArray()) {
+            if (!group.isJsonArray()) return false;
+            for (JsonElement name : group.getAsJsonArray()) {
+                if (!name.isJsonPrimitive()) return false;
+                referenced.add(name.getAsString());
+            }
+        }
+        return referenced.equals(new HashSet<>(names));
+    }
+
     @Override
     public void loadState(AdvancementDraft draft) {
         criteriaList.clear();
-        try {
-            if (draft.rootJson.has("criteria")) {
-                JsonObject criteriaObj = draft.rootJson.getAsJsonObject("criteria");
-                for (String key : criteriaObj.keySet()) {
+        loadedRequirements = draft.rootJson.has("requirements") ? draft.rootJson.get("requirements").deepCopy() : null;
+
+        if (draft.rootJson.has("criteria")) {
+            JsonObject criteriaObj = draft.rootJson.getAsJsonObject("criteria");
+            for (String key : criteriaObj.keySet()) {
+                try {
                     CriterionEntry entry = new CriterionEntry();
                     entry.name = key;
                     JsonObject critObj = criteriaObj.getAsJsonObject(key);
@@ -69,9 +89,9 @@ public class CriteriaTab implements IEditorTab {
                         }
                     }
                     criteriaList.add(entry);
+                } catch (Exception ignored) {
                 }
             }
-        } catch (Exception ignored) {
         }
 
         if (criteriaList.isEmpty()) criteriaList.add(new CriterionEntry());
@@ -82,6 +102,7 @@ public class CriteriaTab implements IEditorTab {
     public void init(int x, int y, int width, int height, Runnable reinitScreen) {
         this.widgets.clear();
         this.conditionRows.clear();
+        this.lastValidated = null;
         this.startX = x;
         this.startY = y;
         this.width = width;
@@ -98,7 +119,7 @@ public class CriteriaTab implements IEditorTab {
         widgets.add(Button.builder(Component.literal("+"), b -> addCriterion(reinitScreen)).pos(x + width - 50, y).size(20, 20).build());
         widgets.add(Button.builder(Component.literal("-"), b -> removeCriterion(reinitScreen)).pos(x + width - 25, y).size(20, 20).build());
 
-        triggerBox = new SuggestingEditBox(font, x, y + 45, width, 20, Component.literal("Trigger"),
+        triggerBox = new TriggerEditBox(font, x, y + 45, width, 20, Component.literal("Trigger"),
                 () -> BuiltInRegistries.TRIGGER_TYPES.keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList()));
         triggerBox.setMaxLength(256);
         triggerBox.setValue(active.trigger);
@@ -109,7 +130,7 @@ public class CriteriaTab implements IEditorTab {
 
         for (int i = 0; i < active.conditions.size(); i++) {
             ConditionData data = active.conditions.get(i);
-            ConditionRow row = new ConditionRow(data, x, currentY, width, active.trigger, () -> {
+            ConditionRow row = new ConditionRow(data, x, currentY, width, () -> active.trigger, () -> {
                 syncActiveConditions();
                 active.conditions.remove(data);
                 reinitScreen.run();
@@ -128,33 +149,47 @@ public class CriteriaTab implements IEditorTab {
     }
 
     @Override
+    public void syncFromWidgets() {
+        syncActiveConditions();
+    }
+
+    @Override
     public void saveState(AdvancementDraft draft) {
         syncActiveConditions();
 
         JsonObject criteriaObj = new JsonObject();
         JsonArray requirementsObj = new JsonArray();
+        List<String> names = new ArrayList<>();
+
         for (CriterionEntry entry : criteriaList) {
+            String name = entry.name.trim();
+            if (name.isEmpty()) continue;
+
             JsonObject crit = new JsonObject();
-            crit.addProperty("trigger", entry.trigger);
+            crit.addProperty("trigger", entry.trigger.trim());
 
             JsonObject conds = new JsonObject();
             for (ConditionData data : entry.conditions) {
-                if (data.key.isEmpty()) continue;
-                conds.add(data.key, parseValue(data.value));
+                if (data.key.trim().isEmpty() || data.value.trim().isEmpty()) continue;
+                conds.add(data.key.trim(), parseValue(data.value));
             }
 
             if (!conds.isEmpty()) {
                 crit.add("conditions", conds);
             }
 
-            criteriaObj.add(entry.name, crit);
+            criteriaObj.add(name, crit);
+            names.add(name);
+
             JsonArray req = new JsonArray();
-            req.add(entry.name);
+            req.add(name);
             requirementsObj.add(req);
         }
 
+        if (criteriaObj.isEmpty()) return;
+
         draft.rootJson.add("criteria", criteriaObj);
-        draft.rootJson.add("requirements", requirementsObj);
+        draft.rootJson.add("requirements", coversExactly(loadedRequirements, names) ? loadedRequirements : requirementsObj);
     }
 
     private JsonElement parseValue(String val) {
@@ -207,6 +242,42 @@ public class CriteriaTab implements IEditorTab {
         gfx.drawString(font, "Criteria " + (selectedCriterion + 1) + "/" + criteriaList.size(), startX, startY - 11, 0xFFA08060, false);
         gfx.drawString(font, "Trigger", startX, startY + 34, 0xFFA08060, false);
         gfx.drawString(font, "Conditions", startX, startY + 79, 0xFF55FF55, false);
+
+        CriterionEntry active = criteriaList.get(selectedCriterion);
+        revalidateIfChanged(active);
+
+        int noteX = startX + font.width("Conditions") + 6;
+        String note = IMPOSSIBLE_TRIGGER.equals(active.trigger.trim()) && !active.conditions.isEmpty()
+                ? "(ignored by " + IMPOSSIBLE_TRIGGER + ")"
+                : generalError;
+
+        if (note != null) {
+            gfx.drawString(font, font.plainSubstrByWidth(note.replace('\n', ' '), startX + width - noteX),
+                    noteX, startY + 79, 0xFFFF5555, false);
+        }
+    }
+
+    private void revalidateIfChanged(CriterionEntry active) {
+        StringBuilder signature = new StringBuilder(active.trigger);
+        for (ConditionRow row : conditionRows) {
+            signature.append(' ').append(row.keyBox.getValue()).append(' ').append(row.valBox.getValue());
+        }
+        if (signature.toString().equals(lastValidated)) return;
+        lastValidated = signature.toString();
+
+        JsonObject conditions = new JsonObject();
+        for (ConditionRow row : conditionRows) {
+            String key = row.keyBox.getValue().trim();
+            JsonElement value = row.valBox.parsedValue();
+
+            if (!key.isEmpty() && value != null) conditions.add(key, value);
+        }
+
+        CriterionValidator.Result result = CriterionValidator.validate(active.trigger, conditions);
+        for (ConditionRow row : conditionRows) {
+            row.valBox.setCodecError(result.fieldErrors().get(row.keyBox.getValue().trim()));
+        }
+        generalError = result.generalError();
     }
 
     @Override
@@ -235,11 +306,10 @@ public class CriteriaTab implements IEditorTab {
         JsonMultiLineEditBox valBox;
         Button removeBtn;
 
-        ConditionRow(ConditionData data, int x, int y, int width, String trigger, Runnable onRemove) {
-            keyBox = new SuggestingEditBox(Minecraft.getInstance().font, x, y, width - 25, 20, Component.literal("Key"), () -> {
-                String parentType = TriggerSchemaManager.getRootType(trigger);
-                return TriggerSchemaManager.getFields(parentType);
-            });
+        ConditionRow(ConditionData data, int x, int y, int width, Supplier<String> trigger, Runnable onRemove) {
+            keyBox = new SuggestingEditBox(Minecraft.getInstance().font, x, y, width - 25, 20, Component.literal("Key"),
+                    () -> TriggerSchemaManager.getFields(trigger.get().trim()));
+            keyBox.setMaxLength(512);
             keyBox.setValue(data.key);
 
             valBox = new JsonMultiLineEditBox(Minecraft.getInstance().font, x, y + 25, width, 120, Component.literal("Value"));
@@ -254,12 +324,12 @@ public class CriteriaTab implements IEditorTab {
         }
     }
 
-    private static class JsonMultiLineEditBox extends MultiLineEditBox {
+    private static class TriggerEditBox extends SuggestingEditBox {
         private String lastText = null;
         private boolean isValid = true;
 
-        public JsonMultiLineEditBox(Font font, int x, int y, int width, int height, Component title) {
-            super(font, x, y, width, height, title, Component.empty());
+        TriggerEditBox(Font font, int x, int y, int width, int height, Component title, Supplier<List<String>> suggestions) {
+            super(font, x, y, width, height, title, suggestions);
         }
 
         @Override
@@ -272,26 +342,84 @@ public class CriteriaTab implements IEditorTab {
 
             super.renderWidget(gfx, mouseX, mouseY, partialTicks);
 
-            int outlineColor = isValid ? 0xFF00FF00 : 0xFFFF0000;
-            gfx.renderOutline(getX() - 1, getY() - 1, getWidth() + 2, getHeight() + 2, outlineColor);
+            if (!isValid) {
+                gfx.renderOutline(getX() - 1, getY() - 1, getWidth() + 2, getHeight() + 2, 0xFFFF0000);
+            }
         }
 
         private void validate(String text) {
             String trimmed = text.trim();
-            if (trimmed.isEmpty()) {
-                isValid = true;
-                this.setTooltip(null);
-                return;
-            }
+            ResourceLocation id = ResourceLocation.tryParse(trimmed);
+            isValid = id != null && BuiltInRegistries.TRIGGER_TYPES.containsKey(id);
+
+            this.setTooltip(isValid ? null : Tooltip.create(
+                    Component.literal("Unknown trigger \"" + trimmed)
+                            .withStyle(ChatFormatting.RED)));
+        }
+    }
+
+    private static class JsonMultiLineEditBox extends MultiLineEditBox {
+        private String lastText = null;
+        private String syntaxError = null;
+        private String codecError = null;
+
+        public JsonMultiLineEditBox(Font font, int x, int y, int width, int height, Component title) {
+            super(font, x, y, width, height, title, Component.empty());
+        }
+
+        private static String syntaxErrorOf(String text) {
+            String trimmed = text.trim();
+            if (trimmed.isEmpty()) return null;
+
             try {
                 JsonParser.parseString(trimmed);
-                isValid = true;
-                this.setTooltip(null);
+                return null;
             } catch (JsonSyntaxException e) {
-                isValid = false;
-                String errorMsg = e.getMessage();
-                this.setTooltip(Tooltip.create(Component.literal("Invalid JSON: " + errorMsg).withStyle(ChatFormatting.RED)));
+                return "Invalid JSON: " + e.getMessage();
             }
+        }
+
+        @Override
+        public void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
+            String currentText = this.getValue();
+            if (lastText == null || !lastText.equals(currentText)) {
+                lastText = currentText;
+                syntaxError = syntaxErrorOf(currentText);
+                refreshTooltip();
+            }
+
+            super.renderWidget(gfx, mouseX, mouseY, partialTicks);
+
+            int outlineColor = isValid() ? 0xFF00FF00 : 0xFFFF0000;
+            gfx.renderOutline(getX() - 1, getY() - 1, getWidth() + 2, getHeight() + 2, outlineColor);
+        }
+
+        JsonElement parsedValue() {
+            String trimmed = this.getValue().trim();
+            if (trimmed.isEmpty()) return null;
+
+            try {
+                return JsonParser.parseString(trimmed);
+            } catch (JsonSyntaxException e) {
+                return null;
+            }
+        }
+
+        void setCodecError(String error) {
+            if (Objects.equals(codecError, error)) return;
+
+            codecError = error;
+            refreshTooltip();
+        }
+
+        private boolean isValid() {
+            return syntaxError == null && codecError == null;
+        }
+
+        private void refreshTooltip() {
+            String message = syntaxError != null ? syntaxError : codecError;
+            this.setTooltip(message == null ? null
+                    : Tooltip.create(Component.literal(message).withStyle(ChatFormatting.RED)));
         }
     }
 }

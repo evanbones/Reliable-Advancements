@@ -147,6 +147,16 @@ public class PropertiesTab implements IEditorTab {
     }
 
     @Override
+    public void syncFromWidgets() {
+        if (idBox != null) this.id = idBox.getValue();
+        if (titleBox != null) this.title = titleBox.getValue();
+        if (descriptionBox != null) this.description = descriptionBox.getValue();
+        if (iconBox != null) this.icon = iconBox.getValue();
+        if (parentBox != null) this.parent = parentBox.getValue();
+        if (frameBox != null) this.frame = frameBox.getValue();
+    }
+
+    @Override
     public void saveState(AdvancementDraft draft) {
         if (idBox != null) draft.id = idBox.getValue();
         JsonObject display = draft.rootJson.has("display") ? draft.rootJson.getAsJsonObject("display") : new JsonObject();

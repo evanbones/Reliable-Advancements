@@ -55,13 +55,50 @@ public class SuggestingEditBox extends EditBox {
                 suggestionIndex = (suggestionIndex - 1 + currentSuggestions.size()) % currentSuggestions.size();
                 return true;
             } else if (keyCode == 257 || keyCode == 335 || keyCode == 258) { // Enter or Tab
-                this.setValue(currentSuggestions.get(suggestionIndex));
-                this.moveCursorToEnd(false);
-                currentSuggestions = List.of();
+                applySuggestion(suggestionIndex);
                 return true;
             }
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    public boolean tryClickSuggestion(double mouseX, double mouseY) {
+        if (!this.isFocused() || currentSuggestions.isEmpty()) return false;
+
+        int dropX = this.getX();
+        int dropY = this.getY() + this.getHeight();
+        int dropW = Math.max(this.getWidth(), 200);
+        int dropH = currentSuggestions.size() * 14 + 4;
+
+        if (mouseX < dropX || mouseX >= dropX + dropW || mouseY < dropY || mouseY >= dropY + dropH) {
+            return false;
+        }
+
+        int index = (int) ((mouseY - dropY - 2) / 14);
+        if (index < 0 || index >= currentSuggestions.size()) return false;
+
+        applySuggestion(index);
+        return true;
+    }
+
+    private void applySuggestion(int index) {
+        if (index < 0 || index >= currentSuggestions.size()) return;
+
+        this.setValue(currentSuggestions.get(index));
+        this.moveCursorToEnd(false);
+        currentSuggestions = List.of();
+        suggestionIndex = -1;
+    }
+
+    private int hoveredSuggestion(int mouseX, int mouseY) {
+        int dropX = this.getX();
+        int dropY = this.getY() + this.getHeight();
+        int dropW = Math.max(this.getWidth(), 200);
+
+        if (mouseX < dropX || mouseX >= dropX + dropW) return -1;
+
+        int index = (mouseY - dropY - 2) / 14;
+        return index >= 0 && index < currentSuggestions.size() ? index : -1;
     }
 
     @Override
@@ -73,6 +110,7 @@ public class SuggestingEditBox extends EditBox {
             int dropY = this.getY() + this.getHeight();
             int dropW = Math.max(this.getWidth(), 200);
             int dropH = currentSuggestions.size() * 14 + 4;
+            int hovered = hoveredSuggestion(mouseX, mouseY);
 
             gfx.pose().pushPose();
             gfx.pose().translate(0, 0, 500);
@@ -80,8 +118,9 @@ public class SuggestingEditBox extends EditBox {
             gfx.renderOutline(dropX, dropY, dropW, dropH, 0xFFC8AA64);
 
             for (int i = 0; i < currentSuggestions.size(); i++) {
-                int color = (i == suggestionIndex) ? 0xFF3A3A3A : 0xFFA08060;
-                if (i == suggestionIndex) {
+                boolean highlighted = (i == suggestionIndex || i == hovered);
+                int color = highlighted ? 0xFF3A3A3A : 0xFFA08060;
+                if (highlighted) {
                     gfx.fill(dropX + 1, dropY + 2 + i * 14, dropX + dropW - 1, dropY + 2 + (i + 1) * 14, 0xFFC8AA64);
                 }
                 gfx.drawString(Minecraft.getInstance().font, currentSuggestions.get(i), dropX + 4, dropY + 5 + i * 14, color, false);

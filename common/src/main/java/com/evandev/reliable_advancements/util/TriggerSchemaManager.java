@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 public class TriggerSchemaManager {
-    private static final Map<String, JsonObject> TRIGGERS = new HashMap<>();
+    private static final Map<String, JsonElement> TRIGGERS = new HashMap<>();
     private static final ResourceLocation SCHEMA_FILE = ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "trigger_schemas.json");
 
     public static void load() {
@@ -29,7 +29,7 @@ public class TriggerSchemaManager {
                     if (root.has("triggers")) {
                         JsonObject triggers = root.getAsJsonObject("triggers");
                         for (Map.Entry<String, JsonElement> entry : triggers.entrySet()) {
-                            TRIGGERS.put(entry.getKey(), entry.getValue().getAsJsonObject());
+                            TRIGGERS.put(entry.getKey(), entry.getValue());
                         }
                     }
                 }
@@ -39,15 +39,19 @@ public class TriggerSchemaManager {
         }
     }
 
-    // TODO: this is terrible
-    public static String getRootType(String triggerId) {
-        return triggerId != null ? triggerId : "";
-    }
-
     public static List<String> getFields(String triggerId) {
         if (TRIGGERS.isEmpty()) load();
-        JsonObject schema = TRIGGERS.get(triggerId);
-        if (schema != null) return new ArrayList<>(schema.keySet());
-        return List.of();
+        JsonElement schema = TRIGGERS.get(triggerId);
+        if (schema == null) return List.of();
+
+        if (schema.isJsonArray()) {
+            List<String> fields = new ArrayList<>();
+            for (JsonElement field : schema.getAsJsonArray()) {
+                if (field.isJsonPrimitive()) fields.add(field.getAsString());
+            }
+            return fields;
+        }
+
+        return schema.isJsonObject() ? new ArrayList<>(schema.getAsJsonObject().keySet()) : List.of();
     }
 }

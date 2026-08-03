@@ -8,15 +8,13 @@ import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.reliable_advancements.platform.Services;
 import com.evandev.reliable_advancements.reference.Resources;
+import com.evandev.reliable_advancements.util.ConnectionRouter;
 import com.evandev.reliable_advancements.util.CriterionGrid;
 import com.evandev.reliable_advancements.util.PersistentData;
 import com.evandev.reliable_advancements.util.RenderUtil;
 import com.google.common.collect.Lists;
 import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.advancements.AdvancementHolder;
-import net.minecraft.advancements.AdvancementNode;
-import net.minecraft.advancements.AdvancementProgress;
-import net.minecraft.advancements.DisplayInfo;
+import net.minecraft.advancements.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.StringSplitter;
 import net.minecraft.client.gui.GuiGraphics;
@@ -54,6 +52,11 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     private CriterionGrid criterionGrid;
     private EnhancedAdvancementWidget parent;
     private float hoverAnim = 0.0f;
+    /**
+     * Side of this widget that its incoming connection arrives at, used so outgoing connections can
+     * leave through the opposite side and the chain reads as flowing through the widget.
+     */
+    private ConnectionRouter.Side incomingSide = ConnectionRouter.Side.NONE;
 
     public EnhancedAdvancementWidget(EnhancedAdvancementTab advancementTabGui, Minecraft mc, AdvancementNode advancementNode, DisplayInfo displayInfo) {
         this.advancementTabGui = advancementTabGui;
@@ -198,121 +201,46 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             innerLineColor = thisCompleted ? enhancedDisplayInfo.getCompletedLineColor() : enhancedDisplayInfo.getUnCompletedLineColor();
         }
 
+        int startX = scrollX + parent.x + ADVANCEMENT_SIZE / 2 + 3;
+        int startY = scrollY + parent.y + ADVANCEMENT_SIZE / 2;
+        int endX = scrollX + this.x + ADVANCEMENT_SIZE / 2 + 3;
+        int endY = scrollY + this.y + ADVANCEMENT_SIZE / 2;
+
+        boolean goalFrame = this.displayInfo.getType() == AdvancementType.GOAL;
+
         if (this.enhancedDisplayInfo.drawDirectLines()) {
-            int x1 = Math.round(scrollX + this.x + ADVANCEMENT_SIZE / 2.0F + 3.0F);
-            int y1 = Math.round(scrollY + this.y + ADVANCEMENT_SIZE / 2.0F);
-            int x2 = Math.round(scrollX + parent.x + ADVANCEMENT_SIZE / 2.0F + 3.0F);
-            int y2 = Math.round(scrollY + parent.y + ADVANCEMENT_SIZE / 2.0F);
+            if (parent == this.parent) {
+                this.incomingSide = ConnectionRouter.Side.NONE;
+            }
 
-            boolean perpendicular = x1 == x2 || y1 == y2;
-
-            if (!perpendicular) {
-                if (drawInside) {
-                    RenderUtil.drawRect(guiGraphics, x1 - 1, y1 - 1, x2 - 1, y2 - 1, 3, borderLineColor);
-                } else {
-                    RenderUtil.drawRect(guiGraphics, x1, y1, x2, y2, 1, innerLineColor);
-                }
-
-                // Angled Arrow Logic
-                if (ModConfig.get().drawArrows && !drawInside) {
-                    float dx = x1 - x2;
-                    float dy = y1 - y2;
-                    float distance = (float) Math.sqrt(dx * dx + dy * dy);
-
-                    if (distance > ADVANCEMENT_SIZE) {
-                        float offsetX, offsetY;
-
-                        if (this.displayInfo.getType() == net.minecraft.advancements.AdvancementType.GOAL) {
-                            float radius = ADVANCEMENT_SIZE / 2.0F + 5.0F;
-                            offsetX = (dx / distance) * radius;
-                            offsetY = (dy / distance) * radius;
-                        } else {
-                            float maxAxis = Math.max(Math.abs(dx), Math.abs(dy));
-                            float radius = ADVANCEMENT_SIZE / 2.0F + 4.0F;
-                            offsetX = (dx / maxAxis) * radius;
-                            offsetY = (dy / maxAxis) * radius;
-                        }
-
-                        float arrowX = x1 - offsetX;
-                        float arrowY = y1 - offsetY;
-                        float angle = (float) Math.atan2(dy, dx);
-
-                        RenderUtil.drawRotatedArrow(guiGraphics, arrowX, arrowY, angle, innerLineColor);
-                    }
-                }
+            if (drawInside) {
+                RenderUtil.drawRect(guiGraphics, endX - 1, endY - 1, startX - 1, startY - 1, 3, borderLineColor);
             } else {
-                int startX = parent.getX() + ADVANCEMENT_SIZE / 2 + scrollX + 3;
-                int startY = parent.getY() + ADVANCEMENT_SIZE / 2 + scrollY;
+                RenderUtil.drawRect(guiGraphics, endX, endY, startX, startY, 1, innerLineColor);
 
-                int endX = this.getX() + ADVANCEMENT_SIZE / 2 + scrollX + 3;
-                int endY = this.getY() + ADVANCEMENT_SIZE / 2 + scrollY;
+                float dx = endX - startX;
+                float dy = endY - startY;
 
-                int diffX = Math.abs(endX - startX);
-                int diffY = Math.abs(endY - startY);
-
-                boolean verticalAnchors = diffX > diffY;
-                if (diffX < ADVANCEMENT_SIZE) verticalAnchors = true;
-                else if (diffY < ADVANCEMENT_SIZE) verticalAnchors = false;
-
-                int MAX_BEND_DISTANCE = 64;
-                int endAnchorX = verticalAnchors ? endX : endX - Math.min((endX - startX) / 2, MAX_BEND_DISTANCE);
-                int endAnchorY = !verticalAnchors ? endY : endY - Math.min((endY - startY) / 2, MAX_BEND_DISTANCE);
-
-                int startAnchorX = verticalAnchors ? startX : endAnchorX;
-                int startAnchorY = verticalAnchors ? startY : endAnchorY;
-
-                int thickness = drawInside ? 1 : 0;
-                int color = drawInside ? borderLineColor : innerLineColor;
-
-                RenderUtil.line(guiGraphics, startX, startY, startAnchorX, startAnchorY, thickness, color);
-                RenderUtil.line(guiGraphics, startAnchorX, startAnchorY, endAnchorX, endAnchorY, thickness, color);
-                RenderUtil.line(guiGraphics, endAnchorX, endAnchorY, endX, endY, thickness, color);
-
-                boolean showArrow = (verticalAnchors ? diffY : diffX) > 15;
-
-                // Orthogonal Direct Line Arrows
-                if (!drawInside && showArrow && ModConfig.get().drawArrows) {
-                    int edgeDistanceX = ADVANCEMENT_SIZE / 2 + 3;
-                    int edgeDistanceY = ADVANCEMENT_SIZE / 2 + 3;
-                    if (this.displayInfo.getType() == net.minecraft.advancements.AdvancementType.GOAL) {
-                        edgeDistanceX += 2;
-                        edgeDistanceY += 2;
-                    }
-                    RenderUtil.drawArrow(guiGraphics, endX, endY, endAnchorX, endAnchorY, verticalAnchors, edgeDistanceX, edgeDistanceY, innerLineColor);
+                if (ModConfig.get().drawArrows && Math.sqrt(dx * dx + dy * dy) > ADVANCEMENT_SIZE) {
+                    RenderUtil.drawDiagonalArrow(guiGraphics, endX, endY, dx, dy, goalFrame, innerLineColor);
                 }
             }
         } else {
-            // Vanilla-style connection rendering
-            int startX = scrollX + parent.x + ADVANCEMENT_SIZE / 2;
-            int endXHalf = scrollX + parent.x + ADVANCEMENT_SIZE + 6;
-            int startY = scrollY + parent.y + ADVANCEMENT_SIZE / 2;
-            int endX = scrollX + this.x + ADVANCEMENT_SIZE / 2;
-            int endY = scrollY + this.y + ADVANCEMENT_SIZE / 2;
+            ConnectionRouter.Route route = ConnectionRouter.route(startX, startY, endX, endY, parent.incomingSide);
+            if (parent == this.parent) {
+                this.incomingSide = route.entrySide();
+            }
 
-            if (drawInside) {
-                guiGraphics.hLine(endXHalf, startX, startY - 1, borderLineColor);
-                guiGraphics.hLine(endXHalf + 1, startX, startY, borderLineColor);
-                guiGraphics.hLine(endXHalf, startX, startY + 1, borderLineColor);
-                guiGraphics.hLine(endX, endXHalf - 1, endY - 1, borderLineColor);
-                guiGraphics.hLine(endX, endXHalf - 1, endY, borderLineColor);
-                guiGraphics.hLine(endX, endXHalf - 1, endY + 1, borderLineColor);
-                guiGraphics.vLine(endXHalf - 1, endY, startY, borderLineColor);
-                guiGraphics.vLine(endXHalf + 1, endY, startY, borderLineColor);
-            } else {
-                guiGraphics.hLine(endXHalf, startX, startY, innerLineColor);
-                guiGraphics.hLine(endX, endXHalf, endY, innerLineColor);
-                guiGraphics.vLine(endXHalf, endY, startY, innerLineColor);
+            int thickness = drawInside ? 1 : 0;
+            int color = drawInside ? borderLineColor : innerLineColor;
 
-                // Vanilla Line Arrows
-                if (ModConfig.get().drawArrows) {
-                    int edgeDistanceX = ADVANCEMENT_SIZE / 2 + 3;
-                    int edgeDistanceY = ADVANCEMENT_SIZE / 2 + 3;
-                    if (this.displayInfo.getType() == net.minecraft.advancements.AdvancementType.GOAL) {
-                        edgeDistanceX += 2;
-                        edgeDistanceY += 2;
-                    }
-                    RenderUtil.drawArrow(guiGraphics, endX, endY, endXHalf, endY, false, edgeDistanceX, edgeDistanceY, innerLineColor);
-                }
+            RenderUtil.line(guiGraphics, route.startX(), route.startY(), route.startAnchorX(), route.startAnchorY(), thickness, color);
+            RenderUtil.line(guiGraphics, route.startAnchorX(), route.startAnchorY(), route.endAnchorX(), route.endAnchorY(), thickness, color);
+            RenderUtil.line(guiGraphics, route.endAnchorX(), route.endAnchorY(), route.endX(), route.endY(), thickness, color);
+
+            if (!drawInside && ModConfig.get().drawArrows && route.shouldShowArrow()) {
+                RenderUtil.drawArrow(guiGraphics, route.endX(), route.endY(), route.endAnchorX(), route.endAnchorY(),
+                        route.verticalAnchors(), goalFrame, innerLineColor);
             }
         }
     }

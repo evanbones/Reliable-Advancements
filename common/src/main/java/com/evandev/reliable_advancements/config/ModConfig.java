@@ -10,6 +10,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ModConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -23,6 +25,8 @@ public class ModConfig {
     public boolean addToInventory = true;
     public boolean showDebugCoordinates = false;
     public boolean orderTabsAlphabetically = false;
+    public List<String> tabSortOrder = new ArrayList<>();
+    public boolean unclampedScrolling = false;
     public int uiScaling = 100;
     public boolean onlyUseAboveAdvancementTabs = false;
     public boolean discoveryMode = false;

@@ -2,6 +2,7 @@ package com.evandev.reliable_advancements.gui.screens;
 
 import com.evandev.reliable_advancements.gui.model.AdvancementDraft;
 import com.evandev.reliable_advancements.gui.tabs.*;
+import com.evandev.reliable_advancements.gui.widgets.SuggestingEditBox;
 import com.evandev.reliable_advancements.network.EditAdvancementPayload;
 import com.evandev.reliable_advancements.platform.Services;
 import com.evandev.reliable_advancements.util.PersistentData;
@@ -15,8 +16,10 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class AdvancementEditorScreen extends Screen {
     private static final int COL_GOLD = 0xFFC8AA64;
@@ -37,6 +40,7 @@ public class AdvancementEditorScreen extends Screen {
     private final int posX, posY;
 
     private final Map<String, IEditorTab> tabs = new LinkedHashMap<>();
+    private final Set<String> visitedTabs = new HashSet<>();
     private String activeTabName;
     private IEditorTab activeTab;
 
@@ -69,6 +73,7 @@ public class AdvancementEditorScreen extends Screen {
 
         this.activeTabName = this.tabs.containsKey(initialTabName) ? initialTabName : "Properties";
         this.activeTab = this.tabs.get(this.activeTabName);
+        this.visitedTabs.add(this.activeTabName);
     }
 
     @Override
@@ -77,8 +82,7 @@ public class AdvancementEditorScreen extends Screen {
         this.scrollOffset = Math.max(0, Math.min(this.scrollOffset, this.maxScroll));
 
         if (this.activeTab != null) {
-            this.activeTab.saveState(this.draft);
-            this.activeTab.loadState(this.draft);
+            this.activeTab.syncFromWidgets();
         }
 
         this.init();
@@ -149,13 +153,18 @@ public class AdvancementEditorScreen extends Screen {
         activeTab.saveState(draft);
         activeTabName = tabName;
         activeTab = tabs.get(tabName);
+        visitedTabs.add(tabName);
         activeTab.loadState(draft);
         scrollOffset = 0;
         this.init();
     }
 
     private void saveAndClose() {
-        activeTab.saveState(draft);
+        for (Map.Entry<String, IEditorTab> entry : tabs.entrySet()) {
+            if (visitedTabs.contains(entry.getKey())) {
+                entry.getValue().saveState(draft);
+            }
+        }
 
         ResourceLocation finalId = ResourceLocation.parse(draft.id);
 
@@ -240,8 +249,7 @@ public class AdvancementEditorScreen extends Screen {
         this.scrollOffset = (int) (pct * this.maxScroll);
 
         if (this.activeTab != null) {
-            this.activeTab.saveState(this.draft);
-            this.activeTab.loadState(this.draft);
+            this.activeTab.syncFromWidgets();
         }
 
         this.init();
@@ -249,6 +257,10 @@ public class AdvancementEditorScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
+        if (button == 0 && this.getFocused() instanceof SuggestingEditBox box && box.tryClickSuggestion(mx, my)) {
+            return true;
+        }
+
         if (this.maxScroll > 0 && button == 0) {
             int scrollX = uiX + uiW - 12;
             int scrollY = uiY + 32;

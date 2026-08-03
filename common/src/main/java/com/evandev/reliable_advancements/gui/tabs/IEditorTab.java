@@ -15,5 +15,8 @@ public interface IEditorTab {
 
     void loadState(AdvancementDraft draft);
 
+    default void syncFromWidgets() {
+    }
+
     List<GuiEventListener> getWidgets();
 }

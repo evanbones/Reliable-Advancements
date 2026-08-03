@@ -43,12 +43,17 @@ public class LayoutTab implements IEditorTab {
     }
 
     @Override
-    public void saveState(AdvancementDraft draft) {
+    public void syncFromWidgets() {
         try {
             if (xBox != null) this.posX = Integer.parseInt(xBox.getValue());
             if (yBox != null) this.posY = Integer.parseInt(yBox.getValue());
         } catch (NumberFormatException ignored) {
         }
+    }
+
+    @Override
+    public void saveState(AdvancementDraft draft) {
+        syncFromWidgets();
     }
 
     public int getX() {

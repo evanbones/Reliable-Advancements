@@ -12,6 +12,9 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 
 public class RenderUtil {
+    private static final int ARROW_SIZE = 9;
+    private static final int FRAME_SIZE = 26;
+
     private RenderUtil() {
     }
 
@@ -70,11 +73,8 @@ public class RenderUtil {
 
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(x0, y0, 0);
-        guiGraphics.pose().mulPose(new org.joml.Quaternionf().rotateZ(angle));
-
-        int halfThickness = thickness / 2;
-        int extraThickness = thickness % 2;
-        guiGraphics.fill(RenderType.gui(), 0, -halfThickness, (int) Math.ceil(length), halfThickness + extraThickness, color);
+        guiGraphics.pose().mulPose(new Quaternionf().rotateZ(angle));
+        guiGraphics.fill(RenderType.gui(), -thickness, -thickness, (int) Math.ceil(length) + thickness, 1 + thickness, color);
 
         guiGraphics.pose().popPose();
     }
@@ -88,49 +88,61 @@ public class RenderUtil {
         guiGraphics.pose().translate(x, y, 0);
         guiGraphics.pose().mulPose(new Quaternionf().rotateZ(angle));
 
-        guiGraphics.blit(Resources.Gui.ARROWS, -4, -4, 9, 9, 9, 9, 18, 18);
+        guiGraphics.blit(Resources.Gui.ARROWS, -ARROW_SIZE / 2, -ARROW_SIZE / 2, 9, 9, ARROW_SIZE, ARROW_SIZE, 18, 18);
 
         guiGraphics.pose().popPose();
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.disableBlend();
     }
 
-    public static void drawArrow(GuiGraphics guiGraphics, int x, int y, int anchorX, int anchorY, boolean verticalAnchors, int edgeDistanceX, int edgeDistanceY, int color) {
-        int width = 9;
-        int height = 9;
+    public static void drawArrow(GuiGraphics guiGraphics, int x, int y, int anchorX, int anchorY, boolean verticalAnchors, boolean goalFrame, int color) {
+        int edgeDistance = FRAME_SIZE / 2 + ARROW_SIZE / 2;
+        int edgeDistanceX = goalFrame ? edgeDistance - 1 : edgeDistance;
+        int edgeDistanceY = goalFrame ? edgeDistance + 1 : edgeDistance;
         float u, v;
 
         if (verticalAnchors) {
             boolean childIsAbove = (y < anchorY);
             y = moveTowards(y, anchorY, edgeDistanceY);
-            x -= 4;
+            x -= ARROW_SIZE / 2;
 
-            if (childIsAbove) {
-                u = 9;
-            } else {
-                u = 0;
-            }
+            u = childIsAbove ? 9 : 0;
             v = 0;
-            y -= 4;
+            y -= ARROW_SIZE / 2;
 
         } else {
             boolean childIsLeft = (x < anchorX);
             x = moveTowards(x, anchorX, edgeDistanceX);
-            y -= 4;
+            y -= ARROW_SIZE / 2;
 
-            if (childIsLeft) {
-                u = 0;
-            } else {
-                u = 9;
-            }
+            u = childIsLeft ? 0 : 9;
             v = 9;
-            x -= 4;
+            x -= ARROW_SIZE / 2;
         }
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderUtil.setColor(color);
-        guiGraphics.blit(Resources.Gui.ARROWS, x, y, u, v, width, height, 18, 18);
+        guiGraphics.blit(Resources.Gui.ARROWS, x, y, u, v, ARROW_SIZE, ARROW_SIZE, 18, 18);
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.disableBlend();
+    }
+
+    public static void drawDiagonalArrow(GuiGraphics guiGraphics, float x, float y, float dx, float dy, boolean goalFrame, int color) {
+        float radius = FRAME_SIZE / 2.0F + ARROW_SIZE / 2.0F;
+        float offsetX, offsetY;
+
+        if (goalFrame) {
+            float distance = (float) Math.sqrt(dx * dx + dy * dy);
+            offsetX = (dx / distance) * (radius + 1.0F);
+            offsetY = (dy / distance) * (radius + 1.0F);
+        } else {
+            float maxAxis = Math.max(Math.abs(dx), Math.abs(dy));
+            offsetX = (dx / maxAxis) * radius;
+            offsetY = (dy / maxAxis) * radius;
+        }
+
+        drawRotatedArrow(guiGraphics, x - offsetX, y - offsetY, (float) Math.atan2(dy, dx), color);
     }
 
     public static int moveTowards(int a, int b, int distance) {

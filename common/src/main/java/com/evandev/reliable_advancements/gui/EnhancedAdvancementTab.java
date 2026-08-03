@@ -258,6 +258,12 @@ public class EnhancedAdvancementTab {
     }
 
     public void scroll(double scrollX, double scrollY, int width, int height) {
+        if (ModConfig.get().unclampedScrolling) {
+            this.scrollX = (int) Math.round(this.scrollX + scrollX);
+            this.scrollY = (int) Math.round(this.scrollY + scrollY);
+            return;
+        }
+
         float zoom = this.screen.getZoom();
         int scaledWidth = (int) (width / zoom);
         int scaledHeight = (int) (height / zoom);

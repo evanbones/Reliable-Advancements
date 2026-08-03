@@ -95,6 +95,10 @@ public class TabEditorScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
+        if (button == 0 && this.getFocused() instanceof SuggestingEditBox box && box.tryClickSuggestion(mx, my)) {
+            return true;
+        }
+
         if (this.maxScroll > 0 && button == 0) {
             int scrollX = uiX + uiW - 12;
             int scrollY = uiY + 32;
