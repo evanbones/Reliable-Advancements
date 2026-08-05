@@ -109,6 +109,9 @@ public class RenderUtil {
             u = childIsAbove ? 9 : 0;
             v = 0;
             y -= ARROW_SIZE / 2;
+            if (!childIsAbove) {
+                x -= 1;
+            }
 
         } else {
             boolean childIsLeft = (x < anchorX);
@@ -118,6 +121,9 @@ public class RenderUtil {
             u = childIsLeft ? 0 : 9;
             v = 9;
             x -= ARROW_SIZE / 2;
+            if (childIsLeft) {
+                y -= 1;
+            }
         }
 
         RenderSystem.enableBlend();

@@ -1,8 +1,3 @@
-### Changed
-
-- Improved error reporting.
-- Reworked advancement arrows.
-
 ### Fixed
 
-- Fixed scrolling working strangely on certain tabs.
+- Fixed arrow texture being one pixel off (literally unplayable).
