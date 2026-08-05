@@ -56,6 +56,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     private static int tabPage, maxPages;
     private static ResourceLocation savedSelectedTab = null;
     private final ClientAdvancements clientAdvancements;
+    private final Screen parent;
     private final Map<AdvancementHolder, EnhancedAdvancementTab> tabs = Maps.newLinkedHashMap();
     public EnhancedAdvancementWidget linkingWidget = null;
     public EnhancedAdvancementTab selectedTab;
@@ -73,8 +74,13 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     private long linkingErrorTime = 0;
 
     public EnhancedAdvancementsScreen(ClientAdvancements clientAdvancements) {
+        this(clientAdvancements, null);
+    }
+
+    public EnhancedAdvancementsScreen(ClientAdvancements clientAdvancements, Screen parent) {
         super(GameNarrator.NO_TITLE);
         this.clientAdvancements = clientAdvancements;
+        this.parent = parent;
 
         if (lastAdvancementsManager != clientAdvancements) {
             lastAdvancementsManager = clientAdvancements;
@@ -100,7 +106,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         super.tick();
         if (this.isDirty) {
             this.isDirty = false;
-            this.minecraft.setScreen(new EnhancedAdvancementsScreen(this.clientAdvancements));
+            this.minecraft.setScreen(new EnhancedAdvancementsScreen(this.clientAdvancements, this.parent));
         }
     }
 
@@ -651,9 +657,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             }
         }
 
-        if (this.minecraft.options.keyAdvancements.matches(keyCode, scanCode)) {
-            this.minecraft.setScreen(null);
-            this.minecraft.mouseHandler.grabMouse();
+        if (this.minecraft.options.keyAdvancements.matches(keyCode, scanCode) || this.minecraft.options.keyInventory.matches(keyCode, scanCode)) {
+            this.onClose();
             return true;
         } else {
             return super.keyPressed(keyCode, scanCode, modifiers);
@@ -699,7 +704,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         if (clientpacketlistener != null) {
             clientpacketlistener.send(ServerboundSeenAdvancementsPacket.closedScreen());
         }
-        super.onClose();
+        this.minecraft.setScreen(this.parent);
     }
 
     @Override
