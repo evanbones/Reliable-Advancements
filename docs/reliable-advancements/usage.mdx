@@ -24,10 +24,10 @@ Reliable Advancements enhances Minecraft's advancement system with an in-game ed
 
 ## Where Edits Are Saved
 
-All edits made through the in-game editor are saved server-side to a world datapack:
+On singleplayer and LAN, edits are written by default to the mod's global config folder:
 
 ```
-<world>/datapacks/reliable_advancements_edits/
+config/reliable_advancements_edits/
 ```
 
-This datapack is loaded automatically alongside your world. See [Saving Globally](saving-globally) to learn how to use these edits across multiple worlds or distribute them with Open Loader or Paxi.
+This means edits apply to every world and can be shipped directly in a modpack zip, no datapack loader needed. On dedicated servers, edits go to the world save folder instead. See [Saving Globally](saving-globally) for the full breakdown.

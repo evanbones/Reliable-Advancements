@@ -55,6 +55,10 @@
   "config.reliable_advancements.showTooltipsInEditMode.tooltip": "If enabled, hovering over advancements while in edit mode will still display their title, description, and requirements.",
   "config.reliable_advancements.showEditModeButton": "Show Edit Mode Button",
   "config.reliable_advancements.showEditModeButton.tooltip": "Displays a button in the top right corner of the advancements screen to easily toggle Edit Mode on and off (Requires OP).",
+  "config.reliable_advancements.storeAdvancementEditsGlobally": "Store Edits Globally",
+  "config.reliable_advancements.storeAdvancementEditsGlobally.tooltip": "Saves in-game advancement edits to the mod's config folder (config/reliable_advancements_edits/) instead of the world save. On dedicated servers this setting is ignored and edits always go to the world save.",
+  "config.reliable_advancements.storeAdvancementEditsAsDatapack": "Store Edits as a Datapack",
+  "config.reliable_advancements.storeAdvancementEditsAsDatapack.tooltip": "Saves in-game advancement edits to a world datapack instead of a config folder. Only relevant on dedicated servers, or when Store Edits Globally is off.",
 
   "config.reliable_advancements.category.visuals": "Visuals",
   "config.reliable_advancements.drawArrows": "Draw Connection Arrows",

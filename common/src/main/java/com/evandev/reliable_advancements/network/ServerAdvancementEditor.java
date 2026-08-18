@@ -1,5 +1,6 @@
 package com.evandev.reliable_advancements.network;
 
+import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.mixin.ServerAdvancementManagerAccessor;
 import com.evandev.reliable_advancements.platform.Services;
 import com.evandev.reliable_advancements.reference.Constants;
@@ -18,20 +19,20 @@ import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.world.level.storage.LevelResource;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 public class ServerAdvancementEditor {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final String EDITS_PACK_ID = "file/" + Constants.MOD_ID + "_edits";
-    private static MinecraftServer packEnabledFor = null;
+    private static final String EDITS_DIR_NAME = Constants.MOD_ID + "_edits";
 
     public static void handleJsonRequest(MinecraftServer server, ServerPlayer player, RequestAdvancementJsonPayload payload) {
         if (player != null && !player.hasPermissions(2)) return;
@@ -81,16 +82,11 @@ public class ServerAdvancementEditor {
     public static void saveAdvancementEdit(MinecraftServer server, ServerPlayer player, EditAdvancementPayload payload) {
         if (player != null && !player.hasPermissions(2)) return;
 
-        File datapackDir = new File(server.getWorldPath(LevelResource.DATAPACK_DIR).toFile(), Constants.MOD_ID + "_edits");
-        File dataDir = new File(datapackDir, "data/" + payload.advancementId().getNamespace() + "/advancement");
-        File advFile = new File(dataDir, payload.advancementId().getPath() + ".json");
+        File advFile = editFile(server, payload.advancementId());
 
         if (payload.isDelete()) {
-            if (advFile.exists() && !advFile.delete()) {
-                report(player, "Could not reset " + payload.advancementId() + ": failed to delete " + advFile);
-                return;
-            }
-            reloadWithEditsPack(server).thenRun(() -> server.execute(() -> sendFullTreeToAll(server)));
+            deleteEditFile(server, payload.advancementId(), player);
+            server.reloadResources(server.getPackRepository().getSelectedIds());
             return;
         }
 
@@ -116,7 +112,9 @@ public class ServerAdvancementEditor {
                 report(player, "Could not save " + payload.advancementId() + ": failed to create " + parentDir);
                 return;
             }
-            ensurePackMetaExists(datapackDir);
+            if (ModConfig.get().storeAdvancementEditsAsDatapack) {
+                ensurePackMetaExists(configuredEditsRoot(server).toFile());
+            }
             try (FileWriter writer = new FileWriter(advFile, StandardCharsets.UTF_8)) {
                 writer.write(GSON.toJson(advJson));
             }
@@ -125,24 +123,23 @@ public class ServerAdvancementEditor {
             return;
         }
 
-        ensurePackEnabled(server, () -> {
-            applyAdvancement(server, newHolder);
-            sendFullTreeToAll(server);
-        });
+        applyAdvancements(server, List.of(newHolder));
+        sendFullTreeToAll(server);
     }
 
     public static void handleResetTab(MinecraftServer server, ServerPlayer player, ResetTabPayload payload) {
         if (player != null && !player.hasPermissions(2)) return;
-        File datapackDir = new File(server.getWorldPath(LevelResource.DATAPACK_DIR).toFile(), Constants.MOD_ID + "_edits");
 
+        boolean anyDeleted = false;
         for (ResourceLocation id : payload.advancementIds()) {
-            File advFile = new File(datapackDir, "data/" + id.getNamespace() + "/advancement/" + id.getPath() + ".json");
-            if (advFile.exists() && !advFile.delete()) {
-                report(player, "Could not reset " + id + ": failed to delete " + advFile);
+            if (deleteEditFile(server, id, player)) {
+                anyDeleted = true;
             }
         }
 
-        reloadWithEditsPack(server).thenRun(() -> server.execute(() -> sendFullTreeToAll(server)));
+        if (anyDeleted) {
+            server.reloadResources(server.getPackRepository().getSelectedIds());
+        }
     }
 
     public static void handleRequestFullTree(MinecraftServer server, ServerPlayer player) {
@@ -151,10 +148,62 @@ public class ServerAdvancementEditor {
         }
     }
 
-    private static void applyAdvancement(MinecraftServer server, AdvancementHolder holder) {
+    public static void reapplyAllEdits(MinecraftServer server) {
+        RegistryOps<JsonElement> ops = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
+
+        Map<ResourceLocation, AdvancementHolder> edits = new LinkedHashMap<>();
+        for (Path root : editsRoots(server)) {
+            Path dataDir = root.resolve("data");
+            if (!Files.isDirectory(dataDir)) continue;
+
+            try (Stream<Path> namespaces = Files.list(dataDir)) {
+                for (Path namespaceDir : (Iterable<Path>) namespaces.filter(Files::isDirectory)::iterator) {
+                    Path advDir = namespaceDir.resolve("advancement");
+                    if (!Files.isDirectory(advDir)) continue;
+                    collectEdits(ops, namespaceDir.getFileName().toString(), advDir, edits);
+                }
+            } catch (IOException e) {
+                Constants.LOG.error("Failed to read saved advancement edits under {}", dataDir, e);
+            }
+        }
+
+        if (!edits.isEmpty()) {
+            applyAdvancements(server, edits.values());
+        }
+    }
+
+    private static void collectEdits(RegistryOps<JsonElement> ops, String namespace, Path advDir, Map<ResourceLocation, AdvancementHolder> out) {
+        try (Stream<Path> files = Files.walk(advDir)) {
+            for (Path file : (Iterable<Path>) files.filter(p -> p.toString().endsWith(".json"))::iterator) {
+                String path = advDir.relativize(file).toString().replace(File.separatorChar, '/');
+                path = path.substring(0, path.length() - ".json".length());
+                ResourceLocation id = ResourceLocation.fromNamespaceAndPath(namespace, path);
+
+                if (out.containsKey(id)) continue;
+
+                try {
+                    JsonObject json = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
+                    DataResult<Advancement> parsed = Advancement.CODEC.parse(ops, json);
+                    parsed.result().ifPresentOrElse(
+                            advancement -> out.put(id, new AdvancementHolder(id, advancement)),
+                            () -> Constants.LOG.error("Could not reapply saved edit for {}: {}", id,
+                                    parsed.error().map(DataResult.Error::message).orElse("unknown error"))
+                    );
+                } catch (Exception e) {
+                    Constants.LOG.error("Could not reapply saved edit for {}", id, e);
+                }
+            }
+        } catch (IOException e) {
+            Constants.LOG.error("Failed to read saved advancement edits under {}", advDir, e);
+        }
+    }
+
+    private static void applyAdvancements(MinecraftServer server, Collection<AdvancementHolder> holders) {
         ServerAdvancementManagerAccessor manager = (ServerAdvancementManagerAccessor) server.getAdvancements();
         Map<ResourceLocation, AdvancementHolder> map = new HashMap<>(manager.getAdvancements());
-        map.put(holder.id(), holder);
+        for (AdvancementHolder holder : holders) {
+            map.put(holder.id(), holder);
+        }
         manager.setAdvancements(map);
 
         AdvancementTree tree = new AdvancementTree();
@@ -162,49 +211,54 @@ public class ServerAdvancementEditor {
         manager.setTree(tree);
     }
 
-    private static void ensurePackEnabled(MinecraftServer server, Runnable afterwards) {
-        if (packEnabledFor == server) {
-            afterwards.run();
-            return;
-        }
+    private static Path globalConfigEditsRoot() {
+        return Services.PLATFORM.getConfigDirectory().resolve(EDITS_DIR_NAME);
+    }
 
-        List<String> ids = packIdsIncludingEdits(server);
-        if (!ids.contains(EDITS_PACK_ID)) {
-            afterwards.run();
-            return;
+    private static Path configuredEditsRoot(MinecraftServer server) {
+        if (!server.isDedicatedServer() && ModConfig.get().storeAdvancementEditsGlobally) {
+            return globalConfigEditsRoot();
         }
-        packEnabledFor = server;
-
-        if (server.getPackRepository().getSelectedIds().contains(EDITS_PACK_ID)) {
-            afterwards.run();
-            return;
+        if (ModConfig.get().storeAdvancementEditsAsDatapack) {
+            return server.getWorldPath(LevelResource.DATAPACK_DIR).resolve(EDITS_DIR_NAME);
         }
+        return server.getWorldPath(LevelResource.ROOT).resolve(Constants.MOD_ID).resolve("edits");
+    }
 
-        server.reloadResources(ids).whenComplete((v, error) -> server.execute(() -> {
-            if (error != null) {
-                Constants.LOG.error("Failed to enable the {} datapack", EDITS_PACK_ID, error);
+    private static List<Path> editsRoots(MinecraftServer server) {
+        Path configured = configuredEditsRoot(server);
+        Path legacyDatapack = server.getWorldPath(LevelResource.DATAPACK_DIR).resolve(EDITS_DIR_NAME);
+        Path globalConfig = globalConfigEditsRoot();
+
+        List<Path> roots = new ArrayList<>();
+        roots.add(configured);
+        if (!legacyDatapack.equals(configured)) roots.add(legacyDatapack);
+        if (!globalConfig.equals(configured) && !globalConfig.equals(legacyDatapack)) roots.add(globalConfig);
+        return roots;
+    }
+
+    private static File editFile(MinecraftServer server, ResourceLocation advancementId) {
+        return editFileIn(configuredEditsRoot(server), advancementId);
+    }
+
+    private static File editFileIn(Path root, ResourceLocation advancementId) {
+        File dataDir = new File(root.toFile(), "data/" + advancementId.getNamespace() + "/advancement");
+        return new File(dataDir, advancementId.getPath() + ".json");
+    }
+
+    private static boolean deleteEditFile(MinecraftServer server, ResourceLocation advancementId, ServerPlayer player) {
+        boolean deletedAny = false;
+        for (Path root : editsRoots(server)) {
+            File file = editFileIn(root, advancementId);
+            if (file.exists()) {
+                if (file.delete()) {
+                    deletedAny = true;
+                } else {
+                    report(player, "Could not reset " + advancementId + ": failed to delete " + file);
+                }
             }
-            afterwards.run();
-        }));
-    }
-
-    private static CompletableFuture<Void> reloadWithEditsPack(MinecraftServer server) {
-        List<String> ids = packIdsIncludingEdits(server);
-        if (ids.contains(EDITS_PACK_ID)) {
-            packEnabledFor = server;
         }
-        return server.reloadResources(ids);
-    }
-
-    private static List<String> packIdsIncludingEdits(MinecraftServer server) {
-        PackRepository repository = server.getPackRepository();
-        repository.reload();
-
-        List<String> ids = new ArrayList<>(repository.getSelectedIds());
-        if (!ids.contains(EDITS_PACK_ID) && repository.getAvailableIds().contains(EDITS_PACK_ID)) {
-            ids.add(EDITS_PACK_ID);
-        }
-        return ids;
+        return deletedAny;
     }
 
     private static void report(ServerPlayer player, String message) {

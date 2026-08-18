@@ -179,6 +179,18 @@ public class ClothConfigScreen {
                 .setSaveConsumer(newValue -> config.showEditModeButton = newValue)
                 .build());
 
+        editing.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.reliable_advancements.storeAdvancementEditsGlobally"), config.storeAdvancementEditsGlobally)
+                .setDefaultValue(defaults.storeAdvancementEditsGlobally)
+                .setTooltip(Component.translatable("config.reliable_advancements.storeAdvancementEditsGlobally.tooltip"))
+                .setSaveConsumer(newValue -> config.storeAdvancementEditsGlobally = newValue)
+                .build());
+
+        editing.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.reliable_advancements.storeAdvancementEditsAsDatapack"), config.storeAdvancementEditsAsDatapack)
+                .setDefaultValue(defaults.storeAdvancementEditsAsDatapack)
+                .setTooltip(Component.translatable("config.reliable_advancements.storeAdvancementEditsAsDatapack.tooltip"))
+                .setSaveConsumer(newValue -> config.storeAdvancementEditsAsDatapack = newValue)
+                .build());
+
         ConfigCategory visuals = builder.getOrCreateCategory(Component.translatable("config.reliable_advancements.category.visuals"));
 
         visuals.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.reliable_advancements.blurBackground"), config.blurBackground)

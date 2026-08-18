@@ -3,62 +3,74 @@ title: Saving Globally
 hide_meta: true
 ---
 
-By default, advancement edits made with Reliable Advancements are stored inside your world's `datapacks` folder. This means they only apply to **that specific world**. If you want edits to apply to every world, like for a modpack, you can easily export the edits into a format that a global datapack loader can pick up.
+Advancement edits can apply to every world automatically. By default (on singleplayer), edits are written to the mod's config folder so they survive world creation and can be included in a modpack zip.
 
 ## Where Edits Live
 
-When you save an advancement through the editor, Reliable Advancements writes it to:
+Reliable Advancements has three storage tiers, checked in priority order. The first location that contains a file for a given advancement wins.
+
+### 1. World save (highest priority)
+
+Edits made in-world always take priority over global defaults. If **Store Edits Globally** is on (the default), world-specific overrides live at:
+
+```
+<world>/reliable_advancements/edits/data/<namespace>/advancement/<path>.json
+```
+
+### 2. Global config folder (default on singleplayer/LAN)
+
+With **Store Edits Globally** enabled (on by default), edits made in-game are written to:
+
+```
+config/reliable_advancements_edits/data/<namespace>/advancement/<path>.json
+```
+
+This folder applies to every world and can simply be bundled in your modpack. On dedicated servers this setting is ignored and edits go to the world save instead.
+
+### 3. Dedicated server: world datapack (optional)
+
+On dedicated servers, if you enable **Store Edits as a Datapack** in the config, edits are written to the world's `datapacks/` folder as a standard Minecraft datapack:
 
 ```
 <world>/datapacks/reliable_advancements_edits/data/<namespace>/advancement/<path>.json
 ```
 
-For example, an edit to `minecraft:story/obtain_armor` would be at:
+This makes edits portable and visible in `/datapack list`. The folder also gets a `pack.mcmeta` automatically, so you can copy it anywhere a datapack loader can read it.
+
+## Distributing Edits in a Modpack
+
+Just include `config/reliable_advancements_edits/` alongside your other config files. The structure should look like:
 
 ```
-<world>/datapacks/reliable_advancements_edits/data/minecraft/advancement/story/obtain_armor.json
+config/
+  reliable_advancements_edits/
+    data/
+      minecraft/
+        advancement/
+          story/
+            obtain_armor.json
 ```
 
-The folder also contains a `pack.mcmeta`:
+These edits apply automatically to every world.
 
-```json
-{
-  "pack": {
-    "pack_format": 48,
-    "description": "In-game edits from Reliable Advancements"
-  }
-}
-```
-
-This is a fully valid Minecraft datapack. You can copy it anywhere a datapack loader can read it.
-
-## Using Open Loader
+## Using Open Loader/Paxi
 
 [Open Loader](https://modrinth.com/mod/open-loader) loads data from `config/openloader/packs/` as a global datapack applied to every world.
 
-1. Copy the contents of `reliable_advancements_edits/` (the `data/` folder and `pack.mcmeta`) into:
-   ```
-   config/openloader/packs/reliable_advancements_edits/
-   ```
-2. The structure should look like:
-   ```
-   config/openloader/packs/reliable_advancements_edits/
-     pack.mcmeta
-     data/
-       minecraft/
-         advancement/
-           story/
-             obtain_armor.json
-   ```
-3. Restart your game (or run `/reload`). The advancements will now load for every world.
+This is mainly useful if you're making advancement edits on dedicated servers, and want to apply your edits across worlds.
 
-Any time you make new edits in-game, copy the updated files from the world datapack to the Open Loader folder and reload.
+1. Enable **Store Edits as a Datapack** in the config so edits get a `pack.mcmeta`.
+2. Copy `<world>/datapacks/reliable_advancements_edits/` into:
+   ```
+   config/openloader/packs/reliable_advancements_edits/
+   ```
+3. Restart or run `/reload`. Edits will now load for every world.
 
 ## Tab Visual Properties
 
 Tab customization (custom backgrounds, tab names, etc.) is split between two places:
 
-- **Server-side** — Tab properties are stored in the `better_tab` field inside the root advancement's JSON file in `reliable_advancements_edits/`. This is included when you export the datapack.
+- **Server-side** — Tab properties are stored in the `better_tab` field inside the root advancement's JSON file, wherever your edits are currently stored. This is included if you export the datapack.
 - **Client-side** — Tab properties are also cached locally in `config/reliable_advancements_layout.json`. This is what your own client reads for display.
 
 When another player connects to a server that has `better_tab` data in the advancement files, the data is available from the server but the player's local layout cache starts empty. The visual properties (custom backgrounds, etc.) will appear in the **Tab Editor** when they open it, and saving from the editor once will populate their local cache.

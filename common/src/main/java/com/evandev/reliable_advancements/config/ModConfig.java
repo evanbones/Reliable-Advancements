@@ -45,6 +45,8 @@ public class ModConfig {
     public boolean enableEditMode = false;
     public boolean showTooltipsInEditMode = false;
     public boolean showEditModeButton = true;
+    public boolean storeAdvancementEditsGlobally = true;
+    public boolean storeAdvancementEditsAsDatapack = false;
 
     // --- Visuals ---
     public boolean drawArrows = false;

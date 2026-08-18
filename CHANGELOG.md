@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] - 2026-08-18
+
+### Changed
+
+- By default, advancement edits are now saved **globally** for modpack purposes.
+- Advancement edits now use a priority system for edits:
+    - First priority is world-specific edits.
+    - Second is the legacy pre-5.x.x datapacks.
+    - Finally is the global advancement edits in `config/reliable_advancements_edits`
+- Changed mod logo.
+
+### Fixed
+
+- Fixed issues removing Blueprint-based remolded advancements.
+
 ## [4.2.0] - 2026-08-18
 
 ### Fixed

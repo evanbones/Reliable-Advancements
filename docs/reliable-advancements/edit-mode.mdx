@@ -88,12 +88,14 @@ While in edit mode:
 
 ## How Edits Are Saved
 
-Clicking **Save** sends the edit to the server. The server requires permission level 2. Edits are written to:
+Clicking **Save** sends the edit to the server. Requires having OP permissions on the server.
+
+On **singleplayer and LAN**, edits are written by default to the mod's global config folder:
 
 ```
-<world>/datapacks/reliable_advancements_edits/data/<namespace>/advancement/<path>.json
+config/reliable_advancements_edits/data/<namespace>/advancement/<path>.json
 ```
 
-The advancement tree is updated immediately for all connected players, no reload or restart needed.
+This means edits persist across worlds and can be bundled in modpacks. On **dedicated servers**, edits go to the world save folder instead.
 
-To use these edits in other worlds or distribute them, see [Saving Globally](saving-globally).
+To learn more about storage options and how to distribute edits, see [Saving Globally](saving-globally).
