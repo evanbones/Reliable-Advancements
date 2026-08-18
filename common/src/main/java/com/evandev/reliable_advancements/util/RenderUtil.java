@@ -66,6 +66,15 @@ public class RenderUtil {
     }
 
     public static void line(GuiGraphics guiGraphics, int x0, int y0, int x1, int y1, int thickness, int color) {
+        if (x0 == x1 || y0 == y1) {
+            int minX = Math.min(x0, x1) - thickness;
+            int minY = Math.min(y0, y1) - thickness;
+            int maxX = Math.max(x0, x1) + 1 + thickness;
+            int maxY = Math.max(y0, y1) + 1 + thickness;
+            guiGraphics.fill(RenderType.gui(), minX, minY, maxX, maxY, color);
+            return;
+        }
+
         float dx = x1 - x0;
         float dy = y1 - y0;
         float length = (float) Math.sqrt(dx * dx + dy * dy);
@@ -74,8 +83,7 @@ public class RenderUtil {
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(x0, y0, 0);
         guiGraphics.pose().mulPose(new Quaternionf().rotateZ(angle));
-        guiGraphics.fill(RenderType.gui(), -thickness, -thickness, (int) Math.ceil(length) + thickness, 1 + thickness, color);
-
+        guiGraphics.fill(RenderType.gui(), -thickness, -thickness, (int) Math.ceil(length) + 1 + thickness, 1 + thickness, color);
         guiGraphics.pose().popPose();
     }
 
@@ -105,25 +113,16 @@ public class RenderUtil {
             boolean childIsAbove = (y < anchorY);
             y = moveTowards(y, anchorY, edgeDistanceY);
             x -= ARROW_SIZE / 2;
-
             u = childIsAbove ? 9 : 0;
             v = 0;
             y -= ARROW_SIZE / 2;
-            if (!childIsAbove) {
-                x -= 1;
-            }
-
         } else {
             boolean childIsLeft = (x < anchorX);
             x = moveTowards(x, anchorX, edgeDistanceX);
             y -= ARROW_SIZE / 2;
-
             u = childIsLeft ? 0 : 9;
             v = 9;
             x -= ARROW_SIZE / 2;
-            if (childIsLeft) {
-                y -= 1;
-            }
         }
 
         RenderSystem.enableBlend();
