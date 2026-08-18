@@ -55,6 +55,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     private static ClientAdvancements lastAdvancementsManager = null;
     private static int tabPage, maxPages;
     private static ResourceLocation savedSelectedTab = null;
+    private static float savedZoom = 1.0F;
     private final ClientAdvancements clientAdvancements;
     private final Screen parent;
     private final Map<AdvancementHolder, EnhancedAdvancementTab> tabs = Maps.newLinkedHashMap();
@@ -64,7 +65,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     protected int internalHeight;
     private boolean isInitializing = false;
     private boolean isDirty = false;
-    private float zoom = 1.0F;
+    private float zoom = savedZoom;
     private boolean isScrolling;
     private EnhancedAdvancementWidget advConnectedToMouse = null;
     private AdvancementContextMenu contextMenu = null;
@@ -210,24 +211,36 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         this.minecraft.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
                 (confirmed) -> {
                     if (confirmed) {
-                        String dummyJson = "{\"criteria\":{\"impossible\":{\"trigger\":\"minecraft:impossible\"}}}";
-                        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), dummyJson, false);
+                        List<EnhancedAdvancementWidget> toDelete = new ArrayList<>();
+                        collectAllDescendants(widget, toDelete);
 
-                        if (Services.PLATFORM.canSendAdvancementEdit()) {
-                            Services.PLATFORM.sendAdvancementEdit(payload);
+                        String dummyJson = "{\"criteria\":{\"impossible\":{\"trigger\":\"minecraft:impossible\"}}}";
+
+                        for (EnhancedAdvancementWidget w : toDelete) {
+                            EditAdvancementPayload payload = new EditAdvancementPayload(w.getAdvancement().holder().id(), dummyJson, false);
+                            if (Services.PLATFORM.canSendAdvancementEdit()) {
+                                Services.PLATFORM.sendAdvancementEdit(payload);
+                            }
+                            PersistentData.removePosition(w.getAdvancement().holder().id());
+                            if (this.selectedTab != null && w.getAdvancement().holder().id().equals(this.selectedTab.getRootNode().holder().id())) {
+                                PersistentData.removeTabProperties(this.selectedTab.getRootNode().holder().id());
+                            }
+                            removeWidgetFromClient(w);
                         }
-                        PersistentData.removePosition(widget.getAdvancement().holder().id());
-                        if (this.selectedTab != null && widget.getAdvancement().holder().id().equals(this.selectedTab.getRootNode().holder().id())) {
-                            PersistentData.removeTabProperties(this.selectedTab.getRootNode().holder().id());
-                        }
-                        removeWidgetFromClient(widget);
                     }
                     this.minecraft.setScreen(this);
                 },
                 Component.literal("Delete Advancement?"),
-                Component.literal("Are you sure you want to delete this advancement from the game? This cannot be undone.")
+                Component.literal("Are you sure you want to delete this advancement AND all of its descendants from the game? This cannot be undone.")
         ));
         this.contextMenu = null;
+    }
+
+    private void collectAllDescendants(EnhancedAdvancementWidget widget, List<EnhancedAdvancementWidget> list) {
+        for (EnhancedAdvancementWidget child : widget.getChildren()) {
+            collectAllDescendants(child, list);
+        }
+        list.add(widget);
     }
 
     public void resetAdvancement(EnhancedAdvancementWidget widget) {
@@ -579,17 +592,15 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (this.contextMenu != null) this.contextMenu = null;
-
         if (this.selectedTab != null) {
             if (Screen.hasControlDown()) {
                 int left = SIDE + (width - internalWidth) / 2;
                 int top = TOP + (height - internalHeight) / 2;
-
                 double relMouseX = mouseX - (left + PADDING);
                 double relMouseY = mouseY - (top + 2 * PADDING);
-
                 float oldZoom = this.zoom;
                 this.zoom = Mth.clamp(this.zoom + (float) scrollY * ZOOM_STEP, MIN_ZOOM, MAX_ZOOM);
+                savedZoom = this.zoom;
 
                 if (this.zoom != oldZoom) {
                     double shiftX = (relMouseX / this.zoom) - (relMouseX / oldZoom);
@@ -693,6 +704,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
         if (this.selectedTab != null) {
             savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+            this.selectedTab.storeScroll();
         }
         super.removed();
     }
@@ -704,6 +716,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         if (clientpacketlistener != null) {
             clientpacketlistener.send(ServerboundSeenAdvancementsPacket.closedScreen());
         }
+        clientHasFullTree = false;
         this.minecraft.setScreen(this.parent);
     }
 
