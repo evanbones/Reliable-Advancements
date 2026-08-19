@@ -62,7 +62,11 @@ public final class ConnectionRouter {
     }
 
     private static int bend(int delta) {
-        return Integer.signum(delta) * Math.min(Math.abs(delta) / 2, MAX_BEND_DISTANCE);
+        if (delta >= 0) {
+            return Math.min(delta / 2, MAX_BEND_DISTANCE);
+        } else {
+            return -Math.min((-delta + 1) / 2, MAX_BEND_DISTANCE);
+        }
     }
 
     private static Side compareSide(int value, int against, Side ifGreater, Side ifLess) {
