@@ -124,6 +124,10 @@ public class ServerAdvancementEditor {
         }
 
         applyAdvancements(server, List.of(newHolder));
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            p.getAdvancements().reload(server.getAdvancements());
+            p.getAdvancements().flushDirty(p);
+        }
         sendFullTreeToAll(server);
     }
 
@@ -170,6 +174,13 @@ public class ServerAdvancementEditor {
         if (!edits.isEmpty()) {
             applyAdvancements(server, edits.values());
         }
+
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            player.getAdvancements().reload(server.getAdvancements());
+            player.getAdvancements().flushDirty(player);
+            RewardTrackerData.get(server).syncToPlayer(player);
+        }
+        sendFullTreeToAll(server);
     }
 
     private static void collectEdits(RegistryOps<JsonElement> ops, String namespace, Path advDir, Map<ResourceLocation, AdvancementHolder> out) {
@@ -226,14 +237,14 @@ public class ServerAdvancementEditor {
     }
 
     private static List<Path> editsRoots(MinecraftServer server) {
-        Path configured = configuredEditsRoot(server);
+        Path worldEdits = server.getWorldPath(LevelResource.ROOT).resolve(Constants.MOD_ID).resolve("edits");
         Path legacyDatapack = server.getWorldPath(LevelResource.DATAPACK_DIR).resolve(EDITS_DIR_NAME);
         Path globalConfig = globalConfigEditsRoot();
 
         List<Path> roots = new ArrayList<>();
-        roots.add(configured);
-        if (!legacyDatapack.equals(configured)) roots.add(legacyDatapack);
-        if (!globalConfig.equals(configured) && !globalConfig.equals(legacyDatapack)) roots.add(globalConfig);
+        roots.add(worldEdits);
+        if (!legacyDatapack.equals(worldEdits)) roots.add(legacyDatapack);
+        if (!globalConfig.equals(worldEdits) && !globalConfig.equals(legacyDatapack)) roots.add(globalConfig);
         return roots;
     }
 

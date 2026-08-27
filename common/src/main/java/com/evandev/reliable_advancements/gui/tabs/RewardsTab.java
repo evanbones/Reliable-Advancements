@@ -1,6 +1,8 @@
 package com.evandev.reliable_advancements.gui.tabs;
 
 import com.evandev.reliable_advancements.gui.model.AdvancementDraft;
+import com.evandev.reliable_advancements.gui.widgets.EditorForm;
+import com.evandev.reliable_advancements.gui.widgets.ModernButton;
 import com.evandev.reliable_advancements.gui.widgets.SuggestingEditBox;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -10,25 +12,87 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 public class RewardsTab implements IEditorTab {
     private final Font font;
-    private final List<GuiEventListener> widgets = new ArrayList<>();
+    private final EditorForm form;
     private final List<String> lootList = new ArrayList<>();
     private final List<String> recipeList = new ArrayList<>();
+    private final List<SuggestingEditBox> lootBoxes = new ArrayList<>();
+    private final List<SuggestingEditBox> recipeBoxes = new ArrayList<>();
+
     private EditBox expBox;
     private SuggestingEditBox functionBox;
     private String exp = "", function = "";
-    private int startX, expY, funcY, lootLabelY, recipeLabelY;
 
     public RewardsTab(Font font) {
         this.font = font;
+        this.form = new EditorForm(font);
+    }
+
+    public static List<String> getLootTableSuggestions() {
+        Set<String> results = new TreeSet<>();
+        try {
+            Minecraft mc = Minecraft.getInstance();
+
+            if (mc.getSingleplayerServer() != null) {
+                for (ResourceLocation loc : mc.getSingleplayerServer().reloadableRegistries().getKeys(Registries.LOOT_TABLE)) {
+                    results.add(loc.toString());
+                }
+            }
+
+            if (mc.level != null) {
+                var lookup = mc.level.registryAccess().lookup(Registries.LOOT_TABLE);
+                lookup.ifPresent(l -> l.listElementIds().map(k -> k.location().toString()).forEach(results::add));
+            }
+            if (mc.getConnection() != null) {
+                var reg = mc.getConnection().registryAccess().registry(Registries.LOOT_TABLE);
+                reg.ifPresent(r -> r.keySet().stream().map(ResourceLocation::toString).forEach(results::add));
+            }
+
+            BuiltInLootTables.all().forEach(key -> {
+                if (key != BuiltInLootTables.EMPTY) {
+                    results.add(key.location().toString());
+                }
+            });
+
+            for (ResourceLocation blockId : BuiltInRegistries.BLOCK.keySet()) {
+                results.add(ResourceLocation.fromNamespaceAndPath(blockId.getNamespace(), "blocks/" + blockId.getPath()).toString());
+            }
+
+            for (ResourceLocation entityId : BuiltInRegistries.ENTITY_TYPE.keySet()) {
+                results.add(ResourceLocation.fromNamespaceAndPath(entityId.getNamespace(), "entities/" + entityId.getPath()).toString());
+            }
+        } catch (Exception ignored) {
+        }
+        return new ArrayList<>(results);
+    }
+
+    public static List<String> getFunctionSuggestions() {
+        Set<String> results = new TreeSet<>();
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.getSingleplayerServer() != null) {
+                for (ResourceLocation loc : mc.getSingleplayerServer().getFunctions().getFunctionNames()) {
+                    results.add(loc.toString());
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return new ArrayList<>(results);
     }
 
     @Override
@@ -56,85 +120,105 @@ public class RewardsTab implements IEditorTab {
 
     @Override
     public void init(int x, int y, int width, int height, Runnable reinitScreen) {
-        this.widgets.clear();
-        this.startX = x;
-        int currentY = y;
+        form.clear();
+        lootBoxes.clear();
+        recipeBoxes.clear();
 
-        this.expY = currentY - 11;
-        expBox = new EditBox(font, x, currentY, width, 20, Component.literal("Experience"));
-        expBox.setValue(exp);
-        expBox.setResponder(s -> exp = s);
-        widgets.add(expBox);
+        form.addSection("Experience & Function");
+        expBox = form.addTextField("Experience Points", "Amount of experience granted upon completion", exp, s -> exp = s);
+        functionBox = form.addSuggestingField("Function", "Mcfunction to run upon completion, e.g. namespace:my_function", function, RewardsTab::getFunctionSuggestions, s -> function = s);
 
-        currentY += 45;
-
-        this.funcY = currentY - 11;
-        functionBox = new SuggestingEditBox(font, x, currentY, width, 20, Component.literal("Function"), List::of);
-        functionBox.setValue(function);
-        functionBox.setResponder(s -> function = s);
-        widgets.add(functionBox);
-
-        currentY += 45;
-
-        this.lootLabelY = currentY - 11;
-        widgets.add(Button.builder(Component.literal("+ Add Loot Table"), b -> {
+        form.addSection("Loot Tables");
+        ModernButton addLootBtn = ModernButton.modernBuilder(Component.literal("+ Add Loot Table"), b -> {
+            syncDynamicLists();
             lootList.add("");
             reinitScreen.run();
-        }).pos(x, currentY).size(120, 20).build());
-
-        currentY += 25;
+        }).style(ModernButton.Style.SECONDARY).pos(0, 0).size(130, 20).build();
+        form.addCustomWidget("", addLootBtn, 24);
 
         for (int i = 0; i < lootList.size(); i++) {
             final int index = i;
-            SuggestingEditBox box = new SuggestingEditBox(font, x, currentY, width - 25, 20, Component.literal("Loot"), List::of);
+            SuggestingEditBox box = new SuggestingEditBox(font, 0, 0, 100, 20, Component.literal("Loot Table"), RewardsTab::getLootTableSuggestions);
+            box.setMaxLength(512);
             box.setValue(lootList.get(i));
-            box.setResponder(s -> lootList.set(index, s));
+            box.setTooltip(Tooltip.create(Component.literal("Loot table ID, e.g. minecraft:chests/simple_dungeon")));
+            box.setResponder(s -> {
+                if (index < lootList.size()) lootList.set(index, s);
+            });
+            lootBoxes.add(box);
 
-            Button removeBtn = Button.builder(Component.literal("X"), b -> {
-                lootList.remove(index);
-                reinitScreen.run();
-            }).pos(x + width - 20, currentY).size(20, 20).build();
+            ModernButton removeBtn = ModernButton.modernBuilder(Component.literal("x"), b -> {
+                        syncDynamicLists();
+                        lootList.remove(index);
+                        reinitScreen.run();
+                    }).style(ModernButton.Style.DANGER).pos(0, 0).size(20, 20)
+                    .tooltip(Tooltip.create(Component.literal("Remove Loot Table")))
+                    .build();
 
-            widgets.add(box);
-            widgets.add(removeBtn);
-            currentY += 25;
+            form.addCustomRow(new DynamicEntryRow(box, removeBtn), List.of(box, removeBtn));
         }
 
-        currentY += 20;
-
-        this.recipeLabelY = currentY - 11;
-        widgets.add(Button.builder(Component.literal("+ Add Recipe"), b -> {
-            recipeList.add("");
-            reinitScreen.run();
-        }).pos(x, currentY).size(120, 20).build());
-
-        currentY += 25;
+        form.addSection("Recipes");
+        ModernButton addRecipeBtn = ModernButton.modernBuilder(Component.literal("+ Add Recipe"), b -> {
+                    syncDynamicLists();
+                    recipeList.add("");
+                    reinitScreen.run();
+                }).style(ModernButton.Style.SECONDARY).pos(0, 0).size(130, 20)
+                .tooltip(Tooltip.create(Component.literal("Add recipe unlock reward")))
+                .build();
+        form.addCustomWidget("", addRecipeBtn, 24);
 
         for (int i = 0; i < recipeList.size(); i++) {
             final int index = i;
-            SuggestingEditBox box = new SuggestingEditBox(font, x, currentY, width - 25, 20, Component.literal("Recipe"), () -> {
+            SuggestingEditBox box = new SuggestingEditBox(font, 0, 0, 100, 20, Component.literal("Recipe"), () -> {
                 if (Minecraft.getInstance().level != null) {
                     return Minecraft.getInstance().level.getRecipeManager().getRecipes()
-                            .stream().map(r -> r.id().toString()).collect(Collectors.toList());
+                            .stream().map(r -> r.id().toString()).sorted().collect(Collectors.toList());
                 }
                 return List.of();
             });
+            box.setMaxLength(512);
             box.setValue(recipeList.get(i));
-            box.setResponder(s -> recipeList.set(index, s));
+            box.setTooltip(Tooltip.create(Component.literal("Recipe ID to unlock")));
+            box.setResponder(s -> {
+                if (index < recipeList.size()) recipeList.set(index, s);
+            });
+            recipeBoxes.add(box);
 
-            Button removeBtn = Button.builder(Component.literal("X"), b -> {
-                recipeList.remove(index);
-                reinitScreen.run();
-            }).pos(x + width - 20, currentY).size(20, 20).build();
+            ModernButton removeBtn = ModernButton.modernBuilder(Component.literal("x"), b -> {
+                        syncDynamicLists();
+                        recipeList.remove(index);
+                        reinitScreen.run();
+                    }).style(ModernButton.Style.DANGER).pos(0, 0).size(20, 20)
+                    .tooltip(Tooltip.create(Component.literal("Remove Recipe")))
+                    .build();
 
-            widgets.add(box);
-            widgets.add(removeBtn);
-            currentY += 25;
+            form.addCustomRow(new DynamicEntryRow(box, removeBtn), List.of(box, removeBtn));
+        }
+
+        form.init(x, y, width, height);
+    }
+
+    private void syncDynamicLists() {
+        for (int i = 0; i < lootBoxes.size(); i++) {
+            if (i < lootList.size()) lootList.set(i, lootBoxes.get(i).getValue());
+        }
+        for (int i = 0; i < recipeBoxes.size(); i++) {
+            if (i < recipeList.size()) recipeList.set(i, recipeBoxes.get(i).getValue());
         }
     }
 
     @Override
+    public void syncFromWidgets() {
+        if (expBox != null) this.exp = expBox.getValue();
+        if (functionBox != null) this.function = functionBox.getValue();
+        syncDynamicLists();
+    }
+
+    @Override
     public void saveState(AdvancementDraft draft) {
+        syncFromWidgets();
+
         JsonObject rewards = new JsonObject();
         boolean hasRewards = false;
 
@@ -178,14 +262,57 @@ public class RewardsTab implements IEditorTab {
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
-        gfx.drawString(font, "Experience (Number)", startX, expY, 0xFFA08060, false);
-        gfx.drawString(font, "Function", startX, funcY, 0xFFA08060, false);
-        gfx.drawString(font, "Loot Tables", startX, lootLabelY, 0xFFA08060, false);
-        gfx.drawString(font, "Recipes", startX, recipeLabelY, 0xFFA08060, false);
+        form.render(gfx, mouseX, mouseY, partialTicks);
     }
 
     @Override
     public List<GuiEventListener> getWidgets() {
-        return widgets;
+        return form.getWidgets();
+    }
+
+    @Override
+    public EditorForm getForm() {
+        return form;
+    }
+
+    private static class DynamicEntryRow implements EditorForm.FormRow {
+        private final SuggestingEditBox box;
+        private final Button removeBtn;
+        private int y;
+
+        DynamicEntryRow(SuggestingEditBox box, Button removeBtn) {
+            this.box = box;
+            this.removeBtn = removeBtn;
+        }
+
+        @Override
+        public void layout(int x, int y, int width, Font font) {
+            this.y = y;
+            this.box.setX(x);
+            this.box.setY(y);
+            this.box.setWidth(width - 24);
+            this.box.setHeight(20);
+
+            this.removeBtn.setX(x + width - 20);
+            this.removeBtn.setY(y);
+            this.removeBtn.setWidth(20);
+            this.removeBtn.setHeight(20);
+        }
+
+        @Override
+        public void render(GuiGraphics gfx, Font font, int mouseX, int mouseY, float partialTicks) {
+            this.box.render(gfx, mouseX, mouseY, partialTicks);
+            this.removeBtn.render(gfx, mouseX, mouseY, partialTicks);
+        }
+
+        @Override
+        public int getHeight() {
+            return 22;
+        }
+
+        @Override
+        public int getY() {
+            return y;
+        }
     }
 }

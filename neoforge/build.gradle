@@ -47,6 +47,10 @@ dependencies {
 
     // Cloth Config
     implementation "me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}"
+
+    // CodecUI
+    implementation "net.mehvahdjukaar:codecui-neoforge:${codecui_version}"
+    jarJar "net.mehvahdjukaar:codecui-neoforge:${codecui_version}"
 }
 
 publishMods {

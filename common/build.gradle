@@ -19,6 +19,7 @@ neoForge {
 
 dependencies {
     compileOnly "me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}"
+    compileOnly "net.mehvahdjukaar:codecui-common:${codecui_version}"
 
     compileOnly group: 'org.spongepowered', name: 'mixin', version: '0.8.5'
     compileOnly group: 'org.ow2.asm', name: 'asm-tree', version: '9.6'

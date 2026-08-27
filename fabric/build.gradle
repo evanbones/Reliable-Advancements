@@ -17,6 +17,10 @@ dependencies {
     modImplementation "me.shedaniel.cloth:cloth-config-fabric:${cloth_config_version}"
     modImplementation "com.terraformersmc:modmenu:${mod_menu_version}"
 
+    // CodecUI
+    modImplementation "net.mehvahdjukaar:codecui-fabric:${codecui_version}"
+    include "net.mehvahdjukaar:codecui-fabric:${codecui_version}"
+
     modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
 }

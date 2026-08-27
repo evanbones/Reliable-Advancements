@@ -1,3 +1,3 @@
 ### Fixed
 
-- Minor fixes to advancement lines.
+- Fixed server-side changes requiring a full reload.

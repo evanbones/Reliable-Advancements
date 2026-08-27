@@ -1,6 +1,8 @@
 package com.evandev.reliable_advancements.network;
 
 import com.evandev.reliable_advancements.client.ClientRewardTracker;
+import com.evandev.reliable_advancements.gui.EnhancedAdvancementTab;
+import com.evandev.reliable_advancements.gui.EnhancedAdvancementWidget;
 import com.evandev.reliable_advancements.gui.screens.AdvancementEditorScreen;
 import com.evandev.reliable_advancements.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.reliable_advancements.gui.screens.TabEditorScreen;
@@ -25,13 +27,31 @@ public class ClientNetworkHandler {
                 }
                 return;
             }
+            EnhancedAdvancementWidget targetWidget = null;
             if (mainScreen.selectedTab != null) {
-                mainScreen.selectedTab.getWidgets().values().stream()
-                        .filter(w -> w.getAdvancement().holder().id().equals(payload.advancementId()))
-                        .findFirst().ifPresent(widget -> mc.setScreen(new AdvancementEditorScreen(
-                                mainScreen, payload.advancementId(), false, widget.getX(), widget.getY(), payload.initialTab(), payload.jsonPayload()
-                        )));
+                for (EnhancedAdvancementWidget w : mainScreen.selectedTab.getWidgets().values()) {
+                    if (w.getAdvancement().holder().id().equals(payload.advancementId())) {
+                        targetWidget = w;
+                        break;
+                    }
+                }
             }
+            if (targetWidget == null) {
+                for (EnhancedAdvancementTab tab : mainScreen.getTabs().values()) {
+                    for (EnhancedAdvancementWidget w : tab.getWidgets().values()) {
+                        if (w.getAdvancement().holder().id().equals(payload.advancementId())) {
+                            targetWidget = w;
+                            break;
+                        }
+                    }
+                    if (targetWidget != null) break;
+                }
+            }
+            int x = targetWidget != null ? targetWidget.getX() : 0;
+            int y = targetWidget != null ? targetWidget.getY() : 0;
+            mc.setScreen(new AdvancementEditorScreen(
+                    mainScreen, payload.advancementId(), false, x, y, payload.initialTab(), payload.jsonPayload()
+            ));
         }
     }
 

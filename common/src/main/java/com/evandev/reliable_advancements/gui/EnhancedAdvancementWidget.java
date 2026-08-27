@@ -25,6 +25,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentUtils;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.Style;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 
@@ -33,6 +34,7 @@ import java.util.List;
 
 public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     public static final int ADVANCEMENT_SIZE = 26;
+    private static final ResourceLocation TITLE_BOX_SPRITE = ResourceLocation.withDefaultNamespace("advancements/title_box");
     private static final int CORNER_SIZE = 10;
     private static final int WIDGET_WIDTH = 256;
     private static final int WIDGET_HEIGHT = 26;
@@ -398,28 +400,17 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
 
         if (!this.description.isEmpty()) {
             if (drawTop) {
-                this.render9Sprite(guiGraphics, drawX, drawY + ADVANCEMENT_SIZE - boxHeight, this.width, boxHeight, CORNER_SIZE, WIDGET_WIDTH, WIDGET_HEIGHT, 0, 52);
+                guiGraphics.blitSprite(TITLE_BOX_SPRITE, drawX, drawY + ADVANCEMENT_SIZE - boxHeight, this.width, boxHeight);
             } else {
-                this.render9Sprite(guiGraphics, drawX, drawY, this.width, boxHeight, CORNER_SIZE, WIDGET_WIDTH, WIDGET_HEIGHT, 0, 52);
+                guiGraphics.blitSprite(TITLE_BOX_SPRITE, drawX, drawY, this.width, boxHeight);
             }
         }
 
-        // Title left side
         RenderUtil.setColor(enhancedDisplayInfo.getTitleColor(stateTitleLeft));
-        int left_side = Math.min(j, WIDGET_WIDTH - 16);
-        guiGraphics.blit(Resources.Gui.WIDGETS, drawX, drawY, 0, enhancedDisplayInfo.getTitleYMultiplier(stateTitleLeft) * WIDGET_HEIGHT, left_side, WIDGET_HEIGHT);
-        if (left_side < j) {
-            guiGraphics.blit(Resources.Gui.WIDGETS, drawX + left_side, drawY, 16, enhancedDisplayInfo.getTitleYMultiplier(stateTitleLeft) * WIDGET_HEIGHT, j - left_side, WIDGET_HEIGHT);
-        }
-        // Title right side
+        guiGraphics.blitSprite(stateTitleLeft.boxSprite(), 200, 26, 0, 0, drawX, drawY, j, WIDGET_HEIGHT);
         RenderUtil.setColor(enhancedDisplayInfo.getTitleColor(stateTitleRight));
-        int right_side = Math.min(k, WIDGET_WIDTH - 16);
-        guiGraphics.blit(Resources.Gui.WIDGETS, drawX + j, drawY, WIDGET_WIDTH - right_side, enhancedDisplayInfo.getTitleYMultiplier(stateTitleRight) * WIDGET_HEIGHT, right_side, WIDGET_HEIGHT);
-        if (right_side < k) {
-            // + and - 2 is to create some overlap in the drawing when it extends past the max length of the texture
-            guiGraphics.blit(Resources.Gui.WIDGETS, drawX + j + right_side - 2, drawY, WIDGET_WIDTH - k + right_side - 2, enhancedDisplayInfo.getTitleYMultiplier(stateTitleRight) * WIDGET_HEIGHT, k - right_side + 2, WIDGET_HEIGHT);
-        }
-        // Advancement icon
+        guiGraphics.blitSprite(stateTitleRight.boxSprite(), 200, 26, 200 - k, 0, drawX + j, drawY, k, WIDGET_HEIGHT);
+
         RenderUtil.setColor(enhancedDisplayInfo.getIconColor(stateIcon));
         guiGraphics.blitSprite(stateIcon.frameSprite(this.displayInfo.getType()), scrollX + this.x + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE);
         RenderUtil.setColor(enhancedDisplayInfo.defaultIconColor());

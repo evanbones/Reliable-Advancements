@@ -2,6 +2,9 @@ package com.evandev.reliable_advancements.gui.screens;
 
 import com.evandev.reliable_advancements.gui.EnhancedAdvancementTab;
 import com.evandev.reliable_advancements.gui.model.AdvancementDraft;
+import com.evandev.reliable_advancements.gui.theme.EditorTheme;
+import com.evandev.reliable_advancements.gui.widgets.EditorForm;
+import com.evandev.reliable_advancements.gui.widgets.ModernButton;
 import com.evandev.reliable_advancements.gui.widgets.SuggestingEditBox;
 import com.evandev.reliable_advancements.network.EditAdvancementPayload;
 import com.evandev.reliable_advancements.platform.Services;
@@ -9,10 +12,10 @@ import com.evandev.reliable_advancements.util.PersistentData;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultiLineEditBox;
-import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -22,66 +25,63 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class TabEditorScreen extends Screen {
-    private static final int COL_GOLD = 0xFFC8AA64;
-    private static final int COL_BG_OVERLAY = 0xBB101010;
+    private static final int HEADER_HEIGHT = 36;
 
     private final EnhancedAdvancementsScreen parentScreen;
     private final EnhancedAdvancementTab tab;
     private final AdvancementDraft draft;
+    private final EditorForm form;
 
     private EditBox nameBox;
     private SuggestingEditBox bgBox;
     private EditBox bgWidthBox;
     private EditBox bgHeightBox;
-    private Button staticBgBtn;
     private EditBox widthBox;
     private EditBox heightBox;
     private EditBox indexBox;
     private MultiLineEditBox rulesBox;
 
-    private Button saveBtn;
-    private Button cancelBtn;
-
     private boolean isStaticBg;
-
     private int uiX, uiY, uiW, uiH;
-    private int scrollOffset = 0;
-    private int maxScroll = 0;
-    private boolean isDraggingScrollbar = false;
+    private ModernButton saveBtn;
+    private ModernButton cancelBtn;
 
     public TabEditorScreen(EnhancedAdvancementsScreen parentScreen, EnhancedAdvancementTab tab, String rawJsonFromServer) {
         super(Component.literal("Edit Tab: " + tab.getRootNode().holder().id()));
         this.parentScreen = parentScreen;
         this.tab = tab;
         this.draft = new AdvancementDraft(rawJsonFromServer, tab.getRootNode().holder().id().toString(), false);
+        this.form = new EditorForm(this.font);
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        this.scrollOffset -= (int) (scrollY * 20);
-        this.scrollOffset = Math.max(0, Math.min(this.scrollOffset, this.maxScroll));
-        this.saveCurrentState();
-        this.init();
-        return true;
+        if (form.mouseScrolled(mouseX, mouseY, scrollY)) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
-    private void updateScrollFromMouse(double my) {
-        int scrollY = uiY + 32;
-        int scrollH = uiH - 72;
-        int thumbH = Math.max(20, scrollH * scrollH / (scrollH + maxScroll));
-        int trackH = scrollH - thumbH;
-
-        double pct = (my - scrollY - thumbH / 2.0) / trackH;
-        pct = Math.max(0, Math.min(pct, 1));
-        this.scrollOffset = (int) (pct * this.maxScroll);
-        this.saveCurrentState();
-        this.init();
+    @Override
+    public boolean mouseClicked(double mx, double my, int button) {
+        if (button == 0) {
+            for (GuiEventListener child : form.getWidgets()) {
+                if (child instanceof SuggestingEditBox seb && seb.hasSuggestions()) {
+                    if (seb.tryClickSuggestion(mx, my)) {
+                        return true;
+                    }
+                }
+            }
+            if (form.mouseClicked(mx, my, button)) {
+                return true;
+            }
+        }
+        return super.mouseClicked(mx, my, button);
     }
 
     @Override
     public boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) {
-        if (this.isDraggingScrollbar) {
-            updateScrollFromMouse(my);
+        if (form.mouseDragged(mx, my, button, dragX, dragY)) {
             return true;
         }
         return super.mouseDragged(mx, my, button, dragX, dragY);
@@ -89,49 +89,20 @@ public class TabEditorScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
-        this.isDraggingScrollbar = false;
-        return super.mouseReleased(mx, my, button);
-    }
-
-    @Override
-    public boolean mouseClicked(double mx, double my, int button) {
-        if (button == 0 && this.getFocused() instanceof SuggestingEditBox box && box.tryClickSuggestion(mx, my)) {
+        if (form.mouseReleased(mx, my, button)) {
             return true;
         }
-
-        if (this.maxScroll > 0 && button == 0) {
-            int scrollX = uiX + uiW - 12;
-            int scrollY = uiY + 32;
-            int scrollH = uiH - 72;
-            if (mx >= scrollX && mx <= scrollX + 8 && my >= scrollY && my <= scrollY + scrollH) {
-                this.isDraggingScrollbar = true;
-                updateScrollFromMouse(my);
-                return true;
-            }
-        }
-
-        if (my > uiY + uiH - 40 && my < uiY + uiH) {
-            if (saveBtn != null && saveBtn.isMouseOver(mx, my)) return saveBtn.mouseClicked(mx, my, button);
-            if (cancelBtn != null && cancelBtn.isMouseOver(mx, my)) return cancelBtn.mouseClicked(mx, my, button);
-            return false;
-        }
-        if (my < uiY + 32) return false;
-
-        return super.mouseClicked(mx, my, button);
+        return super.mouseReleased(mx, my, button);
     }
 
     @Override
     protected void init() {
         this.clearWidgets();
 
-        uiW = 240;
-        uiH = Math.max(120, Math.min(290, this.height - 40));
-
+        uiW = 280;
+        uiH = Math.max(160, Math.min(340, this.height - 40));
         uiX = (this.width - uiW) / 2;
         uiY = (this.height - uiH) / 2;
-
-        int startX = uiX + 20;
-        int currentY = uiY + 50 - scrollOffset;
 
         String name = tab.customTitle != null ? tab.customTitle : "";
         String bg = tab.customBackground != null ? tab.customBackground.toString() : "";
@@ -154,86 +125,64 @@ public class TabEditorScreen extends Screen {
             if (bTab.has("index")) tIndex = bTab.get("index").getAsString();
         }
 
-        nameBox = new EditBox(this.font, startX, currentY, 200, 20, Component.literal("Tab Name"));
-        nameBox.setMaxLength(256);
-        nameBox.setValue(name);
-        this.addRenderableWidget(nameBox);
-
-        currentY += 45;
+        form.clear();
+        form.addSection("Tab Properties");
+        nameBox = form.addTextField("Tab Name", "Displayed tab title in header", name, s -> {
+        });
 
         List<String> textureSuggestions = this.minecraft.getResourceManager()
                 .listResources("textures", loc -> loc.getPath().endsWith(".png"))
                 .keySet().stream().map(ResourceLocation::toString).collect(Collectors.toList());
 
-        bgBox = new SuggestingEditBox(this.font, startX, currentY, 200, 20, Component.literal("Background Texture"), () -> textureSuggestions);
-        bgBox.setMaxLength(256);
-        bgBox.setValue(bg);
-        bgBox.setTooltip(Tooltip.create(Component.literal("Format: namespace:textures/...\\nExample: minecraft:textures/gui/advancements/backgrounds/stone.png")));
-        this.addRenderableWidget(bgBox);
+        bgBox = form.addSuggestingField("Background Texture", "Format: namespace:textures/... Example: minecraft:textures/gui/advancements/backgrounds/stone.png", bg, () -> textureSuggestions, s -> {
+        });
 
-        currentY += 45;
+        bgWidthBox = form.addTextField("Texture Width", "Tile width in pixels", tBgWidth, s -> {
+        });
+        bgHeightBox = form.addTextField("Texture Height", "Tile height in pixels", tBgHeight, s -> {
+        });
 
-        bgWidthBox = new EditBox(this.font, startX, currentY, 95, 20, Component.literal("BG Width"));
-        bgWidthBox.setValue(tBgWidth);
-        this.addRenderableWidget(bgWidthBox);
+        form.addToggle("Static Background", "Fixed background or pannable canvas texture", isStaticBg, v -> isStaticBg = v);
 
-        bgHeightBox = new EditBox(this.font, startX + 105, currentY, 95, 20, Component.literal("BG Height"));
-        bgHeightBox.setValue(tBgHeight);
-        this.addRenderableWidget(bgHeightBox);
+        widthBox = form.addTextField("Custom UI Width", "Custom advancement window width (leave empty for default)", tWidth, s -> {
+        });
+        heightBox = form.addTextField("Custom UI Height", "Custom advancement window height (leave empty for default)", tHeight, s -> {
+        });
+        indexBox = form.addTextField("Tab Order Index", "Tab display position index", tIndex, s -> {
+        });
 
-        currentY += 45;
-
-        staticBgBtn = Button.builder(Component.literal("Background: " + (!isStaticBg ? "Pannable" : "Fixed/Static")), b -> {
-            isStaticBg = !isStaticBg;
-            b.setMessage(Component.literal("Background: " + (!isStaticBg ? "Pannable" : "Fixed/Static")));
-        }).pos(startX, currentY).size(200, 20).build();
-        this.addRenderableWidget(staticBgBtn);
-
-        currentY += 45;
-
-        widthBox = new EditBox(this.font, startX, currentY, 95, 20, Component.literal("Width"));
-        widthBox.setValue(tWidth);
-        this.addRenderableWidget(widthBox);
-
-        heightBox = new EditBox(this.font, startX + 105, currentY, 95, 20, Component.literal("Height"));
-        heightBox.setValue(tHeight);
-        this.addRenderableWidget(heightBox);
-
-        currentY += 45;
-
-        indexBox = new EditBox(this.font, startX, currentY, 200, 20, Component.literal("Tab Index"));
-        indexBox.setValue(tIndex);
-        this.addRenderableWidget(indexBox);
-
-        currentY += 45;
+        form.addSection("Background Rules");
         String rulesStr = tab.rawBackgroundRules;
         if (draft.rootJson.has("better_tab")) {
             JsonObject bTab = draft.rootJson.getAsJsonObject("better_tab");
             if (bTab.has("background_rules")) rulesStr = bTab.get("background_rules").getAsString();
         }
 
-        rulesBox = new MultiLineEditBox(this.font, startX, currentY, 200, 80, Component.literal("Background Rules JSON"), Component.empty());
+        rulesBox = new MultiLineEditBox(this.font, 0, 0, 100, 70, Component.literal("Background Rules JSON"), Component.empty());
         rulesBox.setValue(rulesStr);
-        this.addRenderableWidget(rulesBox);
-        currentY += 85;
+        form.addCustomWidget("Rules JSON", rulesBox, 82);
 
-        currentY += 30;
+        int contentX = uiX + 16;
+        int contentY = uiY + HEADER_HEIGHT + 6;
+        int contentW = uiW - 32;
+        int contentH = uiH - HEADER_HEIGHT - 48;
 
-        int contentHeight = currentY + scrollOffset - (uiY + 50);
-        this.maxScroll = Math.max(0, contentHeight - (uiH - 90));
+        form.init(contentX, contentY, contentW, contentH);
 
-        if (this.scrollOffset > this.maxScroll) {
-            this.scrollOffset = this.maxScroll;
-            this.init();
-            return;
+        for (GuiEventListener listener : form.getWidgets()) {
+            if (listener instanceof AbstractWidget aw) {
+                this.addRenderableWidget(aw);
+            }
         }
 
-        int btnW = 60, btnH = 20;
-        int saveBtnX = uiX + uiW - btnW * 2 - 20 - 6;
-        int saveBtnY = uiY + uiH - 30;
+        int btnW = 80, btnH = 20;
+        int saveBtnX = uiX + uiW - btnW * 2 - 20;
+        int saveBtnY = uiY + uiH - 28;
 
-        saveBtn = Button.builder(Component.literal("Save"), b -> saveAndClose()).pos(saveBtnX, saveBtnY).size(btnW, btnH).build();
-        cancelBtn = Button.builder(Component.literal("Cancel"), b -> this.minecraft.setScreen(parentScreen)).pos(saveBtnX + btnW + 6, saveBtnY).size(btnW, btnH).build();
+        saveBtn = ModernButton.modernBuilder(Component.literal("Save"), b -> saveAndClose())
+                .style(ModernButton.Style.PRIMARY).pos(saveBtnX, saveBtnY).size(btnW, btnH).build();
+        cancelBtn = ModernButton.modernBuilder(Component.literal("Cancel"), b -> this.minecraft.setScreen(parentScreen))
+                .style(ModernButton.Style.SECONDARY).pos(saveBtnX + btnW + 6, saveBtnY).size(btnW - 10, btnH).build();
 
         this.addRenderableWidget(saveBtn);
         this.addRenderableWidget(cancelBtn);
@@ -302,49 +251,24 @@ public class TabEditorScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
-        super.renderBackground(gfx, mouseX, mouseY, partialTicks);
+        gfx.fill(0, 0, this.width, this.height, EditorTheme.BG_OVERLAY);
+        EditorTheme.drawWindow(gfx, uiX, uiY, uiW, uiH);
 
-        gfx.fill(0, 0, this.width, this.height, COL_BG_OVERLAY);
-        gfx.fill(uiX, uiY, uiX + uiW, uiY + uiH, 0xFF202020);
+        gfx.drawString(this.font, "Edit Tab Properties", uiX + 16, uiY + 12, EditorTheme.TEXT_GOLD, false);
+        gfx.fill(uiX + 1, uiY + HEADER_HEIGHT, uiX + uiW - 1, uiY + HEADER_HEIGHT + 1, EditorTheme.BORDER_INNER);
 
-        gfx.drawString(this.font, "Edit Tab Properties", uiX + 20, uiY + 15, COL_GOLD, false);
-        gfx.fill(uiX + 20, uiY + 30, uiX + uiW - 20, uiY + 31, 0x55808080);
-
-        if (this.maxScroll > 0) {
-            int scrollX = uiX + uiW - 12;
-            int scrollY = uiY + 32;
-            int scrollH = uiH - 72;
-            int thumbH = Math.max(20, scrollH * scrollH / (scrollH + maxScroll));
-            int thumbY = scrollY + (int) ((scrollH - thumbH) * (this.scrollOffset / (float) this.maxScroll));
-
-            gfx.fill(scrollX, scrollY, scrollX + 8, scrollY + scrollH, 0xFF000000);
-            gfx.fill(scrollX + 1, thumbY, scrollX + 7, thumbY + thumbH, 0xFF888888);
-        }
-
-        gfx.enableScissor(uiX, uiY + 32, uiX + uiW - 14, uiY + uiH - 40);
-
-        if (rulesBox != null)
-            gfx.drawString(this.font, "Random Block Rules (JSON)", rulesBox.getX(), rulesBox.getY() - 11, 0xFFA08060, false);
-        if (nameBox != null)
-            gfx.drawString(this.font, "Tab Name", nameBox.getX(), nameBox.getY() - 11, 0xFFA08060, false);
-        if (bgBox != null)
-            gfx.drawString(this.font, "Background Texture", bgBox.getX(), bgBox.getY() - 11, 0xFFA08060, false);
-        if (bgWidthBox != null)
-            gfx.drawString(this.font, "Tex Width", bgWidthBox.getX(), bgWidthBox.getY() - 11, 0xFFA08060, false);
-        if (bgHeightBox != null)
-            gfx.drawString(this.font, "Tex Height", bgHeightBox.getX(), bgHeightBox.getY() - 11, 0xFFA08060, false);
-        if (widthBox != null)
-            gfx.drawString(this.font, "UI Width", widthBox.getX(), widthBox.getY() - 11, 0xFFA08060, false);
-        if (heightBox != null)
-            gfx.drawString(this.font, "UI Height", heightBox.getX(), heightBox.getY() - 11, 0xFFA08060, false);
-        if (indexBox != null)
-            gfx.drawString(this.font, "Tab Index", indexBox.getX(), indexBox.getY() - 11, 0xFFA08060, false);
-
+        gfx.enableScissor(uiX + 8, uiY + HEADER_HEIGHT + 2, uiX + uiW - 8, uiY + uiH - 36);
+        form.render(gfx, mouseX, mouseY, partialTicks);
         super.render(gfx, mouseX, mouseY, partialTicks);
-
         gfx.disableScissor();
 
         if (saveBtn != null) saveBtn.render(gfx, mouseX, mouseY, partialTicks);
         if (cancelBtn != null) cancelBtn.render(gfx, mouseX, mouseY, partialTicks);
+
+        for (GuiEventListener child : form.getWidgets()) {
+            if (child instanceof SuggestingEditBox seb && seb.hasSuggestions()) {
+                seb.renderSuggestionsPopup(gfx, mouseX, mouseY);
+            }
+        }
     }
 }

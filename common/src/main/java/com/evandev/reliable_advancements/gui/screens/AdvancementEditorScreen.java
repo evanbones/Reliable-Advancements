@@ -2,6 +2,9 @@ package com.evandev.reliable_advancements.gui.screens;
 
 import com.evandev.reliable_advancements.gui.model.AdvancementDraft;
 import com.evandev.reliable_advancements.gui.tabs.*;
+import com.evandev.reliable_advancements.gui.theme.EditorTheme;
+import com.evandev.reliable_advancements.gui.widgets.ModernButton;
+import com.evandev.reliable_advancements.gui.widgets.ModernDropdown;
 import com.evandev.reliable_advancements.gui.widgets.SuggestingEditBox;
 import com.evandev.reliable_advancements.network.EditAdvancementPayload;
 import com.evandev.reliable_advancements.platform.Services;
@@ -9,9 +12,9 @@ import com.evandev.reliable_advancements.util.PersistentData;
 import com.google.gson.GsonBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -22,19 +25,13 @@ import java.util.Map;
 import java.util.Set;
 
 public class AdvancementEditorScreen extends Screen {
-    private static final int COL_GOLD = 0xFFC8AA64;
-    private static final int COL_BG_OVERLAY = 0xBB101010;
-    private static final int COL_ROW_BG = 0xFF3A3A3A;
-    private static final int COL_SEL_INNER = 0xCCFEFCF5;
-    private static final int COL_SEL_TEXT = 0xFF3A3A3A;
-
-    private static final int MAX_UI_WIDTH = 540;
-    private static final int MAX_UI_HEIGHT = 340;
-    private static final int SIDEBAR_WIDTH = 120;
-    private static final int ROW_H = 24;
+    private static final int MAX_UI_WIDTH = 580;
+    private static final int MAX_UI_HEIGHT = 380;
+    private static final int SIDEBAR_WIDTH = 130;
+    private static final int HEADER_HEIGHT = 36;
+    private static final int TAB_ROW_H = 28;
 
     private final EnhancedAdvancementsScreen parentScreen;
-    private final ResourceLocation advId;
     private final AdvancementDraft draft;
     private final boolean isNew;
     private final int posX, posY;
@@ -45,17 +42,12 @@ public class AdvancementEditorScreen extends Screen {
     private IEditorTab activeTab;
 
     private int uiX, uiY, uiW, uiH;
-    private int scrollOffset = 0;
-    private int maxScroll = 0;
-    private boolean isDraggingScrollbar = false;
-
-    private Button saveBtn;
-    private Button cancelBtn;
+    private ModernButton saveBtn;
+    private ModernButton cancelBtn;
 
     public AdvancementEditorScreen(EnhancedAdvancementsScreen parentScreen, ResourceLocation id, boolean isNew, int posX, int posY, String initialTabName, String rawJsonFromServer) {
         super(Component.literal((isNew ? "Create" : "Edit") + " Advancement: " + id));
         this.parentScreen = parentScreen;
-        this.advId = id;
         this.isNew = isNew;
         this.posX = posX;
         this.posY = posY;
@@ -78,15 +70,129 @@ public class AdvancementEditorScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        this.scrollOffset -= (int) (scrollY * 20);
-        this.scrollOffset = Math.max(0, Math.min(this.scrollOffset, this.maxScroll));
-
-        if (this.activeTab != null) {
-            this.activeTab.syncFromWidgets();
+        if (activeTab != null) {
+            for (GuiEventListener listener : activeTab.getWidgets()) {
+                if (listener instanceof ModernDropdown md && md.isOpen()) {
+                    if (md.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) {
+                        return true;
+                    }
+                }
+                if (listener instanceof SuggestingEditBox seb && seb.hasSuggestions()) {
+                    if (seb.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) {
+                        return true;
+                    }
+                }
+            }
         }
 
-        this.init();
-        return true;
+        int contentX = uiX + SIDEBAR_WIDTH + 8;
+        int contentW = uiW - SIDEBAR_WIDTH - 16;
+        int contentY = uiY + HEADER_HEIGHT + 2;
+        int contentH = uiH - HEADER_HEIGHT - 40;
+
+        if (mouseX >= contentX && mouseX <= contentX + contentW && mouseY >= contentY && mouseY <= contentY + contentH) {
+            for (GuiEventListener listener : this.children()) {
+                if (listener != null && listener != saveBtn && listener != cancelBtn) {
+                    if (listener.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) {
+                        return true;
+                    }
+                }
+            }
+            if (activeTab != null && activeTab.getForm() != null) {
+                return activeTab.getForm().mouseScrolled(mouseX, mouseY, scrollY);
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0) {
+            if (activeTab != null) {
+                for (GuiEventListener child : activeTab.getWidgets()) {
+                    if (child instanceof ModernDropdown md && md.isOpen()) {
+                        if (md.handleDropdownClick(mouseX, mouseY, button)) {
+                            return true;
+                        }
+                    }
+                    if (child instanceof SuggestingEditBox seb && seb.hasSuggestions()) {
+                        if (seb.tryClickSuggestion(mouseX, mouseY)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            int tabY = uiY + HEADER_HEIGHT + 10;
+            int i = 0;
+            for (String tabName : tabs.keySet()) {
+                int ry = tabY + i * (TAB_ROW_H + 4);
+                if (mouseX >= uiX + 8 && mouseX <= uiX + SIDEBAR_WIDTH - 8 && mouseY >= ry && mouseY <= ry + TAB_ROW_H) {
+                    switchTab(tabName);
+                    return true;
+                }
+                i++;
+            }
+
+            if (saveBtn != null && saveBtn.mouseClicked(mouseX, mouseY, button)) return true;
+            if (cancelBtn != null && cancelBtn.mouseClicked(mouseX, mouseY, button)) return true;
+
+            if (activeTab != null && activeTab.getForm() != null) {
+                if (activeTab.getForm().mouseClicked(mouseX, mouseY, button)) return true;
+            }
+        }
+
+        int contentX = uiX + SIDEBAR_WIDTH + 8;
+        int contentW = uiW - SIDEBAR_WIDTH - 16;
+        int contentY = uiY + HEADER_HEIGHT + 2;
+        int contentH = uiH - HEADER_HEIGHT - 40;
+
+        GuiEventListener clickedChild = null;
+        if (mouseX >= contentX && mouseX <= contentX + contentW && mouseY >= contentY && mouseY <= contentY + contentH) {
+            for (GuiEventListener child : this.children()) {
+                if (child == saveBtn || child == cancelBtn) continue;
+                if (child.mouseClicked(mouseX, mouseY, button)) {
+                    clickedChild = child;
+                    this.setFocused(child);
+                    if (button == 0) this.setDragging(true);
+                    break;
+                }
+            }
+        }
+
+        if (button == 0) {
+            for (GuiEventListener child : this.children()) {
+                if (child instanceof EditBox eb && child != clickedChild) {
+                    eb.setFocused(false);
+                }
+            }
+        }
+
+        return clickedChild != null;
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (activeTab != null && activeTab.getForm() != null) {
+            if (activeTab.getForm().mouseDragged(mouseX, mouseY, button, dragX, dragY)) return true;
+        }
+        int contentX = uiX + SIDEBAR_WIDTH + 8;
+        int contentW = uiW - SIDEBAR_WIDTH - 16;
+        int contentY = uiY + HEADER_HEIGHT + 2;
+        int contentH = uiH - HEADER_HEIGHT - 40;
+
+        if (mouseX >= contentX && mouseX <= contentX + contentW && mouseY >= contentY && mouseY <= contentY + contentH) {
+            return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (activeTab != null && activeTab.getForm() != null) {
+            if (activeTab.getForm().mouseReleased(mouseX, mouseY, button)) return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override
@@ -94,32 +200,19 @@ public class AdvancementEditorScreen extends Screen {
         this.clearWidgets();
         setupBounds();
 
-        int contentX = uiX + SIDEBAR_WIDTH + 20;
-        int contentW = uiW - SIDEBAR_WIDTH - 40;
-        int contentY = uiY + 50 - scrollOffset;
-        int contentH = uiH - 80;
+        int contentX = uiX + SIDEBAR_WIDTH + 16;
+        int contentW = uiW - SIDEBAR_WIDTH - 28;
+        int contentY = uiY + HEADER_HEIGHT + 10;
+        int contentH = uiH - HEADER_HEIGHT - 55;
 
         activeTab.init(contentX, contentY, contentW, contentH, this::init);
 
-        int bottomMostY = uiY + 50;
         for (GuiEventListener listener : activeTab.getWidgets()) {
-            if (listener instanceof AbstractWidget aw) {
-                bottomMostY = Math.max(bottomMostY, aw.getY() + aw.getHeight());
-                this.addRenderableWidget(aw);
+            if (listener instanceof NarratableEntry) {
+                this.addWidget((GuiEventListener & NarratableEntry) listener);
             }
-        }
-
-        int actualContentHeight = (bottomMostY + scrollOffset) - (uiY + 50);
-        this.maxScroll = Math.max(0, actualContentHeight - (uiH - 90));
-
-        if (this.scrollOffset > this.maxScroll) {
-            this.scrollOffset = this.maxScroll;
-            this.clearWidgets();
-            activeTab.init(contentX, uiY + 50 - scrollOffset, contentW, contentH, this::init);
-            for (GuiEventListener listener : activeTab.getWidgets()) {
-                if (listener instanceof AbstractWidget aw) {
-                    this.addRenderableWidget(aw);
-                }
+            if (listener.isFocused()) {
+                this.setFocused(listener);
             }
         }
 
@@ -127,21 +220,24 @@ public class AdvancementEditorScreen extends Screen {
     }
 
     private void setupBounds() {
-        uiW = Math.min(this.width - 20, MAX_UI_WIDTH);
-        uiH = Math.min(this.height - 20, MAX_UI_HEIGHT);
+        uiW = Math.min(this.width - 24, MAX_UI_WIDTH);
+        uiH = Math.min(this.height - 24, MAX_UI_HEIGHT);
         uiX = (this.width - uiW) / 2;
         uiY = (this.height - uiH) / 2;
     }
 
     private void addControlButtons() {
-        int btnW = 60, btnH = 20;
+        int btnW = 95, btnH = 20;
         int saveBtnX = uiX + uiW - btnW * 2 - 16;
         int saveBtnY = uiY + uiH - btnH - 10;
 
-        saveBtn = Button.builder(Component.literal("Save"), b -> saveAndClose())
+        saveBtn = ModernButton.modernBuilder(Component.literal("Save Changes"), b -> saveAndClose())
+                .style(ModernButton.Style.PRIMARY)
                 .pos(saveBtnX, saveBtnY).size(btnW, btnH).build();
-        cancelBtn = Button.builder(Component.literal("Cancel"), b -> this.minecraft.setScreen(parentScreen))
-                .pos(saveBtnX + btnW + 6, saveBtnY).size(btnW, btnH).build();
+
+        cancelBtn = ModernButton.modernBuilder(Component.literal("Cancel"), b -> this.minecraft.setScreen(parentScreen))
+                .style(ModernButton.Style.SECONDARY)
+                .pos(saveBtnX + btnW + 6, saveBtnY).size(btnW - 15, btnH).build();
 
         this.addRenderableWidget(saveBtn);
         this.addRenderableWidget(cancelBtn);
@@ -155,7 +251,6 @@ public class AdvancementEditorScreen extends Screen {
         activeTab = tabs.get(tabName);
         visitedTabs.add(tabName);
         activeTab.loadState(draft);
-        scrollOffset = 0;
         this.init();
     }
 
@@ -191,137 +286,59 @@ public class AdvancementEditorScreen extends Screen {
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
-        super.renderBackground(gfx, mouseX, mouseY, partialTicks);
+        gfx.fill(0, 0, this.width, this.height, EditorTheme.BG_OVERLAY);
+        EditorTheme.drawWindow(gfx, uiX, uiY, uiW, uiH);
 
-        gfx.fill(0, 0, this.width, this.height, COL_BG_OVERLAY);
-        gfx.fill(uiX, uiY, uiX + uiW, uiY + uiH, 0xFF202020);
-        gfx.fill(uiX, uiY, uiX + SIDEBAR_WIDTH, uiY + uiH, 0xFF181818);
+        String title = (isNew ? "Create" : "Edit") + " Advancement";
+        gfx.drawString(this.font, title, uiX + 16, uiY + 12, EditorTheme.TEXT_GOLD, false);
+        int titleW = this.font.width(title);
+        if (isNew) {
+            EditorTheme.drawBadge(gfx, font, "NEW", uiX + titleW + 24, uiY + 10, 0xFF2D3748, EditorTheme.TEXT_PRIMARY);
+        }
 
-        gfx.drawString(this.font, (isNew ? "Create" : "Edit") + " Advancement", uiX + SIDEBAR_WIDTH + 20, uiY + 15, COL_GOLD, false);
-        gfx.fill(uiX + SIDEBAR_WIDTH + 20, uiY + 30, uiX + uiW - 20, uiY + 31, 0x55808080);
+        gfx.fill(uiX + 1, uiY + HEADER_HEIGHT, uiX + uiW - 1, uiY + HEADER_HEIGHT + 1, EditorTheme.BORDER_INNER);
 
-        int treeTop = uiY + 15;
+        gfx.fill(uiX + 1, uiY + HEADER_HEIGHT + 1, uiX + SIDEBAR_WIDTH, uiY + uiH - 1, EditorTheme.SIDEBAR_BG);
+        gfx.fill(uiX + SIDEBAR_WIDTH, uiY + HEADER_HEIGHT + 1, uiX + SIDEBAR_WIDTH + 1, uiY + uiH - 1, EditorTheme.BORDER_INNER);
+
+        int tabY = uiY + HEADER_HEIGHT + 10;
         int i = 0;
         for (String tabName : tabs.keySet()) {
-            int ry = treeTop + i * (ROW_H + 4);
-            int rowBot = ry + ROW_H;
-            boolean selected = (tabName.equals(activeTabName));
+            int ry = tabY + i * (TAB_ROW_H + 4);
+            int rowBot = ry + TAB_ROW_H;
+            boolean selected = tabName.equals(activeTabName);
+            boolean hovered = mouseX >= uiX + 8 && mouseX <= uiX + SIDEBAR_WIDTH - 8 && mouseY >= ry && mouseY <= rowBot;
 
-            gfx.fill(uiX + 5, ry, uiX + SIDEBAR_WIDTH - 5, rowBot, COL_ROW_BG);
+            int bg = selected ? EditorTheme.TAB_ACTIVE_BG : (hovered ? EditorTheme.TAB_HOVER_BG : EditorTheme.TAB_INACTIVE_BG);
+            gfx.fill(uiX + 8, ry, uiX + SIDEBAR_WIDTH - 8, rowBot, bg);
+            gfx.renderOutline(uiX + 8, ry, SIDEBAR_WIDTH - 16, TAB_ROW_H, selected ? EditorTheme.ACCENT_GOLD_MUTED : EditorTheme.CARD_BORDER);
+
             if (selected) {
-                gfx.fill(uiX + 5, ry, uiX + SIDEBAR_WIDTH - 5, rowBot, COL_SEL_INNER);
-                gfx.fill(uiX + 5, ry + 1, uiX + 7, rowBot - 1, COL_GOLD);
+                gfx.fill(uiX + 8, ry, uiX + 11, rowBot, EditorTheme.ACCENT_GOLD);
             }
 
-            int textCol = selected ? COL_SEL_TEXT : COL_GOLD;
-            gfx.drawString(font, tabName, uiX + 15, ry + (ROW_H - font.lineHeight) / 2 + 1, textCol, false);
+            int textCol = selected ? EditorTheme.TEXT_GOLD : (hovered ? EditorTheme.TEXT_PRIMARY : EditorTheme.TEXT_MUTED);
+            gfx.drawString(font, tabName, uiX + 16, ry + (TAB_ROW_H - font.lineHeight) / 2, textCol, false);
             i++;
         }
 
-        if (this.maxScroll > 0) {
-            int scrollX = uiX + uiW - 12;
-            int scrollY = uiY + 32;
-            int scrollH = uiH - 72;
-            int thumbH = Math.max(20, scrollH * scrollH / (scrollH + maxScroll));
-            int thumbY = scrollY + (int) ((scrollH - thumbH) * (this.scrollOffset / (float) this.maxScroll));
-
-            gfx.fill(scrollX, scrollY, scrollX + 8, scrollY + scrollH, 0xFF000000);
-            gfx.fill(scrollX + 1, thumbY, scrollX + 7, thumbY + thumbH, 0xFF888888);
-        }
-
-        gfx.enableScissor(uiX + SIDEBAR_WIDTH, uiY + 32, uiX + uiW, uiY + uiH - 40);
+        gfx.enableScissor(uiX + SIDEBAR_WIDTH + 8, uiY + HEADER_HEIGHT + 2, uiX + uiW - 8, uiY + uiH - 38);
         activeTab.render(gfx, mouseX, mouseY, partialTicks);
         super.render(gfx, mouseX, mouseY, partialTicks);
         gfx.disableScissor();
 
         if (saveBtn != null) saveBtn.render(gfx, mouseX, mouseY, partialTicks);
         if (cancelBtn != null) cancelBtn.render(gfx, mouseX, mouseY, partialTicks);
-    }
 
-    private void updateScrollFromMouse(double my) {
-        int scrollY = uiY + 32;
-        int scrollH = uiH - 72;
-        int thumbH = Math.max(20, scrollH * scrollH / (scrollH + maxScroll));
-        int trackH = scrollH - thumbH;
-
-        double pct = (my - scrollY - thumbH / 2.0) / trackH;
-        pct = Math.max(0, Math.min(pct, 1));
-        this.scrollOffset = (int) (pct * this.maxScroll);
-
-        if (this.activeTab != null) {
-            this.activeTab.syncFromWidgets();
-        }
-
-        this.init();
-    }
-
-    @Override
-    public boolean mouseClicked(double mx, double my, int button) {
-        if (button == 0 && this.getFocused() instanceof SuggestingEditBox box && box.tryClickSuggestion(mx, my)) {
-            return true;
-        }
-
-        if (this.maxScroll > 0 && button == 0) {
-            int scrollX = uiX + uiW - 12;
-            int scrollY = uiY + 32;
-            int scrollH = uiH - 72;
-            if (mx >= scrollX && mx <= scrollX + 8 && my >= scrollY && my <= scrollY + scrollH) {
-                this.isDraggingScrollbar = true;
-                updateScrollFromMouse(my);
-                return true;
+        if (activeTab != null) {
+            for (GuiEventListener child : activeTab.getWidgets()) {
+                if (child instanceof ModernDropdown md && md.isOpen()) {
+                    md.renderDropdownPopup(gfx, mouseX, mouseY);
+                }
+                if (child instanceof SuggestingEditBox seb && seb.hasSuggestions()) {
+                    seb.renderSuggestionsPopup(gfx, mouseX, mouseY);
+                }
             }
         }
-
-        int x = (int) mx, y = (int) my;
-        int treeTop = uiY + 15;
-        int i = 0;
-        for (String tabName : tabs.keySet()) {
-            int ry = treeTop + i * (ROW_H + 4);
-            if (x >= uiX + 5 && x < uiX + SIDEBAR_WIDTH - 5 && y >= ry && y < ry + ROW_H) {
-                switchTab(tabName);
-                return true;
-            }
-            i++;
-        }
-
-        if (x > uiX + SIDEBAR_WIDTH && x < uiX + uiW) {
-            if (y > uiY && y < uiY + 32) return false;
-            if (y > uiY + uiH - 40 && y < uiY + uiH) {
-                if (saveBtn != null && saveBtn.isMouseOver(mx, my)) return saveBtn.mouseClicked(mx, my, button);
-                if (cancelBtn != null && cancelBtn.isMouseOver(mx, my)) return cancelBtn.mouseClicked(mx, my, button);
-                return false;
-            }
-        }
-
-        return super.mouseClicked(mx, my, button);
-    }
-
-    @Override
-    public boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) {
-        if (this.isDraggingScrollbar) {
-            updateScrollFromMouse(my);
-            return true;
-        }
-        return super.mouseDragged(mx, my, button, dragX, dragY);
-    }
-
-    @Override
-    public boolean mouseReleased(double mx, double my, int button) {
-        this.isDraggingScrollbar = false;
-        return super.mouseReleased(mx, my, button);
-    }
-
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 256) {
-            this.minecraft.setScreen(parentScreen);
-            return true;
-        }
-        return super.keyPressed(keyCode, scanCode, modifiers);
-    }
-
-    @Override
-    public boolean isPauseScreen() {
-        return false;
     }
 }

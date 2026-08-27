@@ -208,7 +208,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     public void deleteAdvancement(EnhancedAdvancementWidget widget) {
-        this.minecraft.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
+        this.minecraft.setScreen(new ConfirmScreen(
                 (confirmed) -> {
                     if (confirmed) {
                         List<EnhancedAdvancementWidget> toDelete = new ArrayList<>();
@@ -378,6 +378,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     protected void init() {
         this.clearWidgets();
         this.isInitializing = true;
+        this.advConnectedToMouse = null;
+        this.linkingWidget = null;
+        this.contextMenu = null;
+        selectedWidgets.clear();
 
         if (this.selectedTab != null) {
             this.selectedTab.storeScroll();
@@ -706,6 +710,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             savedSelectedTab = this.selectedTab.getRootNode().holder().id();
             this.selectedTab.storeScroll();
         }
+        this.advConnectedToMouse = null;
+        this.linkingWidget = null;
+        this.contextMenu = null;
+        selectedWidgets.clear();
         super.removed();
     }
 
@@ -826,7 +834,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
         if (EnhancedAdvancementsScreen.canEdit() && this.selectedTab != null) {
             if (this.advConnectedToMouse != null) {
-                java.util.Set<EnhancedAdvancementWidget> draggingWidgets = selectedWidgets.contains(this.advConnectedToMouse) ? selectedWidgets : java.util.Set.of(this.advConnectedToMouse);
+                Set<EnhancedAdvancementWidget> draggingWidgets = selectedWidgets.contains(this.advConnectedToMouse) ? selectedWidgets : Set.of(this.advConnectedToMouse);
                 for (EnhancedAdvancementWidget w : draggingWidgets) {
                     int ax = w.getX() + this.selectedTab.scrollX;
                     int ay = w.getY() + this.selectedTab.scrollY;
@@ -837,7 +845,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
         guiGraphics.pose().popPose();
 
-        if (this.linkingWidget != null) {
+        if (this.linkingWidget != null && this.selectedTab != null) {
             int startX = (int) ((this.linkingWidget.getX() + this.selectedTab.scrollX + (float) EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2) * zoom) + left + PADDING;
             int startY = (int) ((this.linkingWidget.getY() + this.selectedTab.scrollY + (float) EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2) * zoom) + top + 2 * PADDING;
 
@@ -856,7 +864,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             this.renderToolTips(guiGraphics, mouseX, mouseY, left, top, right, bottom, maxTabs, skip);
         }
 
-        if (this.advConnectedToMouse != null) {
+        if (this.advConnectedToMouse != null && this.selectedTab != null) {
             guiGraphics.pose().pushPose();
             guiGraphics.pose().translate(left + PADDING, top + 2 * PADDING, 0);
             guiGraphics.pose().scale(zoom, zoom, 1.0F);
@@ -969,6 +977,11 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
         int width = boxRight - boxLeft;
         int height = boxBottom - boxTop;
+
+        if (betterAdvancementTab == null && !this.tabs.isEmpty()) {
+            this.selectedTab = this.tabs.values().iterator().next();
+            betterAdvancementTab = this.selectedTab;
+        }
 
         if (betterAdvancementTab == null) {
             guiGraphics.fill(boxLeft, boxTop, boxRight, boxBottom, -16777216);
@@ -1197,6 +1210,19 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             this.selectedTab.storeScroll();
         }
         this.selectedTab = this.tabs.get(advancement);
+        if (this.selectedTab == null && !this.tabs.isEmpty()) {
+            if (savedSelectedTab != null) {
+                for (EnhancedAdvancementTab tab : this.tabs.values()) {
+                    if (tab.getRootNode().holder().id().equals(savedSelectedTab)) {
+                        this.selectedTab = tab;
+                        break;
+                    }
+                }
+            }
+            if (this.selectedTab == null) {
+                this.selectedTab = this.tabs.values().iterator().next();
+            }
+        }
         if (this.selectedTab != null) {
             this.selectedTab.loadScroll();
         }

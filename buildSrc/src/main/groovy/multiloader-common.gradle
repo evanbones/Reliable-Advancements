@@ -68,6 +68,11 @@ repositories {
         name = "ClothConfig"
         url = "https://maven.shedaniel.me/"
     }
+
+    maven {
+        name = "SomethingCatchy"
+        url = "https://registry.somethingcatchy.net/repository/maven-public/"
+    }
 }
 
 ['apiElements', 'runtimeElements'].each { variant ->

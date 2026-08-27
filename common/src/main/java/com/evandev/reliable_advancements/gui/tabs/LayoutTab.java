@@ -1,24 +1,21 @@
 package com.evandev.reliable_advancements.gui.tabs;
 
 import com.evandev.reliable_advancements.gui.model.AdvancementDraft;
+import com.evandev.reliable_advancements.gui.widgets.EditorForm;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
-import net.minecraft.network.chat.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class LayoutTab implements IEditorTab {
-    private final Font font;
-    private final List<GuiEventListener> widgets = new ArrayList<>();
+    private final EditorForm form;
     private int posX, posY;
     private EditBox xBox, yBox;
-    private int startX, startY;
 
     public LayoutTab(Font font, int posX, int posY) {
-        this.font = font;
+        this.form = new EditorForm(font);
         this.posX = posX;
         this.posY = posY;
     }
@@ -29,24 +26,28 @@ public class LayoutTab implements IEditorTab {
 
     @Override
     public void init(int x, int y, int width, int height, Runnable reinitScreen) {
-        this.widgets.clear();
-        this.startX = x;
-        this.startY = y;
-
-        xBox = new EditBox(font, x, y, 100, 20, Component.literal("X"));
-        xBox.setValue(String.valueOf(posX));
-
-        yBox = new EditBox(font, x, y + 45, 100, 20, Component.literal("Y"));
-        yBox.setValue(String.valueOf(posY));
-
-        widgets.addAll(List.of(xBox, yBox));
+        form.clear();
+        form.addSection("Canvas Coordinates");
+        xBox = form.addTextField("X Position", "Horizontal canvas column coordinate", String.valueOf(posX), s -> {
+            try {
+                this.posX = Integer.parseInt(s.trim());
+            } catch (NumberFormatException ignored) {
+            }
+        });
+        yBox = form.addTextField("Y Position", "Vertical canvas row coordinate", String.valueOf(posY), s -> {
+            try {
+                this.posY = Integer.parseInt(s.trim());
+            } catch (NumberFormatException ignored) {
+            }
+        });
+        form.init(x, y, width, height);
     }
 
     @Override
     public void syncFromWidgets() {
         try {
-            if (xBox != null) this.posX = Integer.parseInt(xBox.getValue());
-            if (yBox != null) this.posY = Integer.parseInt(yBox.getValue());
+            if (xBox != null && !xBox.getValue().trim().isEmpty()) this.posX = Integer.parseInt(xBox.getValue().trim());
+            if (yBox != null && !yBox.getValue().trim().isEmpty()) this.posY = Integer.parseInt(yBox.getValue().trim());
         } catch (NumberFormatException ignored) {
         }
     }
@@ -66,12 +67,16 @@ public class LayoutTab implements IEditorTab {
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
-        gfx.drawString(font, "X Position", startX, startY - 11, 0xFFA08060, false);
-        gfx.drawString(font, "Y Position", startX, startY + 34, 0xFFA08060, false);
+        form.render(gfx, mouseX, mouseY, partialTicks);
     }
 
     @Override
     public List<GuiEventListener> getWidgets() {
-        return widgets;
+        return form.getWidgets();
+    }
+
+    @Override
+    public EditorForm getForm() {
+        return form;
     }
 }
