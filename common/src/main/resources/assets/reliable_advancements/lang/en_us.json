@@ -84,5 +84,29 @@
   "config.reliable_advancements.blurBackground": "Darken Background",
   "config.reliable_advancements.blurBackground.tooltip": "Renders a persistent semi-transparent dark overlay over the background texture, making advancement connections and icons pop more.",
   "config.reliable_advancements.blurBackgroundOpacity": "Darken Opacity (%)",
-  "config.reliable_advancements.blurBackgroundOpacity.tooltip": "Adjusts how dark the background overlay is when the darken setting is active."
+  "config.reliable_advancements.blurBackgroundOpacity.tooltip": "Adjusts how dark the background overlay is when the darken setting is active.",
+
+  "gui.reliable_advancements.dialog.delete.title": "Delete Advancement?",
+  "gui.reliable_advancements.dialog.delete.message": "Are you sure you want to delete this advancement from the game? Any children will be orphaned. This cannot be undone.",
+  "gui.reliable_advancements.dialog.reset_advancement.title": "Reset Advancement?",
+  "gui.reliable_advancements.dialog.reset_advancement.message": "Are you sure you want to reset this advancement to its vanilla state? Any edits will be lost.",
+  "gui.reliable_advancements.dialog.reset_tab.title": "Reset Entire Tab?",
+  "gui.reliable_advancements.dialog.reset_tab.message": "Are you sure you want to reset ALL advancements in this tab? This cannot be undone.",
+
+  "gui.reliable_advancements.context.edit_properties": "Edit Properties",
+  "gui.reliable_advancements.context.copy": "Copy (Ctrl+C)",
+  "gui.reliable_advancements.context.link_parents": "Link / Unlink Parents...",
+  "gui.reliable_advancements.context.unlink_all_parents": "Unlink All Parents",
+  "gui.reliable_advancements.context.reset_vanilla": "Reset to Vanilla",
+  "gui.reliable_advancements.context.delete": "Delete from Game",
+  "gui.reliable_advancements.context.create_advancement": "Create New Advancement",
+  "gui.reliable_advancements.context.create_tab": "Create New Tab",
+  "gui.reliable_advancements.context.paste": "Paste (Ctrl+V)",
+  "gui.reliable_advancements.context.edit_tab_properties": "Edit Tab Properties",
+  "gui.reliable_advancements.context.reset_tab": "Reset Entire Tab",
+
+  "gui.reliable_advancements.linking.prompt": "Click advancement to link / unlink parent (ESC to cancel)",
+  "gui.reliable_advancements.linking.link": "Click to LINK parent: %s",
+  "gui.reliable_advancements.linking.unlink": "Click to UNLINK parent: %s",
+  "gui.reliable_advancements.linking.error.cycle": "Cannot link: Creates a cyclic dependency!"
 }

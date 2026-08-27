@@ -8,8 +8,8 @@ import com.evandev.reliable_advancements.reference.Constants;
 import com.evandev.reliable_advancements.util.PersistentData;
 import com.google.common.collect.Maps;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
@@ -83,7 +83,7 @@ public class EnhancedAdvancementTab {
 
     public static EnhancedAdvancementTab create(Minecraft mc, EnhancedAdvancementsScreen advancementsScreen, int index, AdvancementNode advancementNode, int width, int height) {
         Optional<DisplayInfo> optional = advancementNode.advancement().display();
-        if (optional.isEmpty()) {
+        if (optional.isEmpty() || optional.get().getBackground().isEmpty()) {
             return null;
         } else {
             EnhancedAdvancementTabType advancementTabType = EnhancedAdvancementTabType.getTabType(width, height, index);
@@ -205,9 +205,15 @@ public class EnhancedAdvancementTab {
             guiGraphics.fill(0, 0, scaledWidth, scaledHeight, color);
         }
 
-        this.root.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, true);
-        this.root.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, false);
-        this.root.draw(guiGraphics, this.scrollX, this.scrollY, unzoomedX, unzoomedY);
+        for (EnhancedAdvancementWidget widget : this.widgets.values()) {
+            widget.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, true);
+        }
+        for (EnhancedAdvancementWidget widget : this.widgets.values()) {
+            widget.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, false);
+        }
+        for (EnhancedAdvancementWidget widget : this.widgets.values()) {
+            widget.draw(guiGraphics, this.scrollX, this.scrollY, unzoomedX, unzoomedY);
+        }
 
         for (EnhancedAdvancementWidget advancementWidget : this.widgets.values()) {
             if (EnhancedAdvancementsScreen.selectedWidgets.contains(advancementWidget)) {
@@ -302,6 +308,16 @@ public class EnhancedAdvancementTab {
 
     public EnhancedAdvancementWidget getWidget(AdvancementHolder advancementHolder) {
         return this.widgets.get(advancementHolder);
+    }
+
+    public EnhancedAdvancementWidget getWidget(ResourceLocation id) {
+        if (id == null) return null;
+        for (Map.Entry<AdvancementHolder, EnhancedAdvancementWidget> entry : this.widgets.entrySet()) {
+            if (entry.getKey().id().equals(id)) {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 
     public EnhancedAdvancementsScreen getScreen() {

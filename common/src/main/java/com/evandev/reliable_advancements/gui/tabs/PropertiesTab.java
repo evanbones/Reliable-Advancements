@@ -1,5 +1,6 @@
 package com.evandev.reliable_advancements.gui.tabs;
 
+import com.evandev.reliable_advancements.advancements.MultiParentHelper;
 import com.evandev.reliable_advancements.gui.model.AdvancementDraft;
 import com.evandev.reliable_advancements.gui.widgets.EditorForm;
 import com.evandev.reliable_advancements.gui.widgets.SuggestingEditBox;
@@ -16,7 +17,9 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.resources.ResourceLocation;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -84,7 +87,8 @@ public class PropertiesTab implements IEditorTab {
         }
 
         try {
-            this.parent = draft.rootJson.has("parent") ? draft.rootJson.get("parent").getAsString() : "";
+            List<ResourceLocation> parsedParents = MultiParentHelper.parseParents(draft.rootJson);
+            this.parent = parsedParents.stream().map(ResourceLocation::toString).collect(Collectors.joining(", "));
         } catch (Exception ignored) {
             this.parent = "";
         }
@@ -124,7 +128,7 @@ public class PropertiesTab implements IEditorTab {
                 () -> List.of("task", "goal", "challenge"),
                 s -> this.frame = s);
 
-        parentBox = form.addSuggestingField("Parent Advancement", "ID of the parent advancement. Leave empty for root tab advancement.", parent,
+        parentBox = form.addSuggestingField("Parent Advancements", "Comma-separated IDs of parent advancements. Leave empty for a disconnected or root advancement.", parent,
                 () -> {
                     var conn = Minecraft.getInstance().getConnection();
                     if (conn != null) {
@@ -195,11 +199,20 @@ public class PropertiesTab implements IEditorTab {
             draft.rootJson.remove("display");
         }
 
+        List<ResourceLocation> parentsList = new ArrayList<>();
         if (!this.parent.trim().isEmpty()) {
-            draft.rootJson.addProperty("parent", this.parent.trim());
-        } else {
-            draft.rootJson.remove("parent");
+            String[] parts = this.parent.split(",");
+            for (String part : parts) {
+                String trimmed = part.trim();
+                if (!trimmed.isEmpty()) {
+                    ResourceLocation loc = ResourceLocation.tryParse(trimmed);
+                    if (loc != null && !parentsList.contains(loc)) {
+                        parentsList.add(loc);
+                    }
+                }
+            }
         }
+        MultiParentHelper.applyParentsToJson(draft.rootJson, parentsList);
 
         if (this.sendsTelemetryEvent) {
             draft.rootJson.addProperty("sends_telemetry_event", true);

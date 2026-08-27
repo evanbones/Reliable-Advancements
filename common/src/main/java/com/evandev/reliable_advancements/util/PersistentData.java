@@ -14,6 +14,8 @@ import net.minecraft.util.GsonHelper;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,31 +33,26 @@ public class PersistentData {
                 }
             }
             JsonObject json = new JsonObject();
-            JsonObject positions = (previousContents != null && previousContents.has("positions"))
-                    ? previousContents.getAsJsonObject("positions") : new JsonObject();
+            JsonObject positions = new JsonObject();
+            for (Map.Entry<String, int[]> entry : advancementPositions.entrySet()) {
+                JsonArray arr = new JsonArray();
+                arr.add(entry.getValue()[0]);
+                arr.add(entry.getValue()[1]);
+                positions.add(entry.getKey(), arr);
+            }
+
             JsonObject tabProperties = (previousContents != null && previousContents.has("tab_properties"))
                     ? previousContents.getAsJsonObject("tab_properties") : new JsonObject();
 
-            for (EnhancedAdvancementTab tab : tabs.values()) {
-                for (Map.Entry<AdvancementHolder, EnhancedAdvancementWidget> entry : tab.getWidgets().entrySet()) {
-                    EnhancedAdvancementWidget widget = entry.getValue();
-                    JsonArray arr = new JsonArray();
-                    arr.add(widget.getX());
-                    arr.add(widget.getY());
-                    positions.add(entry.getKey().id().toString(), arr);
+            if (tabs != null) {
+                for (EnhancedAdvancementTab tab : tabs.values()) {
+                    String tabId = tab.getRootNode().holder().id().toString();
+                    if (hasCustomTabProperties(tab)) {
+                        tabProperties.add(tabId, tabPropertiesToJson(tab));
+                    } else {
+                        tabProperties.remove(tabId);
+                    }
                 }
-
-                JsonObject tObj = new JsonObject();
-                tObj.addProperty("title", tab.customTitle);
-                if (tab.customBackground != null) tObj.addProperty("background", tab.customBackground.toString());
-                tObj.addProperty("static_background", tab.isStaticBackground);
-                tObj.addProperty("bg_width", tab.bgWidth);
-                tObj.addProperty("bg_height", tab.bgHeight);
-                tObj.addProperty("width", tab.customWidth);
-                tObj.addProperty("height", tab.customHeight);
-                tObj.addProperty("index", tab.customIndex);
-                tObj.addProperty("background_rules", tab.rawBackgroundRules);
-                tabProperties.add(tab.getRootNode().holder().id().toString(), tObj);
             }
             json.add("positions", positions);
             json.add("tab_properties", tabProperties);
@@ -69,6 +66,21 @@ public class PersistentData {
         } catch (Exception e) {
             Constants.LOG.error("Failed to write persistent data", e);
         }
+    }
+
+    public static JsonObject tabPropertiesToJson(EnhancedAdvancementTab tab) {
+        JsonObject tObj = new JsonObject();
+        tObj.addProperty("title", tab.customTitle);
+        if (tab.customBackground != null)
+            tObj.addProperty("background", tab.customBackground.toString());
+        tObj.addProperty("static_background", tab.isStaticBackground);
+        tObj.addProperty("bg_width", tab.bgWidth);
+        tObj.addProperty("bg_height", tab.bgHeight);
+        tObj.addProperty("width", tab.customWidth);
+        tObj.addProperty("height", tab.customHeight);
+        tObj.addProperty("index", tab.customIndex);
+        tObj.addProperty("background_rules", tab.rawBackgroundRules);
+        return tObj;
     }
 
     public static void load() {
@@ -98,6 +110,15 @@ public class PersistentData {
 
     public static void setMemoryPosition(ResourceLocation id, int x, int y) {
         advancementPositions.put(id.toString(), new int[]{x, y});
+    }
+
+    public static void snapshotTabPositions(EnhancedAdvancementTab tab) {
+        if (tab == null) return;
+        for (EnhancedAdvancementWidget widget : tab.getWidgets().values()) {
+            if (widget.getAdvancement() != null) {
+                setMemoryPosition(widget.getAdvancement().holder().id(), widget.getX(), widget.getY());
+            }
+        }
     }
 
     public static void loadTabProperties(EnhancedAdvancementTab tab) {
@@ -168,7 +189,17 @@ public class PersistentData {
     }
 
     public static void removePosition(ResourceLocation id) {
-        advancementPositions.remove(id.toString());
+        if (id == null) return;
+        removePositions(Collections.singletonList(id));
+    }
+
+    public static void removePositions(Collection<ResourceLocation> ids) {
+        if (ids == null || ids.isEmpty()) return;
+        for (ResourceLocation id : ids) {
+            if (id != null) {
+                advancementPositions.remove(id.toString());
+            }
+        }
         try {
             if (FILE.exists()) {
                 JsonObject json;
@@ -176,7 +207,12 @@ public class PersistentData {
                     json = GSON.fromJson(reader, JsonObject.class);
                 }
                 if (json != null && json.has("positions")) {
-                    json.getAsJsonObject("positions").remove(id.toString());
+                    JsonObject posObj = json.getAsJsonObject("positions");
+                    for (ResourceLocation id : ids) {
+                        if (id != null) {
+                            posObj.remove(id.toString());
+                        }
+                    }
                     try (var writer = Files.newBufferedWriter(FILE.toPath(), StandardCharsets.UTF_8)) {
                         GSON.toJson(json, writer);
                     }
@@ -204,5 +240,28 @@ public class PersistentData {
         } catch (Exception e) {
             Constants.LOG.error("Failed to remove tab properties", e);
         }
+    }
+
+    public static boolean hasCustomTabProperties(EnhancedAdvancementTab tab) {
+        if (tab == null || tab.getRootNode() == null) return false;
+        int defaultIndex;
+        String id = tab.getRootNode().holder().id().toString();
+        switch (id) {
+            case "minecraft:story/root" -> defaultIndex = 0;
+            case "minecraft:adventure/root" -> defaultIndex = 1;
+            case "minecraft:husbandry/root" -> defaultIndex = 2;
+            case "minecraft:nether/root" -> defaultIndex = 3;
+            case "minecraft:end/root" -> defaultIndex = 4;
+            default -> defaultIndex = 5;
+        }
+        return (tab.customTitle != null && !tab.customTitle.isEmpty())
+                || tab.customBackground != null
+                || tab.isStaticBackground
+                || tab.bgWidth != 16
+                || tab.bgHeight != 16
+                || tab.customWidth > 0
+                || tab.customHeight > 0
+                || tab.customIndex != defaultIndex
+                || (tab.rawBackgroundRules != null && !tab.rawBackgroundRules.equals("[]") && !tab.rawBackgroundRules.isEmpty());
     }
 }

@@ -1,6 +1,7 @@
 package com.evandev.reliable_advancements.gui;
 
 import com.evandev.reliable_advancements.advancements.AdvancementDisplayInfo;
+import com.evandev.reliable_advancements.advancements.IMultiParentAdvancement;
 import com.evandev.reliable_advancements.api.IAdvancementEntryGui;
 import com.evandev.reliable_advancements.api.event.IAdvancementDrawConnectionsEvent;
 import com.evandev.reliable_advancements.client.ClientRewardTracker;
@@ -45,12 +46,12 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     private final String title;
     private final Minecraft minecraft;
     private final List<EnhancedAdvancementWidget> children = Lists.newArrayList();
+    private final List<EnhancedAdvancementWidget> parents = Lists.newArrayList();
     public AdvancementProgress advancementProgress;
     protected int x, y;
     private int width;
     private List<FormattedCharSequence> description;
     private CriterionGrid criterionGrid;
-    private EnhancedAdvancementWidget parent;
     private float hoverAnim = 0.0f;
     /**
      * Side of this widget that its incoming connection arrives at, used so outgoing connections can
@@ -69,8 +70,6 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         this.y = this.enhancedDisplayInfo.getPosY() != null ? this.enhancedDisplayInfo.getPosY() : Mth.floor(displayInfo.getY() * 27.0F);
         if (PersistentData.hasSavedPosition(this.advancementNode.holder())) {
             PersistentData.loadSavedPosition(this.advancementNode.holder(), this);
-        } else {
-            PersistentData.setMemoryPosition(this.advancementNode.holder().id(), this.x, this.y);
         }
         this.refreshHover();
     }
@@ -123,30 +122,21 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         }
     }
 
-    private EnhancedAdvancementWidget getFirstVisibleParent(AdvancementNode advancement) {
-        do {
-            advancement = advancement.parent();
-        } while (advancement != null && advancement.advancement().display().isEmpty());
-
-        if (advancement != null && advancement.advancement().display().isPresent()) {
-            return this.advancementTabGui.getWidget(advancement.holder());
-        } else {
-            return null;
-        }
-    }
-
     public boolean shouldRender() {
         if (EnhancedAdvancementsScreen.canEdit()) return true;
         if (this.advancementProgress != null && this.advancementProgress.isDone()) return true;
         if (this.displayInfo.isHidden()) return false;
 
         if (ModConfig.get().discoveryMode) {
-            if (this.parent == null) return true;
-            boolean parentCompleted = this.parent.advancementProgress != null && this.parent.advancementProgress.isDone();
-
-            boolean parentClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(this.parent.getAdvancement().holder().id());
-
-            return parentCompleted && parentClaimed;
+            if (this.parents.isEmpty()) return true;
+            for (EnhancedAdvancementWidget p : this.parents) {
+                boolean parentCompleted = p.advancementProgress != null && p.advancementProgress.isDone();
+                boolean parentClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(p.getAdvancement().holder().id());
+                if (parentCompleted && parentClaimed) {
+                    return true;
+                }
+            }
+            return false;
         }
         return true;
     }
@@ -154,23 +144,21 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     public void drawConnectivity(GuiGraphics guiGraphics, int scrollX, int scrollY, boolean drawInside) {
         // Check if connections should be drawn at all
         if (this.shouldRender() && (EnhancedAdvancementsScreen.canEdit() || !this.enhancedDisplayInfo.hideLines())) {
-            // Draw connection to parent
-            if (this.parent != null && this.parent.shouldRender()) {
-                this.drawConnection(guiGraphics, this.parent, scrollX, scrollY, drawInside);
+            // Draw connections to all parents
+            for (EnhancedAdvancementWidget p : this.parents) {
+                if (p != null && p.shouldRender()) {
+                    this.drawConnection(guiGraphics, p, scrollX, scrollY, drawInside);
+                }
             }
             // Create and post event to get extra connections
             IAdvancementDrawConnectionsEvent event = Services.PLATFORM.getEventHelper().postAdvancementDrawConnectionsEvent(this.advancementNode);
             // Draw extra connections from event
             for (AdvancementHolder parent : event.getExtraConnections()) {
-                final EnhancedAdvancementWidget parentGui = this.advancementTabGui.getWidget(parent);
-                if (parentGui != null && parentGui.shouldRender()) {
+                final EnhancedAdvancementWidget parentGui = this.advancementTabGui.getWidget(parent.id());
+                if (parentGui != null && parentGui.shouldRender() && !this.parents.contains(parentGui)) {
                     this.drawConnection(guiGraphics, parentGui, scrollX, scrollY, drawInside);
                 }
             }
-        }
-        // Draw child connections
-        for (EnhancedAdvancementWidget advancementWidget : this.children) {
-            advancementWidget.drawConnectivity(guiGraphics, scrollX, scrollY, drawInside);
         }
     }
 
@@ -209,7 +197,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         boolean goalFrame = this.displayInfo.getType() == AdvancementType.GOAL;
 
         if (this.enhancedDisplayInfo.drawDirectLines()) {
-            if (parent == this.parent) {
+            if (parent == this.getParent()) {
                 this.incomingSide = ConnectionRouter.Side.NONE;
             }
 
@@ -227,7 +215,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             }
         } else {
             ConnectionRouter.Route route = ConnectionRouter.route(startX, startY, endX, endY, parent.incomingSide);
-            if (parent == this.parent) {
+            if (parent == this.getParent()) {
                 this.incomingSide = route.entrySide();
             }
 
@@ -313,10 +301,6 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
 
             RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
             guiGraphics.pose().popPose();
-        }
-
-        for (EnhancedAdvancementWidget advancementWidget : this.children) {
-            advancementWidget.draw(guiGraphics, scrollX, scrollY, unzoomedX, unzoomedY);
         }
     }
 
@@ -464,11 +448,18 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     }
 
     public void attachToParent() {
-        if (this.parent == null && advancementNode.advancement().parent().isPresent()) {
-            this.parent = this.getFirstVisibleParent(advancementNode);
+        this.parents.clear();
+        List<ResourceLocation> parentIds = IMultiParentAdvancement.getParents(this.advancementNode.advancement());
 
-            if (this.parent != null) {
-                this.parent.addGuiAdvancement(this);
+        for (ResourceLocation parentId : parentIds) {
+            EnhancedAdvancementWidget pWidget = this.advancementTabGui.getWidget(parentId);
+            if (pWidget != null) {
+                if (!this.parents.contains(pWidget)) {
+                    this.parents.add(pWidget);
+                }
+                if (!pWidget.getChildren().contains(this)) {
+                    pWidget.addGuiAdvancement(this);
+                }
             }
         }
     }
@@ -491,12 +482,29 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         this.x = x;
     }
 
+    public List<EnhancedAdvancementWidget> getParents() {
+        return this.parents;
+    }
+
     public EnhancedAdvancementWidget getParent() {
-        return this.parent;
+        return this.parents.isEmpty() ? null : this.parents.getFirst();
     }
 
     public void setParent(EnhancedAdvancementWidget parent) {
-        this.parent = parent;
+        this.parents.clear();
+        if (parent != null) {
+            this.parents.add(parent);
+        }
+    }
+
+    public void addParent(EnhancedAdvancementWidget parent) {
+        if (parent != null && !this.parents.contains(parent)) {
+            this.parents.add(parent);
+        }
+    }
+
+    public void removeParent(EnhancedAdvancementWidget parent) {
+        this.parents.remove(parent);
     }
 
     public List<EnhancedAdvancementWidget> getChildren() {

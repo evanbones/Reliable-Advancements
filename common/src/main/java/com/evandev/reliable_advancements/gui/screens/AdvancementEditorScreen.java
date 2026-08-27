@@ -348,6 +348,9 @@ public class AdvancementEditorScreen extends Screen {
         if (Services.PLATFORM.canSendAdvancementEdit()) {
             Services.PLATFORM.sendAdvancementEdit(payload);
         }
+        if (parentScreen != null) {
+            parentScreen.setLoading(true);
+        }
         this.minecraft.setScreen(parentScreen);
     }
 

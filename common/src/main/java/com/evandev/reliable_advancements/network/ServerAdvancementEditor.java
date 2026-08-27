@@ -1,5 +1,7 @@
 package com.evandev.reliable_advancements.network;
 
+import com.evandev.reliable_advancements.advancements.IMultiParentAdvancement;
+import com.evandev.reliable_advancements.advancements.MultiParentHelper;
 import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.mixin.ServerAdvancementManagerAccessor;
 import com.evandev.reliable_advancements.platform.Services;
@@ -37,6 +39,7 @@ public class ServerAdvancementEditor {
 
         if (payload.advancementId().toString().equals("reliable_advancements:resync")) {
             player.getAdvancements().reload(server.getAdvancements());
+            player.getAdvancements().flushDirty(player);
             return;
         }
 
@@ -51,6 +54,7 @@ public class ServerAdvancementEditor {
             }
 
             JsonObject json = encoded.result().orElseThrow().getAsJsonObject();
+            MultiParentHelper.applyParentsToJson(json, IMultiParentAdvancement.getParents(holder.value()));
 
             AdvancementJsonPayload response = new AdvancementJsonPayload(payload.advancementId(), json.toString(), payload.initialTab());
             Services.PLATFORM.sendAdvancementJsonToClient(player, response);
@@ -71,8 +75,36 @@ public class ServerAdvancementEditor {
             }
 
             JsonObject json = encoded.result().orElseThrow().getAsJsonObject();
+            List<ResourceLocation> parents = new ArrayList<>(IMultiParentAdvancement.getParents(holder.value()));
 
-            json.addProperty("parent", payload.parentId().toString());
+            if (payload.unlink()) {
+                parents.remove(payload.parentId());
+            } else {
+                if (!parents.contains(payload.parentId())) {
+                    parents.add(payload.parentId());
+                }
+            }
+
+            AdvancementNode currentNode = server.getAdvancements().tree().get(holder);
+            ResourceLocation currentTabRoot = currentNode != null ? currentNode.root().holder().id() : null;
+
+            ResourceLocation primaryParent = null;
+            if (!parents.isEmpty()) {
+                for (ResourceLocation pId : parents) {
+                    AdvancementNode pNode = server.getAdvancements().tree().get(pId);
+                    if (pNode != null && currentTabRoot != null && pNode.root().holder().id().equals(currentTabRoot)) {
+                        primaryParent = pId;
+                        break;
+                    }
+                }
+                if (primaryParent == null) {
+                    primaryParent = parents.getFirst();
+                }
+            } else {
+                primaryParent = currentTabRoot;
+            }
+
+            MultiParentHelper.applyParentsToJson(json, parents, primaryParent);
             saveAdvancementEdit(server, player, new EditAdvancementPayload(payload.childId(), json.toString(), false));
         }
     }
@@ -97,12 +129,15 @@ public class ServerAdvancementEditor {
         }
 
         RegistryOps<JsonElement> ops = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
-        DataResult<Advancement> parsed = Advancement.CODEC.parse(ops, advJson);
+        JsonObject preparedJson = MultiParentHelper.prepareJsonForCodec(advJson);
+        DataResult<Advancement> parsed = Advancement.CODEC.parse(ops, preparedJson);
         if (parsed.error().isPresent()) {
             report(player, "Could not save " + payload.advancementId() + ": " + parsed.error().get().message());
             return;
         }
-        AdvancementHolder newHolder = new AdvancementHolder(payload.advancementId(), parsed.result().orElseThrow());
+        Advancement adv = parsed.result().orElseThrow();
+        IMultiParentAdvancement.setParents(adv, MultiParentHelper.parseParents(advJson));
+        AdvancementHolder newHolder = new AdvancementHolder(payload.advancementId(), adv);
 
         try {
             File parentDir = advFile.getParentFile();
@@ -190,11 +225,9 @@ public class ServerAdvancementEditor {
                             ResourceLocation id = ResourceLocation.fromNamespaceAndPath(namespace, path);
                             try {
                                 JsonObject json = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
-                                if (json.has("parent")) {
-                                    ResourceLocation parent = ResourceLocation.tryParse(json.get("parent").getAsString());
-                                    if (parent != null) {
-                                        editParents.put(id, parent);
-                                    }
+                                List<ResourceLocation> parents = MultiParentHelper.parseParents(json);
+                                for (ResourceLocation parent : parents) {
+                                    editParents.put(id, parent);
                                 }
                             } catch (Exception ignored) {
                             }
@@ -268,9 +301,14 @@ public class ServerAdvancementEditor {
 
                 try {
                     JsonObject json = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
-                    DataResult<Advancement> parsed = Advancement.CODEC.parse(ops, json);
+                    JsonObject prepared = MultiParentHelper.prepareJsonForCodec(json);
+                    DataResult<Advancement> parsed = Advancement.CODEC.parse(ops, prepared);
                     parsed.result().ifPresentOrElse(
-                            advancement -> out.put(id, new AdvancementHolder(id, advancement)),
+                            advancement -> {
+                                List<ResourceLocation> parents = MultiParentHelper.parseParents(json);
+                                IMultiParentAdvancement.setParents(advancement, parents);
+                                out.put(id, new AdvancementHolder(id, advancement));
+                            },
                             () -> Constants.LOG.error("Could not reapply saved edit for {}: {}", id,
                                     parsed.error().map(DataResult.Error::message).orElse("unknown error"))
                     );
@@ -292,7 +330,16 @@ public class ServerAdvancementEditor {
         manager.setAdvancements(map);
 
         AdvancementTree tree = new AdvancementTree();
-        tree.addAll(map.values());
+        List<AdvancementHolder> sorted = new ArrayList<>(map.values());
+        sorted.sort(Comparator.comparing(a -> a.id().toString()));
+        tree.addAll(sorted);
+
+        for (AdvancementNode root : tree.roots()) {
+            if (root.holder().value().display().isPresent()) {
+                TreeNodePosition.run(root);
+            }
+        }
+
         manager.setTree(tree);
     }
 

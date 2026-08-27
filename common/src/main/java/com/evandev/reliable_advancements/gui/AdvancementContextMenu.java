@@ -19,7 +19,7 @@ public class AdvancementContextMenu {
     private final EnhancedAdvancementsScreen parentScreen;
     private final EnhancedAdvancementWidget widget;
     private final int x, y;
-    private final int width = 160;
+    private final int width;
     private final int height;
     private final List<ContextOption> options = new ArrayList<>();
 
@@ -28,25 +28,37 @@ public class AdvancementContextMenu {
         this.widget = widget;
 
         if (widget != null) {
-            this.options.add(new ContextOption("Edit Properties", false, () -> openEditor("Properties")));
-            this.options.add(new ContextOption("Copy (Ctrl+C)", false, () -> {
+            this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.edit_properties"), false, () -> openEditor("Properties")));
+            this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.copy"), false, () -> {
                 parentScreen.copyAdvancement(widget);
                 parentScreen.closeContextMenu();
             }));
-            this.options.add(new ContextOption("Link to Parent...", false, () -> parentScreen.startLinking(widget)));
-            this.options.add(new ContextOption("Reset to Vanilla", true, () -> parentScreen.resetAdvancement(widget)));
-            this.options.add(new ContextOption("Delete from Game", true, () -> parentScreen.deleteAdvancement(widget)));
+            this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.link_parents"), false, () -> parentScreen.startLinking(widget)));
+            if (!widget.getParents().isEmpty()) {
+                this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.unlink_all_parents"), false, () -> {
+                    parentScreen.unlinkAllParents(widget);
+                    parentScreen.closeContextMenu();
+                }));
+            }
+            this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.reset_vanilla"), true, () -> parentScreen.resetAdvancement(widget)));
+            this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.delete"), true, () -> parentScreen.deleteAdvancement(widget)));
         } else {
-            this.options.add(new ContextOption("Create New Advancement", false, () -> parentScreen.createNewAdvancement(mouseX, mouseY)));
-            this.options.add(new ContextOption("Create New Tab", false, () -> parentScreen.createNewTab(mouseX, mouseY)));
-            this.options.add(new ContextOption("Paste (Ctrl+V)", false, () -> {
+            this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.create_advancement"), false, () -> parentScreen.createNewAdvancement(mouseX, mouseY)));
+            this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.create_tab"), false, () -> parentScreen.createNewTab(mouseX, mouseY)));
+            this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.paste"), false, () -> {
                 parentScreen.pasteAdvancement(mouseX, mouseY);
                 parentScreen.closeContextMenu();
             }));
-            this.options.add(new ContextOption("Edit Tab Properties", false, parentScreen::editTabProperties));
-            this.options.add(new ContextOption("Reset Entire Tab", true, this::resetEntireTab));
+            this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.edit_tab_properties"), false, parentScreen::editTabProperties));
+            this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.reset_tab"), true, this::resetEntireTab));
         }
 
+        Font font = Minecraft.getInstance().font;
+        int maxW = 160;
+        for (ContextOption opt : this.options) {
+            maxW = Math.max(maxW, font.width(opt.label()) + 16);
+        }
+        this.width = maxW;
         this.height = this.options.size() * 20 + 4;
 
         this.x = Math.min(mouseX, parentScreen.width - this.width - 5);
@@ -72,17 +84,18 @@ public class AdvancementContextMenu {
 
                             for (EnhancedAdvancementWidget w : parentScreen.selectedTab.getWidgets().values()) {
                                 idsToDelete.add(w.getAdvancement().holder().id());
-                                PersistentData.removePosition(w.getAdvancement().holder().id());
                             }
+                            PersistentData.removePositions(idsToDelete);
                             PersistentData.removeTabProperties(rootId);
-
+                            EnhancedAdvancementsScreen.setSavedSelectedTab(rootId);
+                            parentScreen.setLoading(true);
                             Services.PLATFORM.sendResetTab(new ResetTabPayload(rootId, idsToDelete));
                         }
                     }
                     Minecraft.getInstance().setScreen(parentScreen);
                 },
-                Component.literal("Reset Entire Tab?"),
-                Component.literal("Are you sure you want to reset ALL advancements in this tab? This cannot be undone.")
+                Component.translatable("gui.reliable_advancements.dialog.reset_tab.title"),
+                Component.translatable("gui.reliable_advancements.dialog.reset_tab.message")
         ));
         parentScreen.closeContextMenu();
     }
@@ -105,7 +118,7 @@ public class AdvancementContextMenu {
             }
 
             int textColor = hovered ? (option.isDestructive ? 0xFF5555 : 0xFFFFAA) : 0xFFFFFF;
-            guiGraphics.drawString(font, option.label, x + 6, optY + 6, textColor);
+            guiGraphics.drawString(font, option.label(), x + 6, optY + 6, textColor);
         }
 
         guiGraphics.pose().popPose();
@@ -124,6 +137,6 @@ public class AdvancementContextMenu {
         return false;
     }
 
-    private record ContextOption(String label, boolean isDestructive, Runnable action) {
+    private record ContextOption(Component label, boolean isDestructive, Runnable action) {
     }
 }
