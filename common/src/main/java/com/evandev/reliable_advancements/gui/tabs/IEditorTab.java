@@ -13,6 +13,12 @@ public interface IEditorTab {
 
     void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks);
 
+    default void renderOverlay(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
+        if (getForm() != null) {
+            getForm().renderOverlay(gfx, mouseX, mouseY, partialTicks);
+        }
+    }
+
     void saveState(AdvancementDraft draft);
 
     void loadState(AdvancementDraft draft);

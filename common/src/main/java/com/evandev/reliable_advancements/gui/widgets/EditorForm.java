@@ -253,6 +253,14 @@ public class EditorForm {
         }
     }
 
+    public void renderOverlay(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
+        for (FormRow row : rows) {
+            if (row.getY() + row.getHeight() >= y && row.getY() <= y + height) {
+                row.renderOverlay(gfx, font, mouseX, mouseY, partialTicks);
+            }
+        }
+    }
+
     public List<GuiEventListener> getWidgets() {
         return widgets;
     }
@@ -281,6 +289,8 @@ public class EditorForm {
         void layout(int x, int y, int width, Font font);
 
         void render(GuiGraphics gfx, Font font, int mouseX, int mouseY, float partialTicks);
+
+        default void renderOverlay(GuiGraphics gfx, Font font, int mouseX, int mouseY, float partialTicks) {}
 
         int getHeight();
 
@@ -418,8 +428,31 @@ public class EditorForm {
                 gfx.renderFakeItem(stack, prevX + 2, prevY + 2);
                 if (mouseX >= prevX && mouseX <= prevX + iconSlotSize && mouseY >= prevY && mouseY <= prevY + iconSlotSize) {
                     gfx.renderOutline(prevX, prevY, iconSlotSize, iconSlotSize, EditorTheme.ACCENT_GOLD_MUTED);
-                    gfx.renderTooltip(font, stack, mouseX, mouseY);
                 }
+            }
+        }
+
+        @Override
+        public void renderOverlay(GuiGraphics gfx, Font font, int mouseX, int mouseY, float partialTicks) {
+            int labelH = (label != null && !label.isEmpty()) ? 12 : 0;
+            int iconSlotSize = 20;
+            int prevX = x + width - iconSlotSize;
+            int prevY = y + labelH;
+
+            String val = widget.getValue().trim();
+            ItemStack stack = ItemStack.EMPTY;
+            if (!val.isEmpty()) {
+                ResourceLocation loc = ResourceLocation.tryParse(val);
+                if (loc != null && BuiltInRegistries.ITEM.containsKey(loc)) {
+                    Item item = BuiltInRegistries.ITEM.get(loc);
+                    if (item != Items.AIR) {
+                        stack = new ItemStack(item);
+                    }
+                }
+            }
+
+            if (!stack.isEmpty() && mouseX >= prevX && mouseX <= prevX + iconSlotSize && mouseY >= prevY && mouseY <= prevY + iconSlotSize) {
+                gfx.renderTooltip(font, stack, mouseX, mouseY);
             }
         }
 

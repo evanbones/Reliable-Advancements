@@ -8,6 +8,7 @@ import com.evandev.reliable_advancements.reference.Constants;
 import com.evandev.reliable_advancements.util.PersistentData;
 import com.google.common.collect.Maps;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import net.minecraft.advancements.AdvancementHolder;
@@ -333,7 +334,7 @@ public class EnhancedAdvancementTab {
         public boolean absoluteY = false;
         public ResourceLocation texture;
 
-        public static BackgroundRule fromJson(com.google.gson.JsonObject json) {
+        public static BackgroundRule fromJson(JsonObject json) {
             BackgroundRule rule = new BackgroundRule();
             if (json.has("min_y")) rule.minY = json.get("min_y").getAsInt();
             if (json.has("max_y")) rule.maxY = json.get("max_y").getAsInt();

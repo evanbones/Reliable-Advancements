@@ -18,7 +18,6 @@ public class ModConfig {
     private static final File CONFIG_FILE = Services.PLATFORM.getConfigDirectory().resolve(Constants.MOD_ID + ".json").toFile();
     private static ModConfig INSTANCE;
 
-    // --- General / UI Settings ---
     public boolean doFade = false;
     public String criteriaDetail = CriteriaDetail.DEFAULT.getName();
     public boolean requiresShift = true;
@@ -31,8 +30,8 @@ public class ModConfig {
     public boolean onlyUseAboveAdvancementTabs = false;
     public boolean discoveryMode = false;
     public boolean requireRewardClaiming = false;
+    public int editorSidebarWidth = 130;
 
-    // --- Inventory Button ---
     public InventoryButtonStyle inventoryButtonStyle = InventoryButtonStyle.TAB;
     public boolean enableButtonTooltip = false;
     public int inventoryButtonOffsetX = 0;
@@ -41,21 +40,18 @@ public class ModConfig {
     public String customInventoryButtonTextureHovered = "reliable_advancements:textures/gui/inventory_button_highlighted.png";
     public String customInventoryButtonIcon = "minecraft:book";
 
-    // --- Editing ---
     public boolean enableEditMode = false;
     public boolean showTooltipsInEditMode = false;
     public boolean showEditModeButton = true;
     public boolean storeAdvancementEditsGlobally = true;
     public boolean storeAdvancementEditsAsDatapack = false;
 
-    // --- Visuals ---
     public boolean drawArrows = false;
     public boolean defaultDrawDirectLines = false;
     public boolean defaultHideLines = false;
     public boolean blurBackground = false;
     public int blurBackgroundOpacity = 66;
 
-    // --- Colors ---
     public String defaultCompletedLineColor = "#FFFFFF";
     public String defaultUncompletedLineColor = "#FFFFFF";
     public String defaultCompletedIconColor = "#DBA213";

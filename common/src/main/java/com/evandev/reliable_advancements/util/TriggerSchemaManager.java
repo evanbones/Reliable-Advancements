@@ -7,17 +7,12 @@ import net.mehvahdjukaar.codecui.SchemaCodecs;
 import net.mehvahdjukaar.codecui.internal.CuratedSchemas;
 import net.mehvahdjukaar.codecui.internal.SchemaResolver;
 import net.minecraft.advancements.CriterionTrigger;
-import net.minecraft.advancements.critereon.ContextAwarePredicate;
-import net.minecraft.advancements.critereon.EntityPredicate;
-import net.minecraft.advancements.critereon.ItemPredicate;
-import net.minecraft.advancements.critereon.LocationPredicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -31,224 +26,11 @@ public class TriggerSchemaManager {
     static {
         try {
             CuratedSchemas.bootstrap();
-            registerCustomAdvancementSchemas();
+            AdvancementPredicateSchemas.registerAll();
             for (Registry<?> registry : BuiltInRegistries.REGISTRY) {
                 registerDynamicRegistry(registry);
             }
         } catch (Throwable ignored) {
-        }
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void registerCustomAdvancementSchemas() {
-        try {
-            Schema.Str str = new Schema.Str(0, Integer.MAX_VALUE, null);
-            Schema.Bool bool = new Schema.Bool();
-            Schema.IntRange intAll = new Schema.IntRange(Integer.MIN_VALUE, Integer.MAX_VALUE);
-            Schema.DoubleRange doubleAll = new Schema.DoubleRange(-Double.MAX_VALUE, Double.MAX_VALUE);
-
-            Schema<?> intBounds = Schema.anyOf(
-                    Schema.option("exact", intAll),
-                    Schema.option("range", new Schema.Record<>(Object.class, List.of(
-                            new Schema.Field<>("min", intAll, true, null),
-                            new Schema.Field<>("max", intAll, true, null)
-                    )))
-            );
-
-            Schema<?> doubleBounds = Schema.anyOf(
-                    Schema.option("exact", doubleAll),
-                    Schema.option("range", new Schema.Record<>(Object.class, List.of(
-                            new Schema.Field<>("min", doubleAll, true, null),
-                            new Schema.Field<>("max", doubleAll, true, null)
-                    )))
-            );
-
-            Schema<?> itemOrTag = Schema.anyOf(
-                    Schema.option("id", new Schema.ResourceId(Registries.ITEM)),
-                    Schema.option("tag", new Schema.TagId(Registries.ITEM, true)),
-                    Schema.option("list", new Schema.ListOf<>(new Schema.ResourceId(Registries.ITEM), 1, Integer.MAX_VALUE))
-            );
-
-            Schema<?> itemSchema = new Schema.Record<>(ItemPredicate.class, List.of(
-                    new Schema.Field<>("items", itemOrTag, true, null),
-                    new Schema.Field<>("count", intBounds, true, null),
-                    new Schema.Field<>("predicates", new Schema.MapOf<>(new Schema.ResourceId(null), str), true, null)
-            ));
-
-            Schema<?> biomeOrTag = Schema.anyOf(
-                    Schema.option("id", new Schema.ResourceId(Registries.BIOME)),
-                    Schema.option("tag", new Schema.TagId(Registries.BIOME, true)),
-                    Schema.option("list", new Schema.ListOf<>(new Schema.ResourceId(Registries.BIOME), 1, Integer.MAX_VALUE))
-            );
-            Schema<?> structOrTag = Schema.anyOf(
-                    Schema.option("id", new Schema.ResourceId(Registries.STRUCTURE)),
-                    Schema.option("tag", new Schema.TagId(Registries.STRUCTURE, true))
-            );
-
-            Schema<?> locationSchema = new Schema.Record<>(LocationPredicate.class, List.of(
-                    new Schema.Field<>("biomes", biomeOrTag, true, null),
-                    new Schema.Field<>("structures", structOrTag, true, null),
-                    new Schema.Field<>("dimension", new Schema.ResourceId(Registries.DIMENSION_TYPE), true, null),
-                    new Schema.Field<>("position", new Schema.Record<>(Object.class, List.of(
-                            new Schema.Field<>("x", doubleBounds, true, null),
-                            new Schema.Field<>("y", doubleBounds, true, null),
-                            new Schema.Field<>("z", doubleBounds, true, null)
-                    )), true, null),
-                    new Schema.Field<>("block", new Schema.Record<>(Object.class, List.of(
-                            new Schema.Field<>("blocks", Schema.anyOf(Schema.option("id", new Schema.ResourceId(Registries.BLOCK)), Schema.option("tag", new Schema.TagId(Registries.BLOCK, true))), true, null),
-                            new Schema.Field<>("state", new Schema.MapOf<>(str, str), true, null)
-                    )), true, null),
-                    new Schema.Field<>("fluid", new Schema.Record<>(Object.class, List.of(
-                            new Schema.Field<>("fluids", Schema.anyOf(Schema.option("id", new Schema.ResourceId(Registries.FLUID)), Schema.option("tag", new Schema.TagId(Registries.FLUID, true))), true, null),
-                            new Schema.Field<>("state", new Schema.MapOf<>(str, str), true, null)
-                    )), true, null),
-                    new Schema.Field<>("light", new Schema.Record<>(Object.class, List.of(
-                            new Schema.Field<>("light", intBounds, true, null)
-                    )), true, null),
-                    new Schema.Field<>("smokey", bool, true, null),
-                    new Schema.Field<>("can_see_sky", bool, true, null)
-            ));
-
-            Schema.Ref entityRef = new Schema.Ref<>();
-
-            Schema<?> playerSubPredicate = new Schema.Record<>(Object.class, List.of(
-                    new Schema.Field<>("looking_at", entityRef, true, null),
-                    new Schema.Field<>("gamemode", new Schema.Enum<>(List.of("survival", "creative", "adventure", "spectator"), String::valueOf), true, null),
-                    new Schema.Field<>("level", intBounds, true, null),
-                    new Schema.Field<>("advancements", new Schema.MapOf<>(new Schema.ResourceId(Registries.ADVANCEMENT), bool), true, null),
-                    new Schema.Field<>("recipes", new Schema.MapOf<>(new Schema.ResourceId(Registries.RECIPE), bool), true, null)
-            ));
-
-            LinkedHashMap<String, Schema<?>> subPredicates = new LinkedHashMap<>();
-            subPredicates.put("minecraft:player", playerSubPredicate);
-            subPredicates.put("minecraft:lightning", new Schema.Record<>(Object.class, List.of(
-                    new Schema.Field<>("blocks_set_on_fire", intBounds, true, null),
-                    new Schema.Field<>("entity_struck", entityRef, true, null)
-            )));
-            subPredicates.put("minecraft:raider", new Schema.Record<>(Object.class, List.of(
-                    new Schema.Field<>("has_raid", bool, true, null),
-                    new Schema.Field<>("is_captain", bool, true, null),
-                    new Schema.Field<>("wave", intBounds, true, null)
-            )));
-            subPredicates.put("minecraft:sheep", new Schema.Record<>(Object.class, List.of(
-                    new Schema.Field<>("sheared", bool, true, null)
-            )));
-            subPredicates.put("minecraft:wolf", new Schema.Record<>(Object.class, List.of(
-                    new Schema.Field<>("variant", new Schema.ResourceId(null), true, null)
-            )));
-            subPredicates.put("minecraft:cat", new Schema.Record<>(Object.class, List.of(
-                    new Schema.Field<>("variant", new Schema.ResourceId(null), true, null)
-            )));
-            subPredicates.put("minecraft:slime", new Schema.Record<>(Object.class, List.of(
-                    new Schema.Field<>("size", intBounds, true, null)
-            )));
-            Schema.OneOf<?> entitySubPredicateSchema = new Schema.OneOf<>("type", subPredicates);
-
-            Schema<?> entityTypeOrTag = Schema.anyOf(
-                    Schema.option("id", new Schema.ResourceId(Registries.ENTITY_TYPE)),
-                    Schema.option("tag", new Schema.TagId(Registries.ENTITY_TYPE, true))
-            );
-
-            Schema<?> entityPredicateSchema = new Schema.Record<>(EntityPredicate.class, List.of(
-                    new Schema.Field<>("type", entityTypeOrTag, true, null),
-                    new Schema.Field<>("distance", new Schema.Record<>(Object.class, List.of(
-                            new Schema.Field<>("absolute", doubleBounds, true, null),
-                            new Schema.Field<>("horizontal", doubleBounds, true, null),
-                            new Schema.Field<>("x", doubleBounds, true, null),
-                            new Schema.Field<>("y", doubleBounds, true, null),
-                            new Schema.Field<>("z", doubleBounds, true, null)
-                    )), true, null),
-                    new Schema.Field<>("movement", new Schema.Record<>(Object.class, List.of(
-                            new Schema.Field<>("x", doubleBounds, true, null),
-                            new Schema.Field<>("y", doubleBounds, true, null),
-                            new Schema.Field<>("z", doubleBounds, true, null),
-                            new Schema.Field<>("speed", doubleBounds, true, null),
-                            new Schema.Field<>("horizontal_speed", doubleBounds, true, null),
-                            new Schema.Field<>("vertical_speed", doubleBounds, true, null),
-                            new Schema.Field<>("fall_distance", doubleBounds, true, null)
-                    )), true, null),
-                    new Schema.Field<>("location", locationSchema, true, null),
-                    new Schema.Field<>("stepping_on", locationSchema, true, null),
-                    new Schema.Field<>("movement_affected_by", locationSchema, true, null),
-                    new Schema.Field<>("effects", new Schema.MapOf<>(new Schema.ResourceId(Registries.MOB_EFFECT), new Schema.Record<>(Object.class, List.of(
-                            new Schema.Field<>("amplifier", intBounds, true, null),
-                            new Schema.Field<>("duration", intBounds, true, null),
-                            new Schema.Field<>("ambient", bool, true, null),
-                            new Schema.Field<>("visible", bool, true, null)
-                    ))), true, null),
-                    new Schema.Field<>("nbt", str, true, null),
-                    new Schema.Field<>("flags", new Schema.Record<>(Object.class, List.of(
-                            new Schema.Field<>("is_on_fire", bool, true, null),
-                            new Schema.Field<>("is_crouching", bool, true, null),
-                            new Schema.Field<>("is_sprinting", bool, true, null),
-                            new Schema.Field<>("is_swimming", bool, true, null),
-                            new Schema.Field<>("is_baby", bool, true, null)
-                    )), true, null),
-                    new Schema.Field<>("equipment", new Schema.Record<>(Object.class, List.of(
-                            new Schema.Field<>("head", itemSchema, true, null),
-                            new Schema.Field<>("chest", itemSchema, true, null),
-                            new Schema.Field<>("legs", itemSchema, true, null),
-                            new Schema.Field<>("feet", itemSchema, true, null),
-                            new Schema.Field<>("mainhand", itemSchema, true, null),
-                            new Schema.Field<>("offhand", itemSchema, true, null)
-                    )), true, null),
-                    new Schema.Field<>("type_specific", entitySubPredicateSchema, true, null),
-                    new Schema.Field<>("vehicle", entityRef, true, null),
-                    new Schema.Field<>("passenger", entityRef, true, null),
-                    new Schema.Field<>("targeted_entity", entityRef, true, null),
-                    new Schema.Field<>("team", str, true, null)
-            ));
-
-            entityRef.bind(entityPredicateSchema);
-
-            Schema.Ref conditionRef = new Schema.Ref<>();
-
-            LinkedHashMap<String, Schema<?>> conditionVariants = new LinkedHashMap<>();
-            conditionVariants.put("minecraft:entity_properties", new Schema.Record<>(Object.class, List.of(
-                    new Schema.Field<>("entity", new Schema.Enum<>(List.of("this", "killer", "direct_killer", "killer_player"), String::valueOf), false, "this"),
-                    new Schema.Field<>("predicate", entityRef, true, null)
-            )));
-            conditionVariants.put("minecraft:location_check", new Schema.Record<>(Object.class, List.of(
-                    new Schema.Field<>("predicate", locationSchema, true, null),
-                    new Schema.Field<>("offset", new Schema.ListOf<>(intAll, 3, 3), true, null)
-            )));
-            conditionVariants.put("minecraft:match_tool", new Schema.Record<>(Object.class, List.of(
-                    new Schema.Field<>("predicate", itemSchema, true, null)
-            )));
-            conditionVariants.put("minecraft:survives_explosion", new Schema.Record<>(Object.class, List.of()));
-            conditionVariants.put("minecraft:weather_check", new Schema.Record<>(Object.class, List.of(
-                    new Schema.Field<>("raining", bool, true, null),
-                    new Schema.Field<>("thundering", bool, true, null)
-            )));
-            conditionVariants.put("minecraft:inverted", new Schema.Record<>(Object.class, List.of(
-                    new Schema.Field<>("term", conditionRef, false, null)
-            )));
-            conditionVariants.put("minecraft:any_of", new Schema.Record<>(Object.class, List.of(
-                    new Schema.Field<>("terms", new Schema.ListOf<>(conditionRef, 1, Integer.MAX_VALUE), false, null)
-            )));
-            conditionVariants.put("minecraft:all_of", new Schema.Record<>(Object.class, List.of(
-                    new Schema.Field<>("terms", new Schema.ListOf<>(conditionRef, 1, Integer.MAX_VALUE), false, null)
-            )));
-
-            Schema.OneOf<?> conditionSchema = new Schema.OneOf<>("condition", conditionVariants);
-            conditionRef.bind(conditionSchema);
-
-            Schema<?> contextAwareSchema = new Schema.ListOf<>(conditionSchema, 0, Integer.MAX_VALUE);
-
-            Schema<?> advancementEntityCodecSchema = Schema.anyOf(
-                    Schema.option("conditions", contextAwareSchema),
-                    Schema.option("direct", entityPredicateSchema)
-            );
-
-            SchemaCodecs.registerCompanion(EntityPredicate.ADVANCEMENT_CODEC, (Schema) advancementEntityCodecSchema);
-            SchemaCodecs.registerCompanion(EntityPredicate.CODEC, (Schema) entityPredicateSchema);
-            SchemaCodecs.registerCompanion(ItemPredicate.CODEC, (Schema) itemSchema);
-            SchemaCodecs.registerCompanion(LocationPredicate.CODEC, (Schema) locationSchema);
-            SchemaCodecs.registerCompanion(ContextAwarePredicate.CODEC, (Schema) contextAwareSchema);
-            SchemaCodecs.registerCompanion(LootItemCondition.DIRECT_CODEC, (Schema) conditionSchema);
-            SchemaCodecs.registerCompanion(LootItemCondition.TYPED_CODEC, (Schema) conditionSchema);
-        } catch (Throwable t) {
-            Constants.LOG.warn("Failed to register custom advancement schemas", t);
         }
     }
 
@@ -414,8 +196,10 @@ public class TriggerSchemaManager {
         if (schema instanceof Schema.FloatRange || schema instanceof Schema.DoubleRange || schema instanceof Schema.LongRange)
             return "0";
         if (schema instanceof Schema.Str) return "\"\"";
-        if (schema instanceof Schema.ResourceId(ResourceKey<? extends Registry<?>> registry)) {
-            return registry != null ? "\"minecraft:" + registry.location().getPath() + "\"" : "\"minecraft:stone\"";
+        if (schema instanceof Schema.ResourceId resourceId) {
+            List<String> suggestions = getSuggestionsForSchema(resourceId);
+            if (!suggestions.isEmpty()) return "\"" + suggestions.getFirst() + "\"";
+            return "\"minecraft:stone\"";
         }
         if (schema instanceof Schema.TagId r) {
             return r.registry() != null ? "\"#" + r.registry().location() + "\"" : "\"#minecraft:items\"";

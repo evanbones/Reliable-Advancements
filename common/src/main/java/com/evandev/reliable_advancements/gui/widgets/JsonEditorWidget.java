@@ -49,7 +49,6 @@ public class JsonEditorWidget extends AbstractWidget {
     private int cursorCol = 0;
     private int selectAnchorLine = 0;
     private int selectAnchorCol = 0;
-    private boolean isSelecting = false;
 
     private double scrollY = 0;
     private boolean isDraggingScrollbar = false;
@@ -173,7 +172,6 @@ public class JsonEditorWidget extends AbstractWidget {
     private void clearSelection() {
         selectAnchorLine = cursorLine;
         selectAnchorCol = cursorCol;
-        isSelecting = false;
     }
 
     private boolean hasSelection() {
@@ -239,7 +237,7 @@ public class JsonEditorWidget extends AbstractWidget {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (isFocused()) {
+        if (this.isFocused() && this.visible && this.active && this.isMouseOver(mouseX, mouseY)) {
             this.scrollY -= scrollY * LINE_HEIGHT * 2.5;
             clampScroll();
             return true;
@@ -252,7 +250,7 @@ public class JsonEditorWidget extends AbstractWidget {
         if (!this.visible || !this.active) return false;
         boolean inside = mouseX >= getX() && mouseX <= getX() + width && mouseY >= getY() && mouseY <= getY() + height;
         if (!inside) {
-            if (isFocused()) setFocused(false);
+            setFocused(false);
             return false;
         }
 
@@ -277,8 +275,6 @@ public class JsonEditorWidget extends AbstractWidget {
 
             if (!Screen.hasShiftDown()) {
                 clearSelection();
-            } else {
-                isSelecting = true;
             }
             return true;
         }
@@ -307,7 +303,6 @@ public class JsonEditorWidget extends AbstractWidget {
             cursorLine = Mth.clamp((int) (textY / LINE_HEIGHT), 0, lines.size() - 1);
             String lineStr = lines.get(cursorLine);
             cursorCol = getCharOffsetAtPixel(lineStr, (int) textX);
-            isSelecting = true;
             scrollToCursor();
             return true;
         }
@@ -342,19 +337,18 @@ public class JsonEditorWidget extends AbstractWidget {
         boolean shift = Screen.hasShiftDown();
         boolean ctrl = Screen.hasControlDown();
 
-        if (ctrl && keyCode == 65) { // Ctrl + A
+        if (ctrl && keyCode == 65) {
             selectAnchorLine = 0;
             selectAnchorCol = 0;
             cursorLine = lines.size() - 1;
             cursorCol = lines.get(cursorLine).length();
-            isSelecting = true;
             return true;
-        } else if (ctrl && keyCode == 67) { // Ctrl + C
+        } else if (ctrl && keyCode == 67) {
             if (hasSelection()) {
                 Minecraft.getInstance().keyboardHandler.setClipboard(getSelectedText());
             }
             return true;
-        } else if (ctrl && keyCode == 88) { // Ctrl + X
+        } else if (ctrl && keyCode == 88) {
             if (hasSelection()) {
                 Minecraft.getInstance().keyboardHandler.setClipboard(getSelectedText());
                 deleteSelection();
@@ -363,19 +357,19 @@ public class JsonEditorWidget extends AbstractWidget {
                 if (responder != null) responder.accept(getValue());
             }
             return true;
-        } else if (ctrl && keyCode == 86) { // Ctrl + V
+        } else if (ctrl && keyCode == 86) {
             String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
             if (!clip.isEmpty()) {
                 insertText(clip);
             }
             return true;
-        } else if (ctrl && keyCode == 90) { // Ctrl + Z
+        } else if (ctrl && keyCode == 90) {
             undo();
             return true;
-        } else if (ctrl && keyCode == 89) { // Ctrl + Y
+        } else if (ctrl && keyCode == 89) {
             redo();
             return true;
-        } else if (keyCode == 259) { // Backspace
+        } else if (keyCode == 259) {
             if (hasSelection()) {
                 deleteSelection();
             } else if (cursorCol > 0) {
@@ -397,7 +391,7 @@ public class JsonEditorWidget extends AbstractWidget {
             scrollToCursor();
             if (responder != null) responder.accept(getValue());
             return true;
-        } else if (keyCode == 261) { // Delete
+        } else if (keyCode == 261) {
             if (hasSelection()) {
                 deleteSelection();
             } else {
@@ -417,7 +411,7 @@ public class JsonEditorWidget extends AbstractWidget {
             scrollToCursor();
             if (responder != null) responder.accept(getValue());
             return true;
-        } else if (keyCode == 257 || keyCode == 335) { // Enter
+        } else if (keyCode == 257 || keyCode == 335) {
             pushUndoState();
             deleteSelection();
             String currentLine = lines.get(cursorLine);
@@ -436,10 +430,10 @@ public class JsonEditorWidget extends AbstractWidget {
             scrollToCursor();
             if (responder != null) responder.accept(getValue());
             return true;
-        } else if (keyCode == 258) { // Tab
+        } else if (keyCode == 258) {
             insertText("  ");
             return true;
-        } else if (keyCode == 263) { // Left
+        } else if (keyCode == 263) {
             if (cursorCol > 0) {
                 cursorCol--;
             } else if (cursorLine > 0) {
@@ -449,7 +443,7 @@ public class JsonEditorWidget extends AbstractWidget {
             if (!shift) clearSelection();
             scrollToCursor();
             return true;
-        } else if (keyCode == 262) { // Right
+        } else if (keyCode == 262) {
             if (cursorCol < lines.get(cursorLine).length()) {
                 cursorCol++;
             } else if (cursorLine < lines.size() - 1) {
@@ -459,7 +453,7 @@ public class JsonEditorWidget extends AbstractWidget {
             if (!shift) clearSelection();
             scrollToCursor();
             return true;
-        } else if (keyCode == 265) { // Up
+        } else if (keyCode == 265) {
             if (cursorLine > 0) {
                 cursorLine--;
                 cursorCol = Math.min(cursorCol, lines.get(cursorLine).length());
@@ -469,7 +463,7 @@ public class JsonEditorWidget extends AbstractWidget {
             if (!shift) clearSelection();
             scrollToCursor();
             return true;
-        } else if (keyCode == 264) { // Down
+        } else if (keyCode == 264) {
             if (cursorLine < lines.size() - 1) {
                 cursorLine++;
                 cursorCol = Math.min(cursorCol, lines.get(cursorLine).length());
@@ -479,12 +473,12 @@ public class JsonEditorWidget extends AbstractWidget {
             if (!shift) clearSelection();
             scrollToCursor();
             return true;
-        } else if (keyCode == 268) { // Home
+        } else if (keyCode == 268) {
             cursorCol = 0;
             if (!shift) clearSelection();
             scrollToCursor();
             return true;
-        } else if (keyCode == 269) { // End
+        } else if (keyCode == 269) {
             cursorCol = lines.get(cursorLine).length();
             if (!shift) clearSelection();
             scrollToCursor();

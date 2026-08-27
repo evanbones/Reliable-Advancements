@@ -7,7 +7,6 @@ import com.evandev.reliable_advancements.client.ClientRewardTracker;
 import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.reliable_advancements.platform.Services;
-import com.evandev.reliable_advancements.reference.Resources;
 import com.evandev.reliable_advancements.util.ConnectionRouter;
 import com.evandev.reliable_advancements.util.CriterionGrid;
 import com.evandev.reliable_advancements.util.PersistentData;
@@ -35,7 +34,6 @@ import java.util.List;
 public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     public static final int ADVANCEMENT_SIZE = 26;
     private static final ResourceLocation TITLE_BOX_SPRITE = ResourceLocation.withDefaultNamespace("advancements/title_box");
-    private static final int CORNER_SIZE = 10;
     private static final int WIDGET_WIDTH = 256;
     private static final int WIDGET_HEIGHT = 26;
     private static final int TITLE_SIZE = 32;
@@ -265,7 +263,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             if (ModConfig.get().requireRewardClaiming) {
                 if (isCompleted && !isClaimed) {
                     advancementState = AdvancementWidgetType.OBTAINED;
-                } else if (isCompleted && isClaimed) {
+                } else if (isCompleted) {
                     advancementState = AdvancementWidgetType.UNOBTAINED;
                 } else {
                     advancementState = AdvancementWidgetType.UNOBTAINED;
@@ -451,27 +449,6 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         }
 
         guiGraphics.renderFakeItem(this.displayInfo.getIcon(), scrollX + this.x + 8, scrollY + this.y + 5);
-    }
-
-    protected void render9Sprite(GuiGraphics guiGraphics, int x, int y, int width, int height, int textureHeight, int textureWidth, int textureDistance, int textureX, int textureY) {
-        // Top left corner
-        guiGraphics.blit(Resources.Gui.WIDGETS, x, y, textureX, textureY, textureHeight, textureHeight);
-        // Top side
-        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphics, x + textureHeight, y, width - textureHeight - textureHeight, textureHeight, textureX + textureHeight, textureY, textureWidth - textureHeight - textureHeight, textureDistance);
-        // Top right corner
-        guiGraphics.blit(Resources.Gui.WIDGETS, x + width - textureHeight, y, textureX + textureWidth - textureHeight, textureY, textureHeight, textureHeight);
-        // Bottom left corner
-        guiGraphics.blit(Resources.Gui.WIDGETS, x, y + height - textureHeight, textureX, textureY + textureDistance - textureHeight, textureHeight, textureHeight);
-        // Bottom side
-        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphics, x + textureHeight, y + height - textureHeight, width - textureHeight - textureHeight, textureHeight, textureX + textureHeight, textureY + textureDistance - textureHeight, textureWidth - textureHeight - textureHeight, textureDistance);
-        // Bottom right corner
-        guiGraphics.blit(Resources.Gui.WIDGETS, x + width - textureHeight, y + height - textureHeight, textureX + textureWidth - textureHeight, textureY + textureDistance - textureHeight, textureHeight, textureHeight);
-        // Left side
-        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphics, x, y + textureHeight, textureHeight, height - textureHeight - textureHeight, textureX, textureY + textureHeight, textureWidth, textureDistance - textureHeight - textureHeight);
-        // Center
-        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphics, x + textureHeight, y + textureHeight, width - textureHeight - textureHeight, height - textureHeight - textureHeight, textureX + textureHeight, textureY + textureHeight, textureWidth - textureHeight - textureHeight, textureDistance - textureHeight - textureHeight);
-        // Right side
-        RenderUtil.renderRepeating(Resources.Gui.WIDGETS, guiGraphics, x + width - textureHeight, y + textureHeight, textureHeight, height - textureHeight - textureHeight, textureX + textureWidth - textureHeight, textureY + textureHeight, textureWidth, textureDistance - textureHeight - textureHeight);
     }
 
     public boolean isMouseOver(double scrollX, double scrollY, double mouseX, double mouseY) {

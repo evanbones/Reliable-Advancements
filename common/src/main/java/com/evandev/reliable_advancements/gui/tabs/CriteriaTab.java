@@ -481,8 +481,17 @@ public class CriteriaTab implements IEditorTab {
                     textY += 10;
                 }
             }
+        }
 
-            if (!valid) {
+        @Override
+        public void renderOverlay(GuiGraphics gfx, Font font, int mouseX, int mouseY, float partialTicks) {
+            String err = rawBox.getSyntaxError();
+            if (err != null) {
+                int labelW = font.width("Conditions JSON");
+                int badgeX = x + labelW + 6;
+                int badgeY = y + 3;
+                int badgeW = font.width("Invalid") + 8;
+                int badgeH = 12;
                 if (mouseX >= badgeX && mouseX <= badgeX + badgeW && mouseY >= badgeY && mouseY <= badgeY + badgeH) {
                     List<FormattedCharSequence> tooltipLines = font.split(Component.literal(err), 280);
                     gfx.renderTooltip(font, tooltipLines, mouseX, mouseY);

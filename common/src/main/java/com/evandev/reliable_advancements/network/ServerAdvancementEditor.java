@@ -9,10 +9,7 @@ import com.google.gson.*;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.ChatFormatting;
-import net.minecraft.advancements.Advancement;
-import net.minecraft.advancements.AdvancementHolder;
-import net.minecraft.advancements.AdvancementProgress;
-import net.minecraft.advancements.AdvancementTree;
+import net.minecraft.advancements.*;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket;
 import net.minecraft.resources.RegistryOps;
@@ -33,6 +30,7 @@ import java.util.stream.Stream;
 public class ServerAdvancementEditor {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String EDITS_DIR_NAME = Constants.MOD_ID + "_edits";
+    private static Map<ResourceLocation, AdvancementHolder> baseAdvancements = new HashMap<>();
 
     public static void handleJsonRequest(MinecraftServer server, ServerPlayer player, RequestAdvancementJsonPayload payload) {
         if (player != null && !player.hasPermissions(2)) return;
@@ -134,16 +132,89 @@ public class ServerAdvancementEditor {
     public static void handleResetTab(MinecraftServer server, ServerPlayer player, ResetTabPayload payload) {
         if (player != null && !player.hasPermissions(2)) return;
 
-        boolean anyDeleted = false;
-        for (ResourceLocation id : payload.advancementIds()) {
-            if (deleteEditFile(server, id, player)) {
-                anyDeleted = true;
+        ResourceLocation tabRootId = payload.rootAdvancementId();
+        Set<ResourceLocation> idsToDelete = new HashSet<>();
+        if (tabRootId != null) {
+            idsToDelete.add(tabRootId);
+        }
+        if (payload.advancementIds() != null) {
+            idsToDelete.addAll(payload.advancementIds());
+        }
+
+        if (tabRootId != null) {
+            if (baseAdvancements != null && !baseAdvancements.isEmpty()) {
+                AdvancementTree baseTree = new AdvancementTree();
+                baseTree.addAll(baseAdvancements.values());
+                for (AdvancementHolder holder : baseAdvancements.values()) {
+                    AdvancementNode node = baseTree.get(holder.id());
+                    if (node != null && node.root().holder().id().equals(tabRootId)) {
+                        idsToDelete.add(holder.id());
+                    }
+                }
+            }
+
+            for (AdvancementHolder holder : server.getAdvancements().getAllAdvancements()) {
+                AdvancementNode node = server.getAdvancements().tree().get(holder.id());
+                if (node != null && node.root().holder().id().equals(tabRootId)) {
+                    idsToDelete.add(holder.id());
+                }
             }
         }
 
-        if (anyDeleted) {
-            server.reloadResources(server.getPackRepository().getSelectedIds());
+        if (!idsToDelete.isEmpty()) {
+            collectTabEditsFromDisk(server, idsToDelete);
         }
+
+        for (ResourceLocation id : idsToDelete) {
+            deleteEditFile(server, id, player);
+        }
+
+        server.reloadResources(server.getPackRepository().getSelectedIds());
+    }
+
+    private static void collectTabEditsFromDisk(MinecraftServer server, Set<ResourceLocation> idsToDelete) {
+        Map<ResourceLocation, ResourceLocation> editParents = new HashMap<>();
+        for (Path root : editsRoots(server)) {
+            Path dataDir = root.resolve("data");
+            if (!Files.isDirectory(dataDir)) continue;
+
+            try (Stream<Path> namespaces = Files.list(dataDir)) {
+                for (Path namespaceDir : (Iterable<Path>) namespaces.filter(Files::isDirectory)::iterator) {
+                    Path advDir = namespaceDir.resolve("advancement");
+                    if (!Files.isDirectory(advDir)) continue;
+                    String namespace = namespaceDir.getFileName().toString();
+                    try (Stream<Path> files = Files.walk(advDir)) {
+                        for (Path file : (Iterable<Path>) files.filter(p -> p.toString().endsWith(".json"))::iterator) {
+                            String path = advDir.relativize(file).toString().replace(File.separatorChar, '/');
+                            path = path.substring(0, path.length() - ".json".length());
+                            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(namespace, path);
+                            try {
+                                JsonObject json = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
+                                if (json.has("parent")) {
+                                    ResourceLocation parent = ResourceLocation.tryParse(json.get("parent").getAsString());
+                                    if (parent != null) {
+                                        editParents.put(id, parent);
+                                    }
+                                }
+                            } catch (Exception ignored) {
+                            }
+                        }
+                    } catch (IOException ignored) {
+                    }
+                }
+            } catch (IOException ignored) {
+            }
+        }
+
+        boolean added;
+        do {
+            added = false;
+            for (Map.Entry<ResourceLocation, ResourceLocation> entry : editParents.entrySet()) {
+                if (idsToDelete.contains(entry.getValue()) && idsToDelete.add(entry.getKey())) {
+                    added = true;
+                }
+            }
+        } while (added);
     }
 
     public static void handleRequestFullTree(MinecraftServer server, ServerPlayer player) {
@@ -153,6 +224,9 @@ public class ServerAdvancementEditor {
     }
 
     public static void reapplyAllEdits(MinecraftServer server) {
+        ServerAdvancementManagerAccessor manager = (ServerAdvancementManagerAccessor) server.getAdvancements();
+        baseAdvancements = new HashMap<>(manager.getAdvancements());
+
         RegistryOps<JsonElement> ops = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
 
         Map<ResourceLocation, AdvancementHolder> edits = new LinkedHashMap<>();

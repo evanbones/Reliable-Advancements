@@ -705,8 +705,26 @@ public final class SchemaWidgetFactory {
 
                         if (!stack.isEmpty()) {
                             gfx.renderFakeItem(stack, prevX, prevY + 1);
-                            if (mouseX >= prevX && mouseX <= prevX + 18 && mouseY >= prevY && mouseY <= prevY + 18) {
-                                gfx.renderTooltip(font, stack, mouseX, mouseY);
+                        }
+                    }
+                }
+
+                @Override
+                public void renderOverlay(GuiGraphics gfx, Font font, int mouseX, int mouseY, float partialTicks) {
+                    if (hasPreview) {
+                        int prevX = box.getX() + box.getWidth() + 2;
+                        int prevY = y;
+                        String val = box.getValue().trim();
+                        if (!val.isEmpty()) {
+                            ResourceLocation loc = ResourceLocation.tryParse(val);
+                            if (loc != null && BuiltInRegistries.ITEM.containsKey(loc)) {
+                                Item item = BuiltInRegistries.ITEM.get(loc);
+                                if (item != Items.AIR) {
+                                    ItemStack stack = new ItemStack(item);
+                                    if (mouseX >= prevX && mouseX <= prevX + 18 && mouseY >= prevY && mouseY <= prevY + 18) {
+                                        gfx.renderTooltip(font, stack, mouseX, mouseY);
+                                    }
+                                }
                             }
                         }
                     }
@@ -845,6 +863,9 @@ public final class SchemaWidgetFactory {
         public @Nullable JsonElement currentJson() {
             JsonObject obj = new JsonObject();
             for (FieldItem item : fields.values()) {
+                if (item.fieldDef.optional() && item.node.isUnset()) {
+                    continue;
+                }
                 JsonElement sub = item.node.currentJson();
                 if (sub != null && !sub.isJsonNull()) {
                     if (item.fieldDef.inline() && sub.isJsonObject()) {
@@ -1371,28 +1392,42 @@ public final class SchemaWidgetFactory {
             int bestMatch = 0;
             if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString() && value.getAsString().startsWith("#")) {
                 for (int i = 0; i < options.size(); i++) {
-                    if (options.get(i).schema instanceof Schema.TagId) {
+                    Schema<?> s = TriggerSchemaManager.unwrapRef(options.get(i).schema);
+                    if (s instanceof Schema.TagId) {
                         bestMatch = i;
                         break;
                     }
                 }
             } else if (value.isJsonArray()) {
                 for (int i = 0; i < options.size(); i++) {
-                    if (options.get(i).schema instanceof Schema.ListOf) {
+                    Schema<?> s = TriggerSchemaManager.unwrapRef(options.get(i).schema);
+                    if (s instanceof Schema.ListOf) {
                         bestMatch = i;
                         break;
                     }
                 }
             } else if (value.isJsonObject()) {
+
+                int recordMatch = -1;
                 for (int i = 0; i < options.size(); i++) {
-                    if (options.get(i).schema instanceof Schema.Record) {
+                    Schema<?> s = TriggerSchemaManager.unwrapRef(options.get(i).schema);
+                    if (s instanceof Schema.OneOf<?> || s instanceof Schema.AnyOf<?>) {
                         bestMatch = i;
                         break;
                     }
+                    if (s instanceof Schema.Record<?> && recordMatch < 0) {
+                        recordMatch = i;
+                    }
+                }
+                if (bestMatch == 0 && recordMatch > 0) {
+                    bestMatch = recordMatch;
+                } else if (bestMatch == 0 && recordMatch == 0) {
+
                 }
             } else if (value.isJsonPrimitive()) {
                 for (int i = 0; i < options.size(); i++) {
-                    if (options.get(i).schema instanceof Schema.ResourceId || options.get(i).schema instanceof Schema.Str) {
+                    Schema<?> s = TriggerSchemaManager.unwrapRef(options.get(i).schema);
+                    if (s instanceof Schema.ResourceId || s instanceof Schema.Str) {
                         bestMatch = i;
                         break;
                     }
@@ -1560,6 +1595,16 @@ public final class SchemaWidgetFactory {
             OptionEntry oe = getActiveEntry();
             if (oe == null) return null;
             JsonElement childJson = oe.node.currentJson();
+            String valueField = oneOfSchema.valueField();
+            if (valueField != null) {
+                JsonObject obj = new JsonObject();
+                obj.addProperty(oneOfSchema.typeField(), oe.typeKey);
+                if (childJson != null && !childJson.isJsonNull()
+                        && !(childJson.isJsonObject() && childJson.getAsJsonObject().isEmpty())) {
+                    obj.add(valueField, childJson);
+                }
+                return obj;
+            }
             JsonObject obj = (childJson != null && childJson.isJsonObject()) ? childJson.getAsJsonObject().deepCopy() : new JsonObject();
             obj.addProperty(oneOfSchema.typeField(), oe.typeKey);
             return obj;
@@ -1580,7 +1625,14 @@ public final class SchemaWidgetFactory {
                     }
                 }
                 OptionEntry oe = getActiveEntry();
-                if (oe != null) oe.node.setJson(obj);
+                if (oe != null) {
+                    String valueField = oneOfSchema.valueField();
+                    if (valueField != null) {
+                        oe.node.setJson(obj.has(valueField) ? obj.get(valueField) : null);
+                    } else {
+                        oe.node.setJson(obj);
+                    }
+                }
             }
         }
 

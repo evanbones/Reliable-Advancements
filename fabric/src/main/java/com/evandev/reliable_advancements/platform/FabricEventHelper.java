@@ -16,7 +16,6 @@ public class FabricEventHelper implements IEventHelper {
     @Override
     public IAdvancementDrawConnectionsEvent postAdvancementDrawConnectionsEvent(AdvancementNode advancement) {
         IAdvancementDrawConnectionsEvent event = new AdvancementDrawConnectionsEvent(advancement);
-        // TODO send event to other mods
         return event;
     }
 }

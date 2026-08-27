@@ -18,7 +18,7 @@ public class AdvancementDisplayInfo implements IDisplayInfo {
     private static final int minecraftCompletedTitleColor = ColorHelper.RGB(defaultMinecraftCompletedTitleColor);
     private static final int minecraftUncompletedTitleColor = ColorHelper.RGB(defaultMinecraftUncompletedTitleColor);
     private static final int WHITE = ColorHelper.RGB(1F, 1F, 1F);
-    private ResourceLocation id;
+    private final ResourceLocation id;
     private int completedIconColor, unCompletedIconColor;
     private int completedTitleColor, unCompletedTitleColor;
     private boolean drawDirectLines;
@@ -30,10 +30,7 @@ public class AdvancementDisplayInfo implements IDisplayInfo {
     public AdvancementDisplayInfo(AdvancementHolder advancementHolder) {
         this(advancementHolder.id());
         Advancement advancement = advancementHolder.value();
-//        TODO: Fix checking this
-//        if (advancement instanceof IDisplayInfo) {
-//            parseIDisplayInfo((IDisplayInfo) advancement);
-//        }
+
         if (advancement.display().isPresent()) {
             DisplayInfo displayInfo = advancement.display().get();
             if (displayInfo instanceof IDisplayInfo) {

@@ -67,15 +67,16 @@ public class AdvancementContextMenu {
                 (confirmed) -> {
                     if (confirmed) {
                         if (parentScreen.selectedTab != null) {
+                            ResourceLocation rootId = parentScreen.selectedTab.getRootNode().holder().id();
                             List<ResourceLocation> idsToDelete = new ArrayList<>();
 
                             for (EnhancedAdvancementWidget w : parentScreen.selectedTab.getWidgets().values()) {
                                 idsToDelete.add(w.getAdvancement().holder().id());
                                 PersistentData.removePosition(w.getAdvancement().holder().id());
                             }
-                            PersistentData.removeTabProperties(parentScreen.selectedTab.getRootNode().holder().id());
+                            PersistentData.removeTabProperties(rootId);
 
-                            Services.PLATFORM.sendResetTab(new ResetTabPayload(idsToDelete));
+                            Services.PLATFORM.sendResetTab(new ResetTabPayload(rootId, idsToDelete));
                         }
                     }
                     Minecraft.getInstance().setScreen(parentScreen);

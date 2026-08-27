@@ -629,10 +629,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             if (!selectedWidgets.isEmpty()) {
                 int shift = Screen.hasShiftDown() ? 4 : 1;
                 int dx = 0, dy = 0;
-                if (keyCode == 265) dy = -shift; // Up
-                else if (keyCode == 264) dy = shift; // Down
-                else if (keyCode == 263) dx = -shift; // Left
-                else if (keyCode == 262) dx = shift; // Right
+                if (keyCode == 265) dy = -shift;
+                else if (keyCode == 264) dy = shift;
+                else if (keyCode == 263) dx = -shift;
+                else if (keyCode == 262) dx = shift;
 
                 if (dx != 0 || dy != 0) {
                     for (EnhancedAdvancementWidget w : selectedWidgets) {
@@ -646,7 +646,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                 }
             }
 
-            if (Screen.hasControlDown() && keyCode == 67) { // C
+            if (Screen.hasControlDown() && keyCode == 67) {
                 double mouseX = this.minecraft.mouseHandler.xpos() * (double) this.width / (double) this.minecraft.getWindow().getScreenWidth();
                 double mouseY = this.minecraft.mouseHandler.ypos() * (double) this.height / (double) this.minecraft.getWindow().getScreenHeight();
                 EnhancedAdvancementWidget target = selectedWidgets.size() == 1 ? selectedWidgets.iterator().next() : null;
@@ -655,12 +655,12 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     copyAdvancement(target);
                 }
                 return true;
-            } else if (Screen.hasControlDown() && keyCode == 86) { // V
+            } else if (Screen.hasControlDown() && keyCode == 86) {
                 double mouseX = this.minecraft.mouseHandler.xpos() * (double) this.width / (double) this.minecraft.getWindow().getScreenWidth();
                 double mouseY = this.minecraft.mouseHandler.ypos() * (double) this.height / (double) this.minecraft.getWindow().getScreenHeight();
                 pasteAdvancement((int) mouseX, (int) mouseY);
                 return true;
-            } else if (keyCode == 261 || keyCode == 259) { // Delete / backspace
+            } else if (keyCode == 261 || keyCode == 259) {
                 double mouseX = this.minecraft.mouseHandler.xpos() * (double) this.width / (double) this.minecraft.getWindow().getScreenWidth();
                 double mouseY = this.minecraft.mouseHandler.ypos() * (double) this.height / (double) this.minecraft.getWindow().getScreenHeight();
                 EnhancedAdvancementWidget target = selectedWidgets.size() == 1 ? selectedWidgets.iterator().next() : null;

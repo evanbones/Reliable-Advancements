@@ -1,5 +1,6 @@
 package com.evandev.reliable_advancements.gui.screens;
 
+import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.gui.model.AdvancementDraft;
 import com.evandev.reliable_advancements.gui.tabs.*;
 import com.evandev.reliable_advancements.gui.theme.EditorTheme;
@@ -12,12 +13,13 @@ import com.evandev.reliable_advancements.util.PersistentData;
 import com.google.gson.GsonBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -27,7 +29,6 @@ import java.util.Set;
 public class AdvancementEditorScreen extends Screen {
     private static final int MAX_UI_WIDTH = 580;
     private static final int MAX_UI_HEIGHT = 380;
-    private static final int SIDEBAR_WIDTH = 130;
     private static final int HEADER_HEIGHT = 36;
     private static final int TAB_ROW_H = 28;
 
@@ -42,6 +43,8 @@ public class AdvancementEditorScreen extends Screen {
     private IEditorTab activeTab;
 
     private int uiX, uiY, uiW, uiH;
+    private int sidebarWidth = 130;
+    private boolean isResizingSidebar = false;
     private ModernButton saveBtn;
     private ModernButton cancelBtn;
 
@@ -68,6 +71,36 @@ public class AdvancementEditorScreen extends Screen {
         this.visitedTabs.add(this.activeTabName);
     }
 
+    private int getMinSidebarWidth() {
+        int maxTextWidth = this.font.width("Properties");
+        for (String tabName : tabs.keySet()) {
+            maxTextWidth = Math.max(maxTextWidth, this.font.width(tabName));
+        }
+        return maxTextWidth + 30;
+    }
+
+    private int getMaxSidebarWidth() {
+        return Math.max(getMinSidebarWidth(), uiW - 200);
+    }
+
+    private void defocusAllExcept(@Nullable GuiEventListener keepFocused) {
+        if (this.getFocused() != keepFocused) {
+            this.setFocused(keepFocused);
+        }
+        for (GuiEventListener child : this.children()) {
+            if (child != keepFocused && child instanceof AbstractWidget aw) {
+                aw.setFocused(false);
+            }
+        }
+        if (activeTab != null) {
+            for (GuiEventListener child : activeTab.getWidgets()) {
+                if (child != keepFocused && child instanceof AbstractWidget aw) {
+                    aw.setFocused(false);
+                }
+            }
+        }
+    }
+
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (activeTab != null) {
@@ -85,8 +118,8 @@ public class AdvancementEditorScreen extends Screen {
             }
         }
 
-        int contentX = uiX + SIDEBAR_WIDTH + 8;
-        int contentW = uiW - SIDEBAR_WIDTH - 16;
+        int contentX = uiX + sidebarWidth + 8;
+        int contentW = uiW - sidebarWidth - 16;
         int contentY = uiY + HEADER_HEIGHT + 2;
         int contentH = uiH - HEADER_HEIGHT - 40;
 
@@ -112,38 +145,57 @@ public class AdvancementEditorScreen extends Screen {
                 for (GuiEventListener child : activeTab.getWidgets()) {
                     if (child instanceof ModernDropdown md && md.isOpen()) {
                         if (md.handleDropdownClick(mouseX, mouseY, button)) {
+                            defocusAllExcept(null);
                             return true;
                         }
                     }
                     if (child instanceof SuggestingEditBox seb && seb.hasSuggestions()) {
                         if (seb.tryClickSuggestion(mouseX, mouseY)) {
+                            defocusAllExcept(seb);
                             return true;
                         }
                     }
                 }
+            }
+
+            int splitterX = uiX + sidebarWidth;
+            if (mouseX >= splitterX - 4 && mouseX <= splitterX + 4 && mouseY >= uiY + HEADER_HEIGHT && mouseY <= uiY + uiH) {
+                isResizingSidebar = true;
+                defocusAllExcept(null);
+                return true;
             }
 
             int tabY = uiY + HEADER_HEIGHT + 10;
             int i = 0;
             for (String tabName : tabs.keySet()) {
                 int ry = tabY + i * (TAB_ROW_H + 4);
-                if (mouseX >= uiX + 8 && mouseX <= uiX + SIDEBAR_WIDTH - 8 && mouseY >= ry && mouseY <= ry + TAB_ROW_H) {
+                if (mouseX >= uiX + 8 && mouseX <= uiX + sidebarWidth - 8 && mouseY >= ry && mouseY <= ry + TAB_ROW_H) {
+                    defocusAllExcept(null);
                     switchTab(tabName);
                     return true;
                 }
                 i++;
             }
 
-            if (saveBtn != null && saveBtn.mouseClicked(mouseX, mouseY, button)) return true;
-            if (cancelBtn != null && cancelBtn.mouseClicked(mouseX, mouseY, button)) return true;
+            if (saveBtn != null && saveBtn.mouseClicked(mouseX, mouseY, button)) {
+                defocusAllExcept(saveBtn);
+                return true;
+            }
+            if (cancelBtn != null && cancelBtn.mouseClicked(mouseX, mouseY, button)) {
+                defocusAllExcept(cancelBtn);
+                return true;
+            }
 
             if (activeTab != null && activeTab.getForm() != null) {
-                if (activeTab.getForm().mouseClicked(mouseX, mouseY, button)) return true;
+                if (activeTab.getForm().mouseClicked(mouseX, mouseY, button)) {
+                    defocusAllExcept(null);
+                    return true;
+                }
             }
         }
 
-        int contentX = uiX + SIDEBAR_WIDTH + 8;
-        int contentW = uiW - SIDEBAR_WIDTH - 16;
+        int contentX = uiX + sidebarWidth + 8;
+        int contentW = uiW - sidebarWidth - 16;
         int contentY = uiY + HEADER_HEIGHT + 2;
         int contentH = uiH - HEADER_HEIGHT - 40;
 
@@ -161,11 +213,7 @@ public class AdvancementEditorScreen extends Screen {
         }
 
         if (button == 0) {
-            for (GuiEventListener child : this.children()) {
-                if (child instanceof EditBox eb && child != clickedChild) {
-                    eb.setFocused(false);
-                }
-            }
+            defocusAllExcept(clickedChild);
         }
 
         return clickedChild != null;
@@ -173,11 +221,25 @@ public class AdvancementEditorScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (isResizingSidebar && button == 0) {
+            int newWidth = (int) (mouseX - uiX);
+            int minW = getMinSidebarWidth();
+            int maxW = getMaxSidebarWidth();
+            newWidth = Math.max(minW, Math.min(newWidth, maxW));
+            if (newWidth != this.sidebarWidth) {
+                this.sidebarWidth = newWidth;
+                ModConfig.get().editorSidebarWidth = this.sidebarWidth;
+                ModConfig.save();
+                this.init();
+            }
+            return true;
+        }
+
         if (activeTab != null && activeTab.getForm() != null) {
             if (activeTab.getForm().mouseDragged(mouseX, mouseY, button, dragX, dragY)) return true;
         }
-        int contentX = uiX + SIDEBAR_WIDTH + 8;
-        int contentW = uiW - SIDEBAR_WIDTH - 16;
+        int contentX = uiX + sidebarWidth + 8;
+        int contentW = uiW - sidebarWidth - 16;
         int contentY = uiY + HEADER_HEIGHT + 2;
         int contentH = uiH - HEADER_HEIGHT - 40;
 
@@ -189,6 +251,10 @@ public class AdvancementEditorScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0 && isResizingSidebar) {
+            isResizingSidebar = false;
+            return true;
+        }
         if (activeTab != null && activeTab.getForm() != null) {
             if (activeTab.getForm().mouseReleased(mouseX, mouseY, button)) return true;
         }
@@ -197,11 +263,16 @@ public class AdvancementEditorScreen extends Screen {
 
     @Override
     protected void init() {
+        if (activeTab != null) {
+            activeTab.syncFromWidgets();
+        }
         this.clearWidgets();
         setupBounds();
 
-        int contentX = uiX + SIDEBAR_WIDTH + 16;
-        int contentW = uiW - SIDEBAR_WIDTH - 28;
+        this.sidebarWidth = Math.max(getMinSidebarWidth(), Math.min(ModConfig.get().editorSidebarWidth, getMaxSidebarWidth()));
+
+        int contentX = uiX + sidebarWidth + 16;
+        int contentW = uiW - sidebarWidth - 28;
         int contentY = uiY + HEADER_HEIGHT + 10;
         int contentH = uiH - HEADER_HEIGHT - 55;
 
@@ -298,8 +369,17 @@ public class AdvancementEditorScreen extends Screen {
 
         gfx.fill(uiX + 1, uiY + HEADER_HEIGHT, uiX + uiW - 1, uiY + HEADER_HEIGHT + 1, EditorTheme.BORDER_INNER);
 
-        gfx.fill(uiX + 1, uiY + HEADER_HEIGHT + 1, uiX + SIDEBAR_WIDTH, uiY + uiH - 1, EditorTheme.SIDEBAR_BG);
-        gfx.fill(uiX + SIDEBAR_WIDTH, uiY + HEADER_HEIGHT + 1, uiX + SIDEBAR_WIDTH + 1, uiY + uiH - 1, EditorTheme.BORDER_INNER);
+        gfx.fill(uiX + 1, uiY + HEADER_HEIGHT + 1, uiX + sidebarWidth, uiY + uiH - 1, EditorTheme.SIDEBAR_BG);
+
+        int splitterX = uiX + sidebarWidth;
+        boolean splitterHovered = mouseX >= splitterX - 3 && mouseX <= splitterX + 3 && mouseY >= uiY + HEADER_HEIGHT && mouseY <= uiY + uiH;
+        if (isResizingSidebar) {
+            gfx.fill(splitterX - 1, uiY + HEADER_HEIGHT + 1, splitterX + 2, uiY + uiH - 1, EditorTheme.ACCENT_GOLD);
+        } else if (splitterHovered) {
+            gfx.fill(splitterX, uiY + HEADER_HEIGHT + 1, splitterX + 1, uiY + uiH - 1, 0xFF6A7B9F);
+        } else {
+            gfx.fill(splitterX, uiY + HEADER_HEIGHT + 1, splitterX + 1, uiY + uiH - 1, EditorTheme.BORDER_INNER);
+        }
 
         int tabY = uiY + HEADER_HEIGHT + 10;
         int i = 0;
@@ -307,11 +387,11 @@ public class AdvancementEditorScreen extends Screen {
             int ry = tabY + i * (TAB_ROW_H + 4);
             int rowBot = ry + TAB_ROW_H;
             boolean selected = tabName.equals(activeTabName);
-            boolean hovered = mouseX >= uiX + 8 && mouseX <= uiX + SIDEBAR_WIDTH - 8 && mouseY >= ry && mouseY <= rowBot;
+            boolean hovered = mouseX >= uiX + 8 && mouseX <= uiX + sidebarWidth - 8 && mouseY >= ry && mouseY <= rowBot;
 
             int bg = selected ? EditorTheme.TAB_ACTIVE_BG : (hovered ? EditorTheme.TAB_HOVER_BG : EditorTheme.TAB_INACTIVE_BG);
-            gfx.fill(uiX + 8, ry, uiX + SIDEBAR_WIDTH - 8, rowBot, bg);
-            gfx.renderOutline(uiX + 8, ry, SIDEBAR_WIDTH - 16, TAB_ROW_H, selected ? EditorTheme.ACCENT_GOLD_MUTED : EditorTheme.CARD_BORDER);
+            gfx.fill(uiX + 8, ry, uiX + sidebarWidth - 8, rowBot, bg);
+            gfx.renderOutline(uiX + 8, ry, sidebarWidth - 16, TAB_ROW_H, selected ? EditorTheme.ACCENT_GOLD_MUTED : EditorTheme.CARD_BORDER);
 
             if (selected) {
                 gfx.fill(uiX + 8, ry, uiX + 11, rowBot, EditorTheme.ACCENT_GOLD);
@@ -322,7 +402,7 @@ public class AdvancementEditorScreen extends Screen {
             i++;
         }
 
-        gfx.enableScissor(uiX + SIDEBAR_WIDTH + 8, uiY + HEADER_HEIGHT + 2, uiX + uiW - 8, uiY + uiH - 38);
+        gfx.enableScissor(uiX + sidebarWidth + 8, uiY + HEADER_HEIGHT + 2, uiX + uiW - 8, uiY + uiH - 38);
         activeTab.render(gfx, mouseX, mouseY, partialTicks);
         super.render(gfx, mouseX, mouseY, partialTicks);
         gfx.disableScissor();
@@ -339,6 +419,7 @@ public class AdvancementEditorScreen extends Screen {
                     seb.renderSuggestionsPopup(gfx, mouseX, mouseY);
                 }
             }
+            activeTab.renderOverlay(gfx, mouseX, mouseY, partialTicks);
         }
     }
 }

@@ -10,10 +10,11 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-public record ResetTabPayload(List<ResourceLocation> advancementIds) implements CustomPacketPayload {
+public record ResetTabPayload(ResourceLocation rootAdvancementId, List<ResourceLocation> advancementIds) implements CustomPacketPayload {
     public static final Type<ResetTabPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "reset_tab"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ResetTabPayload> STREAM_CODEC = StreamCodec.composite(
+            ResourceLocation.STREAM_CODEC, ResetTabPayload::rootAdvancementId,
             ResourceLocation.STREAM_CODEC.apply(ByteBufCodecs.list()), ResetTabPayload::advancementIds,
             ResetTabPayload::new
     );
