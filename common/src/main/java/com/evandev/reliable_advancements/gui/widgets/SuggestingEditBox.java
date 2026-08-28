@@ -12,9 +12,11 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -23,15 +25,102 @@ public class SuggestingEditBox extends ModernEditBox {
     private static final int MAX_VISIBLE = 8;
 
     private final Supplier<List<String>> suggestionSupplier;
+    private @Nullable Function<String, ItemStack> iconResolver;
     private List<String> currentSuggestions = List.of();
     private int suggestionIndex = -1;
     private int scrollOffset = 0;
     private Consumer<String> externalResponder;
 
     public SuggestingEditBox(Font font, int x, int y, int width, int height, Component message, Supplier<List<String>> suggestionSupplier) {
+        this(font, x, y, width, height, message, suggestionSupplier, null);
+    }
+
+    public SuggestingEditBox(Font font, int x, int y, int width, int height, Component message, Supplier<List<String>> suggestionSupplier, @Nullable Function<String, ItemStack> iconResolver) {
         super(font, x, y, width, height, message);
         this.suggestionSupplier = suggestionSupplier;
+        this.iconResolver = iconResolver;
         super.setResponder(this::internalResponder);
+    }
+
+    public static ItemStack defaultItemIconResolver(String suggestion) {
+        if (suggestion == null || suggestion.isEmpty()) return ItemStack.EMPTY;
+        ResourceLocation loc = ResourceLocation.tryParse(suggestion);
+        if (loc == null) return ItemStack.EMPTY;
+
+        if (BuiltInRegistries.ITEM.containsKey(loc)) {
+            Item item = BuiltInRegistries.ITEM.get(loc);
+            if (item != Items.AIR) return new ItemStack(item);
+        }
+
+        if (BuiltInRegistries.BLOCK.containsKey(loc)) {
+            Item item = BuiltInRegistries.BLOCK.get(loc).asItem();
+            if (item != Items.AIR) return new ItemStack(item);
+        }
+
+        return ItemStack.EMPTY;
+    }
+
+    // these are just for fun tbh
+    public static ItemStack lootTableIconResolver(String suggestion) {
+        if (suggestion == null || suggestion.isEmpty()) return ItemStack.EMPTY;
+
+        ItemStack directItem = defaultItemIconResolver(suggestion);
+        if (!directItem.isEmpty()) return directItem;
+
+        ResourceLocation loc = ResourceLocation.tryParse(suggestion);
+        if (loc == null) return ItemStack.EMPTY;
+
+        String path = loc.getPath();
+
+        if (path.startsWith("blocks/")) {
+            String blockPath = path.substring("blocks/".length());
+            ResourceLocation blockLoc = ResourceLocation.fromNamespaceAndPath(loc.getNamespace(), blockPath);
+            if (BuiltInRegistries.BLOCK.containsKey(blockLoc)) {
+                Item item = BuiltInRegistries.BLOCK.get(blockLoc).asItem();
+                if (item != Items.AIR) return new ItemStack(item);
+            }
+        }
+
+        if (path.startsWith("chests/")) {
+            return new ItemStack(Items.CHEST);
+        }
+
+        if (path.startsWith("gameplay/fishing")) {
+            return new ItemStack(Items.FISHING_ROD);
+        }
+        if (path.startsWith("gameplay/hero_of_the_village")) {
+            return new ItemStack(Items.EMERALD);
+        }
+        if (path.startsWith("gameplay/cat_morning_gift")) {
+            return new ItemStack(Items.STRING);
+        }
+        if (path.startsWith("gameplay/sniffer_digging")) {
+            return new ItemStack(Items.SNIFFER_EGG);
+        }
+        if (path.startsWith("gameplay/piglin_bartering")) {
+            return new ItemStack(Items.GOLD_INGOT);
+        }
+        if (path.startsWith("archaeology/")) {
+            return new ItemStack(Items.BRUSH);
+        }
+        if (path.startsWith("pots/")) {
+            return new ItemStack(Items.DECORATED_POT);
+        }
+        if (path.startsWith("spawners/") || path.startsWith("dispensers/trial_chambers") || path.startsWith("equipment/trial_chamber")) {
+            return new ItemStack(Items.TRIAL_KEY);
+        }
+        if (path.startsWith("shearing/")) {
+            return new ItemStack(Items.SHEARS);
+        }
+        if (path.startsWith("entities/")) {
+            return new ItemStack(Items.SPAWNER);
+        }
+
+        return ItemStack.EMPTY;
+    }
+
+    public void setIconResolver(@Nullable Function<String, ItemStack> iconResolver) {
+        this.iconResolver = iconResolver;
     }
 
     public boolean hasSuggestions() {
@@ -207,66 +296,10 @@ public class SuggestingEditBox extends ModernEditBox {
     }
 
     private ItemStack resolveSuggestionIcon(String suggestion) {
-        if (suggestion == null || suggestion.isEmpty()) return ItemStack.EMPTY;
-        ResourceLocation loc = ResourceLocation.tryParse(suggestion);
-        if (loc == null) return ItemStack.EMPTY;
-
-        if (BuiltInRegistries.ITEM.containsKey(loc)) {
-            Item item = BuiltInRegistries.ITEM.get(loc);
-            if (item != Items.AIR) return new ItemStack(item);
+        if (iconResolver != null) {
+            ItemStack stack = iconResolver.apply(suggestion);
+            return stack != null ? stack : ItemStack.EMPTY;
         }
-
-        if (BuiltInRegistries.BLOCK.containsKey(loc)) {
-            Item item = BuiltInRegistries.BLOCK.get(loc).asItem();
-            if (item != Items.AIR) return new ItemStack(item);
-        }
-
-        String path = loc.getPath();
-
-        if (path.startsWith("blocks/")) {
-            String blockPath = path.substring("blocks/".length());
-            ResourceLocation blockLoc = ResourceLocation.fromNamespaceAndPath(loc.getNamespace(), blockPath);
-            if (BuiltInRegistries.BLOCK.containsKey(blockLoc)) {
-                Item item = BuiltInRegistries.BLOCK.get(blockLoc).asItem();
-                if (item != Items.AIR) return new ItemStack(item);
-            }
-        }
-
-        if (path.startsWith("chests/")) {
-            return new ItemStack(Items.CHEST);
-        }
-
-        if (path.startsWith("gameplay/fishing")) {
-            return new ItemStack(Items.FISHING_ROD);
-        }
-        if (path.startsWith("gameplay/hero_of_the_village")) {
-            return new ItemStack(Items.EMERALD);
-        }
-        if (path.startsWith("gameplay/cat_morning_gift")) {
-            return new ItemStack(Items.STRING);
-        }
-        if (path.startsWith("gameplay/sniffer_digging")) {
-            return new ItemStack(Items.SNIFFER_EGG);
-        }
-        if (path.startsWith("gameplay/piglin_bartering")) {
-            return new ItemStack(Items.GOLD_INGOT);
-        }
-        if (path.startsWith("archaeology/")) {
-            return new ItemStack(Items.BRUSH);
-        }
-        if (path.startsWith("pots/")) {
-            return new ItemStack(Items.DECORATED_POT);
-        }
-        if (path.startsWith("spawners/") || path.startsWith("dispensers/trial_chambers") || path.startsWith("equipment/trial_chamber")) {
-            return new ItemStack(Items.TRIAL_KEY);
-        }
-        if (path.startsWith("shearing/")) {
-            return new ItemStack(Items.SHEARS);
-        }
-        if (path.startsWith("entities/")) {
-            return new ItemStack(Items.SPAWNER);
-        }
-
         return ItemStack.EMPTY;
     }
 

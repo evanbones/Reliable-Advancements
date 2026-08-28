@@ -29,10 +29,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     public static final int ADVANCEMENT_SIZE = 26;
@@ -55,10 +52,6 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     private List<FormattedCharSequence> description;
     private CriterionGrid criterionGrid;
     private float hoverAnim = 0.0f;
-    /**
-     * Side of this widget that its incoming connection arrives at, used so outgoing connections can
-     * leave through the opposite side and the chain reads as flowing through the widget.
-     */
     private ConnectionRouter.Side incomingSide = ConnectionRouter.Side.NONE;
 
     public EnhancedAdvancementWidget(EnhancedAdvancementTab advancementTabGui, Minecraft mc, AdvancementNode advancementNode, DisplayInfo displayInfo) {
@@ -126,15 +119,58 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
 
     public boolean shouldRender() {
         if (EnhancedAdvancementsScreen.canEdit()) return true;
-        if (this.advancementProgress != null && this.advancementProgress.isDone()) return true;
+
+        boolean isDone = this.advancementProgress != null && this.advancementProgress.isDone();
+        boolean isClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(this.advancementNode.holder().id());
+        if (isDone && isClaimed) return true;
+
+        if (hasDoneDescendant(new HashSet<>())) return true;
         if (this.displayInfo.isHidden()) return false;
 
         int depth = ModConfig.get().visibilityDepth;
         if (depth < 0) {
-            return true;
+            return isUnhiddenPathFromRoot(new HashSet<>());
+        }
+        if (depth == 0) {
+            return false;
         }
 
         return isAncestorVisible(0, depth, new HashSet<>());
+    }
+
+    private boolean hasDoneDescendant(Set<EnhancedAdvancementWidget> visited) {
+        if (!visited.add(this)) return false;
+        for (EnhancedAdvancementWidget child : this.children) {
+            if (child != null) {
+                boolean childDone = child.advancementProgress != null && child.advancementProgress.isDone();
+                boolean childClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(child.getAdvancement().holder().id());
+                if (childDone && childClaimed) {
+                    return true;
+                }
+                if (child.hasDoneDescendant(visited)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isUnhiddenPathFromRoot(Set<EnhancedAdvancementWidget> visited) {
+        if (this.parents.isEmpty()) return true;
+        if (!visited.add(this)) return false;
+
+        for (EnhancedAdvancementWidget p : this.parents) {
+            if (p == null) continue;
+            boolean parentCompleted = p.advancementProgress != null && p.advancementProgress.isDone();
+            boolean parentClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(p.getAdvancement().holder().id());
+            if (parentCompleted && parentClaimed) {
+                return true;
+            }
+            if (!p.displayInfo.isHidden() && p.isUnhiddenPathFromRoot(visited)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isAncestorVisible(int currentDepth, int maxDepth, Set<EnhancedAdvancementWidget> visited) {
@@ -148,7 +184,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             if (parentCompleted && parentClaimed) {
                 return true;
             }
-            if (p.isAncestorVisible(currentDepth + 1, maxDepth, visited)) {
+            if (!p.displayInfo.isHidden() && p.isAncestorVisible(currentDepth + 1, maxDepth, visited)) {
                 return true;
             }
         }
@@ -462,6 +498,11 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     }
 
     public void attachToParent() {
+        for (EnhancedAdvancementWidget p : new ArrayList<>(this.parents)) {
+            if (p != null) {
+                p.getChildren().remove(this);
+            }
+        }
         this.parents.clear();
         List<ResourceLocation> parentIds = IMultiParentAdvancement.getParents(this.advancementNode.advancement());
 

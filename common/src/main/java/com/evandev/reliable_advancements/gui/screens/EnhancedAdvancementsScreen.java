@@ -1,6 +1,8 @@
 package com.evandev.reliable_advancements.gui.screens;
 
 import com.evandev.reliable_advancements.advancements.IAdvancementSyncListener;
+import com.evandev.reliable_advancements.advancements.IMultiParentAdvancement;
+import com.evandev.reliable_advancements.advancements.IMultiParentNode;
 import com.evandev.reliable_advancements.client.ClientRewardTracker;
 import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.gui.AdvancementContextMenu;
@@ -348,6 +350,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             parentWidget.getChildren().remove(widget);
         }
         widget.getParents().clear();
+        IMultiParentAdvancement.setParents(widget.getAdvancement().advancement(), List.of());
         this.setLoading(true);
     }
 
@@ -1303,10 +1306,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                 this.clientAdvancements.setSelectedTab(this.selectedTab.getRootNode().holder(), true);
             }
         } else {
-            EnhancedAdvancementTab targetTab = this.selectedTab != null ? this.selectedTab : (!this.tabs.isEmpty() ? this.tabs.values().iterator().next() : null);
-            if (targetTab != null) {
-                targetTab.addAdvancement(advancement);
-            }
+            this.onAddAdvancementTask(advancement);
         }
     }
 
@@ -1319,6 +1319,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             } else {
                 this.selectedTab = null;
             }
+        } else if (tab == null) {
+            this.onRemoveAdvancementTask(advancement);
         }
     }
 
@@ -1326,20 +1328,15 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public void onAddAdvancementTask(@NotNull AdvancementNode advancement) {
         EnhancedAdvancementTab betterAdvancementTabGui = this.getTab(advancement);
         if (betterAdvancementTabGui != null) {
-
             ResourceLocation id = advancement.holder().id();
-            EnhancedAdvancementWidget oldWidget = null;
-            for (EnhancedAdvancementWidget w : betterAdvancementTabGui.getWidgets().values()) {
-                if (w.getAdvancement().holder().id().equals(id)) {
-                    oldWidget = w;
-                    break;
-                }
-            }
+            EnhancedAdvancementWidget oldWidget = betterAdvancementTabGui.getWidget(id);
 
             if (oldWidget != null) {
                 betterAdvancementTabGui.getWidgets().remove(oldWidget.getAdvancement().holder());
-                if (oldWidget.getParent() != null) {
-                    oldWidget.getParent().getChildren().remove(oldWidget);
+                for (EnhancedAdvancementWidget p : new ArrayList<>(oldWidget.getParents())) {
+                    if (p != null) {
+                        p.getChildren().remove(oldWidget);
+                    }
                 }
             }
 
@@ -1351,11 +1348,13 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public void onRemoveAdvancementTask(@NotNull AdvancementNode advancement) {
         EnhancedAdvancementTab betterAdvancementTabGui = this.getTab(advancement);
         if (betterAdvancementTabGui != null) {
-            EnhancedAdvancementWidget widget = betterAdvancementTabGui.getWidget(advancement.holder());
+            EnhancedAdvancementWidget widget = betterAdvancementTabGui.getWidget(advancement.holder().id());
             if (widget != null) {
                 betterAdvancementTabGui.getWidgets().remove(advancement.holder());
-                if (widget.getParent() != null) {
-                    widget.getParent().getChildren().remove(widget);
+                for (EnhancedAdvancementWidget p : new ArrayList<>(widget.getParents())) {
+                    if (p != null) {
+                        p.getChildren().remove(widget);
+                    }
                 }
             }
         }
@@ -1402,17 +1401,52 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     private EnhancedAdvancementTab getTab(AdvancementNode advancement) {
-        AdvancementNode advancementNode = advancement.root();
-        EnhancedAdvancementTab tab = this.tabs.get(advancementNode.holder());
+        if (advancement == null) return this.selectedTab;
+
+        AdvancementNode rootNode = advancement.root();
+        EnhancedAdvancementTab tab = this.tabs.get(rootNode.holder());
         if (tab != null) {
             return tab;
         }
+
+        for (AdvancementNode parent : IMultiParentNode.getParents(advancement)) {
+            if (parent != null && parent != advancement) {
+                AdvancementNode pRoot = parent.root();
+                EnhancedAdvancementTab pTab = this.tabs.get(pRoot.holder());
+                if (pTab != null) {
+                    return pTab;
+                }
+            }
+        }
+
         for (EnhancedAdvancementTab t : this.tabs.values()) {
-            if (t.getWidget(advancement.holder()) != null) {
+            if (t.getWidget(advancement.holder()) != null || t.getWidget(advancement.holder().id()) != null) {
                 return t;
             }
         }
-        return this.selectedTab;
+
+        ResourceLocation advId = advancement.holder().id();
+        for (EnhancedAdvancementTab t : this.tabs.values()) {
+            ResourceLocation tabRootId = t.getRootNode().holder().id();
+            if (advId.getNamespace().equals(tabRootId.getNamespace())) {
+                String advPath = advId.getPath();
+                String rootPath = tabRootId.getPath();
+                int advSlash = advPath.indexOf('/');
+                int rootSlash = rootPath.indexOf('/');
+                if (advSlash != -1 && rootSlash != -1 && advPath.substring(0, advSlash).equals(rootPath.substring(0, rootSlash))) {
+                    return t;
+                }
+            }
+        }
+
+        EnhancedAdvancementTab savedTab = findTabById(savedSelectedTab);
+        if (savedTab != null) {
+            return savedTab;
+        }
+        if (this.selectedTab != null) {
+            return this.selectedTab;
+        }
+        return !this.tabs.isEmpty() ? this.tabs.values().iterator().next() : null;
     }
 
     public record TabBounds(int left, int top, int right, int bottom, int width, int height, int maxTabs) {

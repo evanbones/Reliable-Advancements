@@ -101,7 +101,7 @@ public class ServerAdvancementEditor {
                     primaryParent = parents.getFirst();
                 }
             } else {
-                primaryParent = currentTabRoot;
+                primaryParent = null;
             }
 
             MultiParentHelper.applyParentsToJson(json, parents, primaryParent);
@@ -159,8 +159,38 @@ public class ServerAdvancementEditor {
         ServerAdvancementManagerAccessor manager = (ServerAdvancementManagerAccessor) server.getAdvancements();
         Map<ResourceLocation, AdvancementHolder> map = new LinkedHashMap<>(manager.getAdvancements());
         map.put(newHolder.id(), newHolder);
+        Map<ResourceLocation, float[]> positionsBefore = snapshotDisplayPositions(map.values());
         applyTreeAndPositions(manager, map);
-        sendIncrementalUpdateToAll(server, List.of(newHolder), Set.of());
+
+        List<AdvancementHolder> changed = new ArrayList<>();
+        changed.add(newHolder);
+        for (AdvancementHolder holder : map.values()) {
+            if (holder.id().equals(newHolder.id())) continue;
+            if (hasMoved(positionsBefore.get(holder.id()), holder)) {
+                changed.add(holder);
+            }
+        }
+        sendIncrementalUpdateToAll(server, changed, Set.of());
+    }
+
+    private static Map<ResourceLocation, float[]> snapshotDisplayPositions(Collection<AdvancementHolder> holders) {
+        Map<ResourceLocation, float[]> positions = new HashMap<>();
+        for (AdvancementHolder holder : holders) {
+            holder.value().display().ifPresent(display ->
+                    positions.put(holder.id(), new float[]{display.getX(), display.getY()}));
+        }
+        return positions;
+    }
+
+    private static boolean hasMoved(float[] before, AdvancementHolder holder) {
+        Optional<DisplayInfo> display = holder.value().display();
+        if (display.isEmpty()) {
+            return false;
+        }
+        if (before == null) {
+            return true;
+        }
+        return before[0] != display.get().getX() || before[1] != display.get().getY();
     }
 
     public static void handleResetTab(MinecraftServer server, ServerPlayer player, ResetTabPayload payload) {
@@ -203,33 +233,8 @@ public class ServerAdvancementEditor {
             deleteEditFile(server, id, player);
         }
 
-        Map<ResourceLocation, AdvancementHolder> currentAdvancements = rebuildAndApplyServerTree(server);
-        AdvancementTree tree = server.getAdvancements().tree();
-
-        Set<ResourceLocation> removedIds = new HashSet<>();
-        List<AdvancementHolder> addedHolders = new ArrayList<>();
-        for (ResourceLocation id : idsToDelete) {
-            AdvancementHolder holder = currentAdvancements.get(id);
-            if (holder != null) {
-                addedHolders.add(holder);
-            } else {
-                removedIds.add(id);
-            }
-        }
-
-        if (tabRootId != null) {
-            AdvancementNode rootNode = tree.get(tabRootId);
-            if (rootNode != null) {
-                for (AdvancementHolder holder : currentAdvancements.values()) {
-                    AdvancementNode node = tree.get(holder.id());
-                    if (node != null && node.root().holder().id().equals(tabRootId) && !addedHolders.contains(holder)) {
-                        addedHolders.add(holder);
-                    }
-                }
-            }
-        }
-
-        sendIncrementalUpdateToAll(server, addedHolders, removedIds);
+        rebuildAndApplyServerTree(server);
+        sendFullTreeToAll(server);
     }
 
     private static void collectTabEditsFromDisk(MinecraftServer server, Set<ResourceLocation> idsToDelete) {
@@ -298,7 +303,7 @@ public class ServerAdvancementEditor {
         sendFullTreeToAll(server);
     }
 
-    public static Map<ResourceLocation, AdvancementHolder> rebuildAndApplyServerTree(MinecraftServer server) {
+    public static void rebuildAndApplyServerTree(MinecraftServer server) {
         ServerAdvancementManagerAccessor manager = (ServerAdvancementManagerAccessor) server.getAdvancements();
         if (baseAdvancements == null || baseAdvancements.isEmpty()) {
             baseAdvancements = new HashMap<>(manager.getAdvancements());
@@ -325,7 +330,6 @@ public class ServerAdvancementEditor {
 
         currentAdvancements.putAll(edits);
         applyTreeAndPositions(manager, currentAdvancements);
-        return currentAdvancements;
     }
 
     public static void applyTreeAndPositions(ServerAdvancementManagerAccessor manager, Map<ResourceLocation, AdvancementHolder> map) {
@@ -411,19 +415,15 @@ public class ServerAdvancementEditor {
         return new File(dataDir, advancementId.getPath() + ".json");
     }
 
-    private static boolean deleteEditFile(MinecraftServer server, ResourceLocation advancementId, ServerPlayer player) {
-        boolean deletedAny = false;
+    private static void deleteEditFile(MinecraftServer server, ResourceLocation advancementId, ServerPlayer player) {
         for (Path root : editsRoots(server)) {
             File file = editFileIn(root, advancementId);
             if (file.exists()) {
-                if (file.delete()) {
-                    deletedAny = true;
-                } else {
+                if (!file.delete()) {
                     report(player, "Could not reset " + advancementId + ": failed to delete " + file);
                 }
             }
         }
-        return deletedAny;
     }
 
     private static void report(ServerPlayer player, String message) {
@@ -458,11 +458,11 @@ public class ServerAdvancementEditor {
 
     public static void sendIncrementalUpdateToAll(MinecraftServer server, Collection<AdvancementHolder> added, Set<ResourceLocation> removed) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            sendIncrementalUpdateToPlayer(server, player, added, removed);
+            sendIncrementalUpdateToPlayer(player, added, removed);
         }
     }
 
-    public static void sendIncrementalUpdateToPlayer(MinecraftServer server, ServerPlayer player, Collection<AdvancementHolder> added, Set<ResourceLocation> removed) {
+    public static void sendIncrementalUpdateToPlayer(ServerPlayer player, Collection<AdvancementHolder> added, Set<ResourceLocation> removed) {
         Map<ResourceLocation, AdvancementProgress> progressMap = new HashMap<>();
         for (AdvancementHolder holder : added) {
             AdvancementProgress prog = player.getAdvancements().getOrStartProgress(holder);

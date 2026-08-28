@@ -74,12 +74,18 @@ public class MultiParentHelper {
                 arr.add(parent.toString());
             }
         }
-        json.add("parents", arr);
+        if (arr.isEmpty()) {
+            json.remove("parents");
+        } else {
+            json.add("parents", arr);
+        }
 
         if (primaryParent != null) {
             json.addProperty("parent", primaryParent.toString());
         } else if (parents != null && !parents.isEmpty()) {
             json.addProperty("parent", parents.getFirst().toString());
+        } else {
+            json.remove("parent");
         }
     }
 

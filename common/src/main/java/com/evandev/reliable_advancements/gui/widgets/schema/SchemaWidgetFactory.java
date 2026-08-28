@@ -13,14 +13,10 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -607,6 +603,11 @@ public final class SchemaWidgetFactory {
             this.depth = depth;
             this.box = new SuggestingEditBox(font, 0, 0, 130, 18, Component.literal("ID"),
                     () -> TriggerSchemaManager.getSuggestionsForSchema(schema));
+            if (isItemOrBlock(schema)) {
+                this.box.setIconResolver(SuggestingEditBox::defaultItemIconResolver);
+            } else if (isLootTable(schema)) {
+                this.box.setIconResolver(SuggestingEditBox::lootTableIconResolver);
+            }
             this.box.setMaxLength(256);
             this.box.setResponder(s -> {
                 if (!suppressEvents) onFormChanged.run();
@@ -619,6 +620,16 @@ public final class SchemaWidgetFactory {
                     ResourceKey<? extends Registry<?>> registry
             )) {
                 return Registries.ITEM.equals(registry) || Registries.BLOCK.equals(registry);
+            }
+            return false;
+        }
+
+        private static boolean isLootTable(Schema<?> schema) {
+            Schema<?> unwrapped = TriggerSchemaManager.unwrapRef(schema);
+            if (unwrapped instanceof Schema.ResourceId(
+                    ResourceKey<? extends Registry<?>> registry
+            )) {
+                return Registries.LOOT_TABLE.equals(registry);
             }
             return false;
         }
@@ -694,15 +705,7 @@ public final class SchemaWidgetFactory {
                         int prevX = box.getX() + box.getWidth() + 2;
                         int prevY = y;
                         String val = box.getValue().trim();
-                        ItemStack stack = ItemStack.EMPTY;
-                        if (!val.isEmpty()) {
-                            ResourceLocation loc = ResourceLocation.tryParse(val);
-                            if (loc != null && BuiltInRegistries.ITEM.containsKey(loc)) {
-                                Item item = BuiltInRegistries.ITEM.get(loc);
-                                if (item != Items.AIR) stack = new ItemStack(item);
-                            }
-                        }
-
+                        ItemStack stack = SuggestingEditBox.defaultItemIconResolver(val);
                         if (!stack.isEmpty()) {
                             gfx.renderFakeItem(stack, prevX, prevY + 1);
                         }
@@ -715,17 +718,9 @@ public final class SchemaWidgetFactory {
                         int prevX = box.getX() + box.getWidth() + 2;
                         int prevY = y;
                         String val = box.getValue().trim();
-                        if (!val.isEmpty()) {
-                            ResourceLocation loc = ResourceLocation.tryParse(val);
-                            if (loc != null && BuiltInRegistries.ITEM.containsKey(loc)) {
-                                Item item = BuiltInRegistries.ITEM.get(loc);
-                                if (item != Items.AIR) {
-                                    ItemStack stack = new ItemStack(item);
-                                    if (mouseX >= prevX && mouseX <= prevX + 18 && mouseY >= prevY && mouseY <= prevY + 18) {
-                                        gfx.renderTooltip(font, stack, mouseX, mouseY);
-                                    }
-                                }
-                            }
+                        ItemStack stack = SuggestingEditBox.defaultItemIconResolver(val);
+                        if (!stack.isEmpty() && mouseX >= prevX && mouseX <= prevX + 18 && mouseY >= prevY && mouseY <= prevY + 18) {
+                            gfx.renderTooltip(font, stack, mouseX, mouseY);
                         }
                     }
                 }
@@ -1421,8 +1416,6 @@ public final class SchemaWidgetFactory {
                 }
                 if (bestMatch == 0 && recordMatch > 0) {
                     bestMatch = recordMatch;
-                } else if (bestMatch == 0 && recordMatch == 0) {
-
                 }
             } else if (value.isJsonPrimitive()) {
                 for (int i = 0; i < options.size(); i++) {

@@ -87,6 +87,7 @@ public class AdvancementContextMenu {
                             }
                             PersistentData.removePositions(idsToDelete);
                             PersistentData.removeTabProperties(rootId);
+                            PersistentData.save(parentScreen.getTabs());
                             EnhancedAdvancementsScreen.setSavedSelectedTab(rootId);
                             parentScreen.setLoading(true);
                             Services.PLATFORM.sendResetTab(new ResetTabPayload(rootId, idsToDelete));

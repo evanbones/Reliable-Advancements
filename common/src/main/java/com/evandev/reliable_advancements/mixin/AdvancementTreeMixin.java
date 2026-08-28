@@ -8,6 +8,7 @@ import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.AdvancementTree;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -26,6 +27,17 @@ public abstract class AdvancementTreeMixin {
     @Final
     private Map<ResourceLocation, AdvancementNode> nodes;
 
+    @Shadow
+    @Final
+    private Set<AdvancementNode> roots;
+
+    @Shadow
+    @Final
+    private Set<AdvancementNode> tasks;
+
+    @Shadow
+    private @Nullable AdvancementTree.Listener listener;
+
     @ModifyVariable(
             method = "addAll",
             at = @At("HEAD"),
@@ -35,6 +47,33 @@ public abstract class AdvancementTreeMixin {
         List<AdvancementHolder> sorted = new ArrayList<>(advancements);
         sorted.sort(Comparator.comparing(a -> a.id().toString()));
         return sorted;
+    }
+
+    @Inject(method = "tryInsert", at = @At("HEAD"))
+    private void reliable_advancements$evictStaleNode(AdvancementHolder advancement, CallbackInfoReturnable<Boolean> cir) {
+        AdvancementNode stale = this.nodes.get(advancement.id());
+        if (stale == null) {
+            return;
+        }
+
+        Optional<ResourceLocation> primaryParent = advancement.value().parent();
+        if (primaryParent.isPresent() && this.nodes.get(primaryParent.get()) == null) {
+            return;
+        }
+
+        for (AdvancementNode parent : new ArrayList<>(IMultiParentNode.getParents(stale))) {
+            if (parent != null) {
+                IMultiParentNode.removeChild(parent, stale);
+                IMultiParentNode.removeParent(stale, parent);
+            }
+        }
+        if (stale.parent() != null) {
+            IMultiParentNode.removeChild(stale.parent(), stale);
+        }
+
+        this.roots.remove(stale);
+        this.tasks.remove(stale);
+        this.nodes.remove(advancement.id());
     }
 
     @Inject(method = "tryInsert", at = @At("RETURN"))
@@ -79,6 +118,32 @@ public abstract class AdvancementTreeMixin {
             }
         }
         return copy;
+    }
+
+    @Inject(method = "setListener", at = @At("HEAD"), cancellable = true)
+    private void reliable_advancements$setListenerOrdered(AdvancementTree.Listener listener, CallbackInfo ci) {
+        this.listener = listener;
+        if (listener != null) {
+            List<AdvancementNode> nonTabRoots = new ArrayList<>();
+
+            for (AdvancementNode root : this.roots) {
+                boolean isTabRoot = root.advancement().display().map(d -> d.getBackground().isPresent()).orElse(false);
+                if (isTabRoot) {
+                    listener.onAddAdvancementRoot(root);
+                } else {
+                    nonTabRoots.add(root);
+                }
+            }
+
+            for (AdvancementNode node : nonTabRoots) {
+                listener.onAddAdvancementTask(node);
+            }
+
+            for (AdvancementNode task : this.tasks) {
+                listener.onAddAdvancementTask(task);
+            }
+        }
+        ci.cancel();
     }
 
     @Inject(method = "remove(Lnet/minecraft/advancements/AdvancementNode;)V", at = @At("HEAD"))

@@ -3,6 +3,7 @@ package com.evandev.reliable_advancements.gui.tabs;
 import com.evandev.reliable_advancements.advancements.MultiParentHelper;
 import com.evandev.reliable_advancements.gui.model.AdvancementDraft;
 import com.evandev.reliable_advancements.gui.widgets.EditorForm;
+import com.evandev.reliable_advancements.gui.widgets.ModernButton;
 import com.evandev.reliable_advancements.gui.widgets.SuggestingEditBox;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -12,12 +13,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,12 +29,12 @@ import java.util.stream.Stream;
 
 public class PropertiesTab implements IEditorTab {
     private final EditorForm form;
-
+    private final List<String> parentList = new ArrayList<>();
+    private final List<SuggestingEditBox> parentBoxes = new ArrayList<>();
     private String id = "";
     private String title = "";
     private String description = "";
     private String icon = "minecraft:stone";
-    private String parent = "";
     private String frame = "task";
     private boolean hidden = false;
     private boolean sendsTelemetryEvent = false;
@@ -41,15 +44,25 @@ public class PropertiesTab implements IEditorTab {
     private EditBox descBox;
     private SuggestingEditBox iconBox;
     private SuggestingEditBox frameBox;
-    private SuggestingEditBox parentBox;
 
     public PropertiesTab(Font font) {
         this.form = new EditorForm(font);
     }
 
+    public static List<String> getParentSuggestions() {
+        var conn = Minecraft.getInstance().getConnection();
+        if (conn != null) {
+            return conn.getAdvancements().getTree().nodes().stream()
+                    .map(n -> n.holder().id().toString()).sorted().collect(Collectors.toList());
+        }
+        return List.of();
+    }
+
     @Override
     public void loadState(AdvancementDraft draft) {
         this.id = draft.id;
+        this.parentList.clear();
+
         JsonObject display = draft.rootJson.has("display") ? draft.rootJson.getAsJsonObject("display") : new JsonObject();
         RegistryOps<JsonElement> ops = Minecraft.getInstance().level != null
                 ? Minecraft.getInstance().level.registryAccess().createSerializationContext(JsonOps.INSTANCE)
@@ -88,9 +101,11 @@ public class PropertiesTab implements IEditorTab {
 
         try {
             List<ResourceLocation> parsedParents = MultiParentHelper.parseParents(draft.rootJson);
-            this.parent = parsedParents.stream().map(ResourceLocation::toString).collect(Collectors.joining(", "));
+            for (ResourceLocation loc : parsedParents) {
+                this.parentList.add(loc.toString());
+            }
         } catch (Exception ignored) {
-            this.parent = "";
+            this.parentList.clear();
         }
 
         try {
@@ -115,35 +130,70 @@ public class PropertiesTab implements IEditorTab {
     @Override
     public void init(int x, int y, int width, int height, Runnable reinitScreen) {
         form.clear();
+        parentBoxes.clear();
 
         form.addSection("Identity & Display");
         idBox = form.addTextField("Identifier", "ID, e.g. mod_id:my_advancement", id, s -> this.id = s);
         titleBox = form.addTextField("Title", "Displayed title text in the advancement window", title, s -> this.title = s);
         descBox = form.addTextField("Description", "Displayed tooltip description in the advancement window", description, s -> this.description = s);
 
-        form.addSection("Visuals & Hierarchy");
+        form.addSection("Visuals & Frame");
         iconBox = form.addItemSuggestingField("Icon Item", "ID of the display item, e.g. minecraft:diamond", icon, s -> this.icon = s);
 
         frameBox = form.addSuggestingField("Frame Type", "Advancement frame type: task, goal, or challenge", frame,
                 () -> List.of("task", "goal", "challenge"),
                 s -> this.frame = s);
 
-        parentBox = form.addSuggestingField("Parent Advancements", "Comma-separated IDs of parent advancements. Leave empty for a disconnected or root advancement.", parent,
-                () -> {
-                    var conn = Minecraft.getInstance().getConnection();
-                    if (conn != null) {
-                        return conn.getAdvancements().getTree().nodes().stream()
-                                .map(n -> n.holder().id().toString()).collect(Collectors.toList());
-                    }
-                    return List.of();
-                },
-                s -> this.parent = s);
+        form.addSection("Parent Advancements");
+        ModernButton addParentBtn = ModernButton.modernBuilder(Component.literal("+ Add Parent"), b -> {
+                    syncDynamicLists();
+                    parentList.add("");
+                    reinitScreen.run();
+                }).style(ModernButton.Style.SECONDARY).pos(0, 0).size(130, 20)
+                .tooltip(Tooltip.create(Component.literal("Add a parent advancement. Leave empty for a root or disconnected advancement.")))
+                .build();
+        form.addCustomWidget("", addParentBtn, 24);
+
+        for (int i = 0; i < parentList.size(); i++) {
+            final int index = i;
+            SuggestingEditBox box = makeParentAdvancementBox(i, index);
+            parentBoxes.add(box);
+
+            ModernButton removeBtn = ModernButton.modernBuilder(Component.literal("x"), b -> {
+                        syncDynamicLists();
+                        parentList.remove(index);
+                        reinitScreen.run();
+                    }).style(ModernButton.Style.DANGER).pos(0, 0).size(20, 20)
+                    .tooltip(Tooltip.create(Component.literal("Remove Parent")))
+                    .build();
+
+            form.addCustomRow(new EditorForm.DynamicEntryRow(box, removeBtn), List.of(box, removeBtn));
+        }
 
         form.addSection("Visibility & Events");
         form.addToggle("Hidden until Unlocked", "Hides this advancement in the tree until it is unlocked", hidden, v -> this.hidden = v);
         form.addToggle("Telemetry Event", "Sends a telemetry event to the server/game when completed", sendsTelemetryEvent, v -> this.sendsTelemetryEvent = v);
 
         form.init(x, y, width, height);
+    }
+
+    private @NotNull SuggestingEditBox makeParentAdvancementBox(int i, int index) {
+        SuggestingEditBox box = new SuggestingEditBox(Minecraft.getInstance().font, 0, 0, 100, 20,
+                Component.literal("Parent Advancement"),
+                PropertiesTab::getParentSuggestions);
+        box.setMaxLength(512);
+        box.setValue(parentList.get(i));
+        box.setTooltip(Tooltip.create(Component.literal("Parent advancement ID, e.g. minecraft:story/root")));
+        box.setResponder(s -> {
+            if (index < parentList.size()) parentList.set(index, s);
+        });
+        return box;
+    }
+
+    private void syncDynamicLists() {
+        for (int i = 0; i < parentBoxes.size(); i++) {
+            if (i < parentList.size()) parentList.set(i, parentBoxes.get(i).getValue());
+        }
     }
 
     @Override
@@ -153,7 +203,7 @@ public class PropertiesTab implements IEditorTab {
         if (descBox != null) this.description = descBox.getValue();
         if (iconBox != null) this.icon = iconBox.getValue();
         if (frameBox != null) this.frame = frameBox.getValue();
-        if (parentBox != null) this.parent = parentBox.getValue();
+        syncDynamicLists();
     }
 
     @Override
@@ -200,15 +250,12 @@ public class PropertiesTab implements IEditorTab {
         }
 
         List<ResourceLocation> parentsList = new ArrayList<>();
-        if (!this.parent.trim().isEmpty()) {
-            String[] parts = this.parent.split(",");
-            for (String part : parts) {
-                String trimmed = part.trim();
-                if (!trimmed.isEmpty()) {
-                    ResourceLocation loc = ResourceLocation.tryParse(trimmed);
-                    if (loc != null && !parentsList.contains(loc)) {
-                        parentsList.add(loc);
-                    }
+        for (String p : this.parentList) {
+            String trimmed = p.trim();
+            if (!trimmed.isEmpty()) {
+                ResourceLocation loc = ResourceLocation.tryParse(trimmed);
+                if (loc != null && !parentsList.contains(loc)) {
+                    parentsList.add(loc);
                 }
             }
         }

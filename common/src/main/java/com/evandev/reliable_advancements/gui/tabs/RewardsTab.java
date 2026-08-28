@@ -10,7 +10,6 @@ import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
@@ -19,6 +18,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -138,7 +138,7 @@ public class RewardsTab implements IEditorTab {
 
         for (int i = 0; i < lootList.size(); i++) {
             final int index = i;
-            SuggestingEditBox box = new SuggestingEditBox(font, 0, 0, 100, 20, Component.literal("Loot Table"), RewardsTab::getLootTableSuggestions);
+            SuggestingEditBox box = new SuggestingEditBox(font, 0, 0, 100, 20, Component.literal("Loot Table"), RewardsTab::getLootTableSuggestions, SuggestingEditBox::lootTableIconResolver);
             box.setMaxLength(512);
             box.setValue(lootList.get(i));
             box.setTooltip(Tooltip.create(Component.literal("Loot table ID, e.g. minecraft:chests/simple_dungeon")));
@@ -155,7 +155,7 @@ public class RewardsTab implements IEditorTab {
                     .tooltip(Tooltip.create(Component.literal("Remove Loot Table")))
                     .build();
 
-            form.addCustomRow(new DynamicEntryRow(box, removeBtn), List.of(box, removeBtn));
+            form.addCustomRow(new EditorForm.DynamicEntryRow(box, removeBtn), List.of(box, removeBtn));
         }
 
         form.addSection("Recipes");
@@ -170,19 +170,7 @@ public class RewardsTab implements IEditorTab {
 
         for (int i = 0; i < recipeList.size(); i++) {
             final int index = i;
-            SuggestingEditBox box = new SuggestingEditBox(font, 0, 0, 100, 20, Component.literal("Recipe"), () -> {
-                if (Minecraft.getInstance().level != null) {
-                    return Minecraft.getInstance().level.getRecipeManager().getRecipes()
-                            .stream().map(r -> r.id().toString()).sorted().collect(Collectors.toList());
-                }
-                return List.of();
-            });
-            box.setMaxLength(512);
-            box.setValue(recipeList.get(i));
-            box.setTooltip(Tooltip.create(Component.literal("Recipe ID to unlock")));
-            box.setResponder(s -> {
-                if (index < recipeList.size()) recipeList.set(index, s);
-            });
+            SuggestingEditBox box = makeRecipeRewardBox(i, index);
             recipeBoxes.add(box);
 
             ModernButton removeBtn = ModernButton.modernBuilder(Component.literal("x"), b -> {
@@ -193,10 +181,27 @@ public class RewardsTab implements IEditorTab {
                     .tooltip(Tooltip.create(Component.literal("Remove Recipe")))
                     .build();
 
-            form.addCustomRow(new DynamicEntryRow(box, removeBtn), List.of(box, removeBtn));
+            form.addCustomRow(new EditorForm.DynamicEntryRow(box, removeBtn), List.of(box, removeBtn));
         }
 
         form.init(x, y, width, height);
+    }
+
+    private @NotNull SuggestingEditBox makeRecipeRewardBox(int i, int index) {
+        SuggestingEditBox box = new SuggestingEditBox(font, 0, 0, 100, 20, Component.literal("Recipe"), () -> {
+            if (Minecraft.getInstance().level != null) {
+                return Minecraft.getInstance().level.getRecipeManager().getRecipes()
+                        .stream().map(r -> r.id().toString()).sorted().collect(Collectors.toList());
+            }
+            return List.of();
+        }, SuggestingEditBox::defaultItemIconResolver);
+        box.setMaxLength(512);
+        box.setValue(recipeList.get(i));
+        box.setTooltip(Tooltip.create(Component.literal("Recipe ID to unlock")));
+        box.setResponder(s -> {
+            if (index < recipeList.size()) recipeList.set(index, s);
+        });
+        return box;
     }
 
     private void syncDynamicLists() {
@@ -273,46 +278,5 @@ public class RewardsTab implements IEditorTab {
     @Override
     public EditorForm getForm() {
         return form;
-    }
-
-    private static class DynamicEntryRow implements EditorForm.FormRow {
-        private final SuggestingEditBox box;
-        private final Button removeBtn;
-        private int y;
-
-        DynamicEntryRow(SuggestingEditBox box, Button removeBtn) {
-            this.box = box;
-            this.removeBtn = removeBtn;
-        }
-
-        @Override
-        public void layout(int x, int y, int width, Font font) {
-            this.y = y;
-            this.box.setX(x);
-            this.box.setY(y);
-            this.box.setWidth(width - 24);
-            this.box.setHeight(20);
-
-            this.removeBtn.setX(x + width - 20);
-            this.removeBtn.setY(y);
-            this.removeBtn.setWidth(20);
-            this.removeBtn.setHeight(20);
-        }
-
-        @Override
-        public void render(GuiGraphics gfx, Font font, int mouseX, int mouseY, float partialTicks) {
-            this.box.render(gfx, mouseX, mouseY, partialTicks);
-            this.removeBtn.render(gfx, mouseX, mouseY, partialTicks);
-        }
-
-        @Override
-        public int getHeight() {
-            return 22;
-        }
-
-        @Override
-        public int getY() {
-            return y;
-        }
     }
 }

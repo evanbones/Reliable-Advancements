@@ -91,7 +91,7 @@ public class EditorForm {
     }
 
     public SuggestingEditBox addItemSuggestingField(String label, @Nullable String tooltip, String initialValue, Supplier<List<String>> suggestions, Consumer<String> responder) {
-        SuggestingEditBox box = new SuggestingEditBox(font, 0, 0, 100, 20, Component.literal(label), suggestions);
+        SuggestingEditBox box = new SuggestingEditBox(font, 0, 0, 100, 20, Component.literal(label), suggestions, SuggestingEditBox::defaultItemIconResolver);
         box.setMaxLength(512);
         box.setValue(initialValue != null ? initialValue : "");
         box.setCursorPosition(0);
@@ -290,7 +290,8 @@ public class EditorForm {
 
         void render(GuiGraphics gfx, Font font, int mouseX, int mouseY, float partialTicks);
 
-        default void renderOverlay(GuiGraphics gfx, Font font, int mouseX, int mouseY, float partialTicks) {}
+        default void renderOverlay(GuiGraphics gfx, Font font, int mouseX, int mouseY, float partialTicks) {
+        }
 
         int getHeight();
 
@@ -541,6 +542,47 @@ public class EditorForm {
         @Override
         public int getHeight() {
             return height;
+        }
+
+        @Override
+        public int getY() {
+            return y;
+        }
+    }
+
+    public static class DynamicEntryRow implements FormRow {
+        private final AbstractWidget widget;
+        private final Button removeBtn;
+        private int y;
+
+        public DynamicEntryRow(AbstractWidget widget, Button removeBtn) {
+            this.widget = widget;
+            this.removeBtn = removeBtn;
+        }
+
+        @Override
+        public void layout(int x, int y, int width, Font font) {
+            this.y = y;
+            this.widget.setX(x);
+            this.widget.setY(y);
+            this.widget.setWidth(width - 24);
+            this.widget.setHeight(20);
+
+            this.removeBtn.setX(x + width - 20);
+            this.removeBtn.setY(y);
+            this.removeBtn.setWidth(20);
+            this.removeBtn.setHeight(20);
+        }
+
+        @Override
+        public void render(GuiGraphics gfx, Font font, int mouseX, int mouseY, float partialTicks) {
+            this.widget.render(gfx, mouseX, mouseY, partialTicks);
+            this.removeBtn.render(gfx, mouseX, mouseY, partialTicks);
+        }
+
+        @Override
+        public int getHeight() {
+            return 22;
         }
 
         @Override
