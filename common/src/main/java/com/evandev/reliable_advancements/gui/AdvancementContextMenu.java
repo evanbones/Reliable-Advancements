@@ -44,7 +44,7 @@ public class AdvancementContextMenu {
             this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.delete"), true, () -> parentScreen.deleteAdvancement(widget)));
         } else {
             this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.create_advancement"), false, () -> parentScreen.createNewAdvancement(mouseX, mouseY)));
-            this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.create_tab"), false, () -> parentScreen.createNewTab(mouseX, mouseY)));
+            this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.create_tab"), false, parentScreen::createNewTab));
             this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.paste"), false, () -> {
                 parentScreen.pasteAdvancement(mouseX, mouseY);
                 parentScreen.closeContextMenu();

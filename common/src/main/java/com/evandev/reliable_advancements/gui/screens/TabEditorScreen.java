@@ -200,7 +200,6 @@ public class TabEditorScreen extends Screen {
         if (Services.PLATFORM.canSendAdvancementEdit()) {
             Services.PLATFORM.sendAdvancementEdit(payload);
         }
-        parentScreen.setLoading(true);
         this.minecraft.setScreen(parentScreen);
     }
 

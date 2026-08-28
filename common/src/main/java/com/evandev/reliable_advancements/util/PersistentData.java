@@ -242,18 +242,22 @@ public class PersistentData {
         }
     }
 
+    public static int getDefaultTabIndex(String id) {
+        if (id == null) return 5;
+        return switch (id) {
+            case "minecraft:story/root" -> 0;
+            case "minecraft:adventure/root" -> 1;
+            case "minecraft:husbandry/root" -> 2;
+            case "minecraft:nether/root" -> 3;
+            case "minecraft:end/root" -> 4;
+            default -> 5;
+        };
+    }
+
     public static boolean hasCustomTabProperties(EnhancedAdvancementTab tab) {
         if (tab == null || tab.getRootNode() == null) return false;
-        int defaultIndex;
         String id = tab.getRootNode().holder().id().toString();
-        switch (id) {
-            case "minecraft:story/root" -> defaultIndex = 0;
-            case "minecraft:adventure/root" -> defaultIndex = 1;
-            case "minecraft:husbandry/root" -> defaultIndex = 2;
-            case "minecraft:nether/root" -> defaultIndex = 3;
-            case "minecraft:end/root" -> defaultIndex = 4;
-            default -> defaultIndex = 5;
-        }
+        int defaultIndex = getDefaultTabIndex(id);
         return (tab.customTitle != null && !tab.customTitle.isEmpty())
                 || tab.customBackground != null
                 || tab.isStaticBackground

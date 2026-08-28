@@ -31,7 +31,9 @@ public class EnhancedAdvancementTabType {
     }
 
     public static EnhancedAdvancementTabType getTabType(int width, int height, int index) {
-        int indexOnPage = index % getMaxTabs(width, height);
+        int maxTabs = getMaxTabs(width, height);
+        if (maxTabs <= 0) return null;
+        int indexOnPage = index % maxTabs;
 
         int tabsAbove = ABOVE.getMax(width, height);
         int tabsRight = RIGHT.getMax(width, height);
@@ -50,15 +52,18 @@ public class EnhancedAdvancementTabType {
 
     public static int getMaxTabs(int width, int height) {
         if (ModConfig.get().onlyUseAboveAdvancementTabs) {
-            return ABOVE.getMax(width, height);
+            return Math.max(0, ABOVE.getMax(width, height));
         }
 
-        return ALL.stream().mapToInt(tab -> tab.getMax(width, height)).sum();
+        return Math.max(0, ALL.stream().mapToInt(tab -> Math.max(0, tab.getMax(width, height))).sum());
     }
 
     public void draw(GuiGraphics guiGraphics, int x, int y, int width, int height, boolean selected, int index) {
         int i = this.textureX;
-        index %= getMax(width, height);
+        int max = getMax(width, height);
+        if (max > 0) {
+            index %= max;
+        }
 
         if (index > 0) {
             i += this.width;
@@ -99,7 +104,10 @@ public class EnhancedAdvancementTabType {
     }
 
     public int getX(int index, int width, int height) {
-        index %= getMax(width, height);
+        int max = getMax(width, height);
+        if (max > 0) {
+            index %= max;
+        }
         return switch (tabType) {
             case ABOVE, BELOW -> (this.width + 4) * index;
             case LEFT -> -this.width + 4;
@@ -108,7 +116,10 @@ public class EnhancedAdvancementTabType {
     }
 
     public int getY(int index, int width, int height) {
-        index %= getMax(width, height);
+        int max = getMax(width, height);
+        if (max > 0) {
+            index %= max;
+        }
         return switch (tabType) {
             case ABOVE -> -this.height + 4;
             case BELOW -> height - 4;
@@ -123,10 +134,9 @@ public class EnhancedAdvancementTabType {
     }
 
     private int getMax(int width, int height) {
-        return switch (tabType) {
+        return Math.max(0, switch (tabType) {
             case LEFT, RIGHT -> height / 32;
             case ABOVE, BELOW -> width / 32;
-            default -> tabType.getMax();
-        };
+        });
     }
 }

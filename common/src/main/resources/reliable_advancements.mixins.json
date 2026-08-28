@@ -15,6 +15,7 @@
     "TreeNodePositionMixin"
   ],
   "client": [
+    "ClientAdvancementsMixin",
     "ScreenMixin"
   ],
   "server": [],

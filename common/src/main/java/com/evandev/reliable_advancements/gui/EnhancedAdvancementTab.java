@@ -69,14 +69,7 @@ public class EnhancedAdvancementTab {
         this.addWidget(this.root, advancementNode.holder());
 
         String id = advancementNode.holder().id().toString();
-        switch (id) {
-            case "minecraft:story/root" -> this.customIndex = 0;
-            case "minecraft:adventure/root" -> this.customIndex = 1;
-            case "minecraft:husbandry/root" -> this.customIndex = 2;
-            case "minecraft:nether/root" -> this.customIndex = 3;
-            case "minecraft:end/root" -> this.customIndex = 4;
-            default -> this.customIndex = 5;
-        }
+        this.customIndex = PersistentData.getDefaultTabIndex(id);
 
         PersistentData.loadTabProperties(this);
     }

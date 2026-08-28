@@ -116,7 +116,7 @@ public class ServerAdvancementEditor {
 
         if (payload.isDelete()) {
             deleteEditFile(server, payload.advancementId(), player);
-            server.reloadResources(server.getPackRepository().getSelectedIds());
+            rebuildServerAdvancements(server);
             return;
         }
 
@@ -156,12 +156,11 @@ public class ServerAdvancementEditor {
             return;
         }
 
-        applyAdvancements(server, List.of(newHolder));
-        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-            p.getAdvancements().reload(server.getAdvancements());
-            p.getAdvancements().flushDirty(p);
-        }
-        sendFullTreeToAll(server);
+        ServerAdvancementManagerAccessor manager = (ServerAdvancementManagerAccessor) server.getAdvancements();
+        Map<ResourceLocation, AdvancementHolder> map = new LinkedHashMap<>(manager.getAdvancements());
+        map.put(newHolder.id(), newHolder);
+        applyTreeAndPositions(manager, map);
+        sendIncrementalUpdateToAll(server, List.of(newHolder), Set.of());
     }
 
     public static void handleResetTab(MinecraftServer server, ServerPlayer player, ResetTabPayload payload) {
@@ -204,7 +203,33 @@ public class ServerAdvancementEditor {
             deleteEditFile(server, id, player);
         }
 
-        server.reloadResources(server.getPackRepository().getSelectedIds());
+        Map<ResourceLocation, AdvancementHolder> currentAdvancements = rebuildAndApplyServerTree(server);
+        AdvancementTree tree = server.getAdvancements().tree();
+
+        Set<ResourceLocation> removedIds = new HashSet<>();
+        List<AdvancementHolder> addedHolders = new ArrayList<>();
+        for (ResourceLocation id : idsToDelete) {
+            AdvancementHolder holder = currentAdvancements.get(id);
+            if (holder != null) {
+                addedHolders.add(holder);
+            } else {
+                removedIds.add(id);
+            }
+        }
+
+        if (tabRootId != null) {
+            AdvancementNode rootNode = tree.get(tabRootId);
+            if (rootNode != null) {
+                for (AdvancementHolder holder : currentAdvancements.values()) {
+                    AdvancementNode node = tree.get(holder.id());
+                    if (node != null && node.root().holder().id().equals(tabRootId) && !addedHolders.contains(holder)) {
+                        addedHolders.add(holder);
+                    }
+                }
+            }
+        }
+
+        sendIncrementalUpdateToAll(server, addedHolders, removedIds);
     }
 
     private static void collectTabEditsFromDisk(MinecraftServer server, Set<ResourceLocation> idsToDelete) {
@@ -259,9 +284,29 @@ public class ServerAdvancementEditor {
     public static void reapplyAllEdits(MinecraftServer server) {
         ServerAdvancementManagerAccessor manager = (ServerAdvancementManagerAccessor) server.getAdvancements();
         baseAdvancements = new HashMap<>(manager.getAdvancements());
+        rebuildServerAdvancements(server);
+    }
+
+    public static void rebuildServerAdvancements(MinecraftServer server) {
+        rebuildAndApplyServerTree(server);
+
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            player.getAdvancements().reload(server.getAdvancements());
+            player.getAdvancements().flushDirty(player);
+            RewardTrackerData.get(server).syncToPlayer(player);
+        }
+        sendFullTreeToAll(server);
+    }
+
+    public static Map<ResourceLocation, AdvancementHolder> rebuildAndApplyServerTree(MinecraftServer server) {
+        ServerAdvancementManagerAccessor manager = (ServerAdvancementManagerAccessor) server.getAdvancements();
+        if (baseAdvancements == null || baseAdvancements.isEmpty()) {
+            baseAdvancements = new HashMap<>(manager.getAdvancements());
+        }
+
+        Map<ResourceLocation, AdvancementHolder> currentAdvancements = new LinkedHashMap<>(baseAdvancements);
 
         RegistryOps<JsonElement> ops = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
-
         Map<ResourceLocation, AdvancementHolder> edits = new LinkedHashMap<>();
         for (Path root : editsRoots(server)) {
             Path dataDir = root.resolve("data");
@@ -278,16 +323,26 @@ public class ServerAdvancementEditor {
             }
         }
 
-        if (!edits.isEmpty()) {
-            applyAdvancements(server, edits.values());
+        currentAdvancements.putAll(edits);
+        applyTreeAndPositions(manager, currentAdvancements);
+        return currentAdvancements;
+    }
+
+    public static void applyTreeAndPositions(ServerAdvancementManagerAccessor manager, Map<ResourceLocation, AdvancementHolder> map) {
+        manager.setAdvancements(map);
+
+        AdvancementTree tree = new AdvancementTree();
+        List<AdvancementHolder> sorted = new ArrayList<>(map.values());
+        sorted.sort(Comparator.comparing(a -> a.id().toString()));
+        tree.addAll(sorted);
+
+        for (AdvancementNode root : tree.roots()) {
+            if (root.holder().value().display().isPresent()) {
+                TreeNodePosition.run(root);
+            }
         }
 
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            player.getAdvancements().reload(server.getAdvancements());
-            player.getAdvancements().flushDirty(player);
-            RewardTrackerData.get(server).syncToPlayer(player);
-        }
-        sendFullTreeToAll(server);
+        manager.setTree(tree);
     }
 
     private static void collectEdits(RegistryOps<JsonElement> ops, String namespace, Path advDir, Map<ResourceLocation, AdvancementHolder> out) {
@@ -319,28 +374,6 @@ public class ServerAdvancementEditor {
         } catch (IOException e) {
             Constants.LOG.error("Failed to read saved advancement edits under {}", advDir, e);
         }
-    }
-
-    private static void applyAdvancements(MinecraftServer server, Collection<AdvancementHolder> holders) {
-        ServerAdvancementManagerAccessor manager = (ServerAdvancementManagerAccessor) server.getAdvancements();
-        Map<ResourceLocation, AdvancementHolder> map = new HashMap<>(manager.getAdvancements());
-        for (AdvancementHolder holder : holders) {
-            map.put(holder.id(), holder);
-        }
-        manager.setAdvancements(map);
-
-        AdvancementTree tree = new AdvancementTree();
-        List<AdvancementHolder> sorted = new ArrayList<>(map.values());
-        sorted.sort(Comparator.comparing(a -> a.id().toString()));
-        tree.addAll(sorted);
-
-        for (AdvancementNode root : tree.roots()) {
-            if (root.holder().value().display().isPresent()) {
-                TreeNodePosition.run(root);
-            }
-        }
-
-        manager.setTree(tree);
     }
 
     private static Path globalConfigEditsRoot() {
@@ -419,6 +452,29 @@ public class ServerAdvancementEditor {
                 true,
                 server.getAdvancements().getAllAdvancements(),
                 Set.of(),
+                progressMap
+        ));
+    }
+
+    public static void sendIncrementalUpdateToAll(MinecraftServer server, Collection<AdvancementHolder> added, Set<ResourceLocation> removed) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            sendIncrementalUpdateToPlayer(server, player, added, removed);
+        }
+    }
+
+    public static void sendIncrementalUpdateToPlayer(MinecraftServer server, ServerPlayer player, Collection<AdvancementHolder> added, Set<ResourceLocation> removed) {
+        Map<ResourceLocation, AdvancementProgress> progressMap = new HashMap<>();
+        for (AdvancementHolder holder : added) {
+            AdvancementProgress prog = player.getAdvancements().getOrStartProgress(holder);
+            if (prog.hasProgress()) {
+                progressMap.put(holder.id(), prog);
+            }
+        }
+
+        player.connection.send(new ClientboundUpdateAdvancementsPacket(
+                false,
+                added,
+                removed,
                 progressMap
         ));
     }
