@@ -2,6 +2,7 @@
 
 - Added a visual advancement editor and revamped the raw JSON criteria editor.
 - Added a loading overlay for when advancements are reloading.
+- Added a config option for how deep advancements are revealed (replaces "discovery mode").
 
 ### Changed
 

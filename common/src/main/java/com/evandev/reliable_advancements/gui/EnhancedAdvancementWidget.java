@@ -30,7 +30,9 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     public static final int ADVANCEMENT_SIZE = 26;
@@ -127,18 +129,30 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         if (this.advancementProgress != null && this.advancementProgress.isDone()) return true;
         if (this.displayInfo.isHidden()) return false;
 
-        if (ModConfig.get().discoveryMode) {
-            if (this.parents.isEmpty()) return true;
-            for (EnhancedAdvancementWidget p : this.parents) {
-                boolean parentCompleted = p.advancementProgress != null && p.advancementProgress.isDone();
-                boolean parentClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(p.getAdvancement().holder().id());
-                if (parentCompleted && parentClaimed) {
-                    return true;
-                }
-            }
-            return false;
+        int depth = ModConfig.get().visibilityDepth;
+        if (depth < 0) {
+            return true;
         }
-        return true;
+
+        return isAncestorVisible(0, depth, new HashSet<>());
+    }
+
+    private boolean isAncestorVisible(int currentDepth, int maxDepth, Set<EnhancedAdvancementWidget> visited) {
+        if (this.parents.isEmpty()) return true;
+        if (currentDepth >= maxDepth || !visited.add(this)) return false;
+
+        for (EnhancedAdvancementWidget p : this.parents) {
+            if (p == null) continue;
+            boolean parentCompleted = p.advancementProgress != null && p.advancementProgress.isDone();
+            boolean parentClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(p.getAdvancement().holder().id());
+            if (parentCompleted && parentClaimed) {
+                return true;
+            }
+            if (p.isAncestorVisible(currentDepth + 1, maxDepth, visited)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void drawConnectivity(GuiGraphics guiGraphics, int scrollX, int scrollY, boolean drawInside) {

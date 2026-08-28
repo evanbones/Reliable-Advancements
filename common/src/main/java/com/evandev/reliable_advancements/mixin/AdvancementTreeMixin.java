@@ -60,4 +60,18 @@ public abstract class AdvancementTreeMixin {
             }
         }
     }
+
+    @Inject(method = "remove(Lnet/minecraft/advancements/AdvancementNode;)V", at = @At("HEAD"))
+    private void reliable_advancements$cleanMultiParentReferences(AdvancementNode node, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+        if (node != null) {
+            List<AdvancementNode> parents = new ArrayList<>(IMultiParentNode.getParents(node));
+            for (AdvancementNode parent : parents) {
+                if (parent != null) {
+                    IMultiParentNode.removeChild(parent, node);
+                    IMultiParentNode.removeParent(node, parent);
+                }
+            }
+        }
+    }
 }
+

@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.0] - 2026-08-27
+
+### Added
+
+- Added a visual advancement editor and revamped the raw JSON criteria editor.
+- Added a loading overlay for when advancements are reloading.
+- Added a config option for how deep advancements are revealed (replaces "discovery mode").
+
+### Changed
+
+- Switched to Codec UI for advancement criteria editing.
+- Rewrote large parts of the UI.
+- Advancements can now have multiple parents or no parents at all.
+- Advancement layouts are now fully deterministic.
+- Most in-game messages now use translation keys.
+
+### Fixed
+
+- Fixed server-side changes requiring a full reload.
+- Fixed issues with tab resetting.
+- Many miscellaneous fixes.
+
 ## [5.0.1] - 2026-08-19
 
 ### Fixed

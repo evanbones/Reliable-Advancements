@@ -136,10 +136,11 @@ public class ClothConfigScreen {
                 .setSaveConsumer(newValue -> config.customInventoryButtonIcon = newValue)
                 .build());
 
-        general.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.reliable_advancements.discoveryMode"), config.discoveryMode)
-                .setDefaultValue(defaults.discoveryMode)
-                .setTooltip(Component.translatable("config.reliable_advancements.discoveryMode.tooltip"))
-                .setSaveConsumer(newValue -> config.discoveryMode = newValue)
+        general.addEntry(entryBuilder.startIntField(Component.translatable("config.reliable_advancements.visibilityDepth"), config.visibilityDepth)
+                .setDefaultValue(defaults.visibilityDepth)
+                .setMin(-1)
+                .setTooltip(Component.translatable("config.reliable_advancements.visibilityDepth.tooltip"))
+                .setSaveConsumer(newValue -> config.visibilityDepth = newValue)
                 .build());
 
         general.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.reliable_advancements.requireRewardClaiming"), config.requireRewardClaiming)

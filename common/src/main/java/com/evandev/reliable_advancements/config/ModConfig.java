@@ -28,7 +28,7 @@ public class ModConfig {
     public boolean unclampedScrolling = false;
     public int uiScaling = 100;
     public boolean onlyUseAboveAdvancementTabs = false;
-    public boolean discoveryMode = false;
+    public int visibilityDepth = 2;
     public boolean requireRewardClaiming = false;
     public int editorSidebarWidth = 130;
 

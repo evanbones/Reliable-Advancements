@@ -43,8 +43,8 @@
   "config.reliable_advancements.customInventoryButtonTextureHovered.tooltip": "Texture ID for the button background when hovered. Leave blank to reuse the standard texture.",
   "config.reliable_advancements.customInventoryButtonIcon": "Inventory Button Icon",
   "config.reliable_advancements.customInventoryButtonIcon.tooltip": "The item ID to use for the advancements button in the inventory (e.g., minecraft:book or minecraft:emerald).",
-  "config.reliable_advancements.discoveryMode": "Discovery Mode",
-  "config.reliable_advancements.discoveryMode.tooltip": "Only reveal advancements when the direct parent is completed (in vanilla, advancements unlock two advancements ahead).",
+  "config.reliable_advancements.visibilityDepth": "Visibility Depth",
+  "config.reliable_advancements.visibilityDepth.tooltip": "How many advancements ahead of unlocked ones are visible (vanilla default is 2, 1 reveals only direct children, -1 is unlimited).",
   "config.reliable_advancements.requireRewardClaiming": "Reward Claiming",
   "config.reliable_advancements.requireRewardClaiming.tooltip": "Advancements have to be claimed after being unlocked to get the reward.",
 

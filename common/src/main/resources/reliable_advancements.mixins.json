@@ -4,10 +4,12 @@
   "package": "com.evandev.reliable_advancements.mixin",
   "compatibilityLevel": "JAVA_18",
   "mixins": [
+    "AdvancementCommandsMixin",
     "AdvancementMixin",
     "AdvancementNodeMixin",
     "AdvancementTreeMixin",
     "AdvancementTypeMixin",
+    "AdvancementVisibilityEvaluatorMixin",
     "MinecraftServerMixin",
     "PlayerAdvancementsMixin",
     "ServerAdvancementManagerAccessor",
