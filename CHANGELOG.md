@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [6.1.1] - 2026-08-28
 
+### Added
+
+- Added migrations from pre-6.0.0 versions.
+
 ### Changed
 
 - Modifying a tab will no longer send advancement toasts.

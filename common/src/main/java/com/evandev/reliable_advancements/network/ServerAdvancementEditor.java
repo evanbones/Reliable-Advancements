@@ -137,7 +137,11 @@ public class ServerAdvancementEditor {
             return;
         }
         Advancement adv = parsed.result().orElseThrow();
-        IMultiParentAdvancement.setParents(adv, MultiParentHelper.parseParents(advJson));
+        List<ResourceLocation> parsedParents = MultiParentHelper.parseParents(advJson);
+        if (!parsedParents.isEmpty() && advJson.has("display") && advJson.get("display").isJsonObject()) {
+            advJson.getAsJsonObject("display").remove("background");
+        }
+        IMultiParentAdvancement.setParents(adv, parsedParents);
         AdvancementHolder newHolder = new AdvancementHolder(payload.advancementId(), adv);
 
         try {

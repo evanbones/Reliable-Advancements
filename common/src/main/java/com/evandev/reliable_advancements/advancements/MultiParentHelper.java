@@ -19,19 +19,6 @@ public class MultiParentHelper {
 
         Set<ResourceLocation> parents = new LinkedHashSet<>();
 
-        if (json.has("parents") && json.get("parents").isJsonArray()) {
-            JsonArray arr = json.getAsJsonArray("parents");
-            for (JsonElement el : arr) {
-                if (el.isJsonPrimitive()) {
-                    ResourceLocation loc = ResourceLocation.tryParse(el.getAsString());
-                    if (loc != null) {
-                        parents.add(loc);
-                    }
-                }
-            }
-            return new ArrayList<>(parents);
-        }
-
         if (json.has("parent")) {
             JsonElement p = json.get("parent");
             if (p.isJsonArray()) {
@@ -51,6 +38,25 @@ public class MultiParentHelper {
             }
         }
 
+        if (json.has("parents")) {
+            JsonElement ps = json.get("parents");
+            if (ps.isJsonArray()) {
+                for (JsonElement el : ps.getAsJsonArray()) {
+                    if (el.isJsonPrimitive()) {
+                        ResourceLocation loc = ResourceLocation.tryParse(el.getAsString());
+                        if (loc != null) {
+                            parents.add(loc);
+                        }
+                    }
+                }
+            } else if (ps.isJsonPrimitive()) {
+                ResourceLocation loc = ResourceLocation.tryParse(ps.getAsString());
+                if (loc != null) {
+                    parents.add(loc);
+                }
+            }
+        }
+
         return new ArrayList<>(parents);
     }
 
@@ -61,31 +67,45 @@ public class MultiParentHelper {
     public static void applyParentsToJson(JsonObject json, List<ResourceLocation> parents, ResourceLocation primaryParent) {
         if (json == null) return;
 
-        boolean isTabRoot = json.has("display") && json.getAsJsonObject("display").has("background");
-        if (isTabRoot) {
+        boolean hasParents = (parents != null && !parents.isEmpty()) || primaryParent != null;
+
+        if (!hasParents) {
             json.remove("parent");
             json.remove("parents");
             return;
         }
 
-        JsonArray arr = new JsonArray();
-        if (parents != null) {
-            for (ResourceLocation parent : parents) {
-                arr.add(parent.toString());
-            }
+        if (json.has("display") && json.get("display").isJsonObject()) {
+            json.getAsJsonObject("display").remove("background");
         }
-        if (arr.isEmpty()) {
-            json.remove("parents");
-        } else {
-            json.add("parents", arr);
+
+        Set<ResourceLocation> allParents = new LinkedHashSet<>();
+        if (primaryParent != null) {
+            allParents.add(primaryParent);
+        }
+        if (parents != null) {
+            allParents.addAll(parents);
+        }
+
+        if (primaryParent == null && !allParents.isEmpty()) {
+            primaryParent = allParents.iterator().next();
         }
 
         if (primaryParent != null) {
             json.addProperty("parent", primaryParent.toString());
-        } else if (parents != null && !parents.isEmpty()) {
-            json.addProperty("parent", parents.getFirst().toString());
         } else {
             json.remove("parent");
+        }
+
+        JsonArray arr = new JsonArray();
+        for (ResourceLocation p : allParents) {
+            arr.add(p.toString());
+        }
+
+        if (arr.isEmpty()) {
+            json.remove("parents");
+        } else {
+            json.add("parents", arr);
         }
     }
 
@@ -95,13 +115,14 @@ public class MultiParentHelper {
 
         copy.remove("parents");
 
-        if (copy.has("parent") && copy.get("parent").isJsonArray()) {
-            JsonArray arr = copy.getAsJsonArray("parent");
-            if (!arr.isEmpty() && arr.get(0).isJsonPrimitive()) {
-                copy.addProperty("parent", arr.get(0).getAsString());
-            } else {
-                copy.remove("parent");
+        List<ResourceLocation> parents = parseParents(original);
+        if (!parents.isEmpty()) {
+            copy.addProperty("parent", parents.getFirst().toString());
+            if (copy.has("display") && copy.get("display").isJsonObject()) {
+                copy.getAsJsonObject("display").remove("background");
             }
+        } else {
+            copy.remove("parent");
         }
 
         return copy;

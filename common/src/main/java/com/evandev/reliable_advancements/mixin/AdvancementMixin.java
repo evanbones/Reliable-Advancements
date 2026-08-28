@@ -28,14 +28,19 @@ public abstract class AdvancementMixin implements IMultiParentAdvancement {
             boolean hasExplicitParents = buffer.readBoolean();
             if (hasExplicitParents) {
                 List<ResourceLocation> parents = buffer.readCollection(ArrayList::new, FriendlyByteBuf::readResourceLocation);
+                if (parents.isEmpty() && advancement.parent().isPresent()) {
+                    parents.add(advancement.parent().get());
+                }
                 IMultiParentAdvancement.setParents(advancement, parents);
+            } else if (advancement.parent().isPresent()) {
+                IMultiParentAdvancement.setParents(advancement, List.of(advancement.parent().get()));
             }
         }
     }
 
     @Override
     public List<ResourceLocation> reliable_advancements$getParents() {
-        if (this.reliable_advancements$parents == null) {
+        if (this.reliable_advancements$parents == null || this.reliable_advancements$parents.isEmpty()) {
             Advancement self = (Advancement) (Object) this;
             return self.parent().map(List::of).orElse(List.of());
         }
@@ -44,15 +49,25 @@ public abstract class AdvancementMixin implements IMultiParentAdvancement {
 
     @Override
     public void reliable_advancements$setParents(List<ResourceLocation> parents) {
-        this.reliable_advancements$parents = parents != null ? new ArrayList<>(parents) : new ArrayList<>();
+        if (parents == null || parents.isEmpty()) {
+            Advancement self = (Advancement) (Object) this;
+            if (self.parent().isPresent()) {
+                this.reliable_advancements$parents = new ArrayList<>(List.of(self.parent().get()));
+                return;
+            }
+            this.reliable_advancements$parents = new ArrayList<>();
+            return;
+        }
+        this.reliable_advancements$parents = new ArrayList<>(parents);
     }
 
     @Inject(method = "write", at = @At("TAIL"))
     private void reliable_advancements$writeExtraParents(RegistryFriendlyByteBuf buffer, CallbackInfo ci) {
-        boolean hasExplicitParents = this.reliable_advancements$parents != null;
+        List<ResourceLocation> parents = this.reliable_advancements$getParents();
+        boolean hasExplicitParents = parents != null && !parents.isEmpty();
         buffer.writeBoolean(hasExplicitParents);
         if (hasExplicitParents) {
-            buffer.writeCollection(this.reliable_advancements$parents, FriendlyByteBuf::writeResourceLocation);
+            buffer.writeCollection(parents, FriendlyByteBuf::writeResourceLocation);
         }
     }
 }

@@ -1342,6 +1342,13 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         EnhancedAdvancementTab existingTab = findTabById(advancement.holder().id());
         EnhancedAdvancementTab betterAdvancementTabGui = EnhancedAdvancementTab.create(this.minecraft, this, existingTab != null ? existingTab.getIndex() : this.tabs.size(), advancement, internalWidth - 2 * SIDE, internalHeight - TOP - SIDE);
         if (betterAdvancementTabGui != null) {
+            ResourceLocation rootId = advancement.holder().id();
+            for (EnhancedAdvancementTab tab : this.tabs.values()) {
+                if (tab != existingTab) {
+                    tab.removeWidget(rootId);
+                }
+            }
+
             if (existingTab != null) {
                 betterAdvancementTabGui.scrollX = existingTab.scrollX;
                 betterAdvancementTabGui.scrollY = existingTab.scrollY;
@@ -1467,6 +1474,21 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                 EnhancedAdvancementTab pTab = findTabById(pRoot.holder().id());
                 if (pTab != null) {
                     return pTab;
+                }
+            }
+        }
+
+        List<ResourceLocation> parentIds = IMultiParentAdvancement.getParents(advancement.advancement());
+        for (ResourceLocation parentId : parentIds) {
+            EnhancedAdvancementTab pTab = findTabById(parentId);
+            if (pTab != null) {
+                return pTab;
+            }
+            AdvancementNode pNode = this.clientAdvancements.getTree().get(parentId);
+            if (pNode != null) {
+                EnhancedAdvancementTab pRootTab = findTabById(pNode.root().holder().id());
+                if (pRootTab != null) {
+                    return pRootTab;
                 }
             }
         }
