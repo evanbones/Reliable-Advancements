@@ -139,6 +139,16 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     public void finalizeResync() {
+        ResourceLocation draggingId = this.advConnectedToMouse != null
+                ? this.advConnectedToMouse.getAdvancement().holder().id() : null;
+        Set<ResourceLocation> selectedIds = new LinkedHashSet<>();
+        for (EnhancedAdvancementWidget w : selectedWidgets) {
+            selectedIds.add(w.getAdvancement().holder().id());
+        }
+        for (EnhancedAdvancementTab t : this.tabs.values()) {
+            PersistentData.snapshotTabPositions(t);
+        }
+
         if (this.selectedTab != null) {
             this.selectedTab.storeScroll();
             if (savedSelectedTab == null) {
@@ -163,6 +173,24 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
         rebuildNavigationWidgets();
         this.isLoading = false;
+
+        this.advConnectedToMouse = draggingId != null ? findWidgetById(draggingId) : null;
+        selectedWidgets.clear();
+        for (ResourceLocation id : selectedIds) {
+            EnhancedAdvancementWidget w = findWidgetById(id);
+            if (w != null) selectedWidgets.add(w);
+        }
+    }
+
+    private @Nullable EnhancedAdvancementWidget findWidgetById(ResourceLocation id) {
+        for (EnhancedAdvancementTab t : this.tabs.values()) {
+            for (EnhancedAdvancementWidget w : t.getWidgets().values()) {
+                if (w.getAdvancement().holder().id().equals(id)) {
+                    return w;
+                }
+            }
+        }
+        return null;
     }
 
     public TabBounds getTabBounds() {
@@ -300,7 +328,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         List<Map.Entry<AdvancementHolder, EnhancedAdvancementTab>> list = new ArrayList<>(this.tabs.entrySet());
         list.sort(Comparator.comparingInt((Map.Entry<AdvancementHolder, EnhancedAdvancementTab> e) -> tabSortOrdinal(e.getKey()))
                 .thenComparingInt(e -> e.getValue().customIndex)
-                .thenComparing(e -> ModConfig.get().orderTabsAlphabetically ? e.getValue().getTitle().getString() : ""));
+                .thenComparing(e -> ModConfig.get().orderTabsAlphabetically ? e.getValue().getTitle().getString() : "")
+                .thenComparing(e -> e.getKey().id().toString()));
         this.tabs.clear();
         int newIndex = 0;
         int tabW = getTabInternalWidth();
@@ -546,6 +575,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
 
         this.clientAdvancements.setListener(this);
+        sortTabs();
 
         this.selectedTab = findTabById(savedSelectedTab);
         if (this.selectedTab == null && !this.tabs.isEmpty()) {

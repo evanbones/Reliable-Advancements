@@ -4,6 +4,7 @@ import com.evandev.reliable_advancements.gui.EnhancedAdvancementTab;
 import com.evandev.reliable_advancements.gui.model.AdvancementDraft;
 import com.evandev.reliable_advancements.gui.theme.EditorTheme;
 import com.evandev.reliable_advancements.gui.widgets.EditorForm;
+import com.evandev.reliable_advancements.gui.widgets.JsonEditorWidget;
 import com.evandev.reliable_advancements.gui.widgets.ModernButton;
 import com.evandev.reliable_advancements.gui.widgets.SuggestingEditBox;
 import com.evandev.reliable_advancements.network.EditAdvancementPayload;
@@ -14,17 +15,19 @@ import com.google.gson.JsonObject;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class TabEditorScreen extends Screen {
+    private static final int MAX_UI_WIDTH = 340;
+    private static final int MAX_UI_HEIGHT = 380;
     private static final int HEADER_HEIGHT = 36;
 
     private final EnhancedAdvancementsScreen parentScreen;
@@ -39,7 +42,7 @@ public class TabEditorScreen extends Screen {
     private EditBox widthBox;
     private EditBox heightBox;
     private EditBox indexBox;
-    private MultiLineEditBox rulesBox;
+    private JsonEditorWidget rulesBox;
 
     private boolean isStaticBg;
     private int uiX, uiY, uiW, uiH;
@@ -53,8 +56,26 @@ public class TabEditorScreen extends Screen {
         this.draft = new AdvancementDraft(rawJsonFromServer, tab.getRootNode().holder().id().toString(), false);
     }
 
+    private void defocusAllExcept(@Nullable GuiEventListener keepFocused) {
+        if (this.getFocused() != keepFocused) {
+            this.setFocused(keepFocused);
+        }
+        for (GuiEventListener child : form.getWidgets()) {
+            if (child != keepFocused && child instanceof AbstractWidget aw) {
+                aw.setFocused(false);
+            }
+        }
+    }
+
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        for (GuiEventListener child : form.getWidgets()) {
+            if (child instanceof SuggestingEditBox seb && seb.hasSuggestions()) {
+                if (seb.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) {
+                    return true;
+                }
+            }
+        }
         if (form.mouseScrolled(mouseX, mouseY, scrollY)) {
             return true;
         }
@@ -67,15 +88,41 @@ public class TabEditorScreen extends Screen {
             for (GuiEventListener child : form.getWidgets()) {
                 if (child instanceof SuggestingEditBox seb && seb.hasSuggestions()) {
                     if (seb.tryClickSuggestion(mx, my)) {
+                        defocusAllExcept(seb);
                         return true;
                     }
                 }
             }
             if (form.mouseClicked(mx, my, button)) {
+                defocusAllExcept(null);
+                return true;
+            }
+            if (saveBtn != null && saveBtn.mouseClicked(mx, my, button)) {
+                defocusAllExcept(saveBtn);
+                return true;
+            }
+            if (cancelBtn != null && cancelBtn.mouseClicked(mx, my, button)) {
+                defocusAllExcept(cancelBtn);
                 return true;
             }
         }
-        return super.mouseClicked(mx, my, button);
+
+        GuiEventListener clickedChild = null;
+        for (GuiEventListener child : this.children()) {
+            if (child == saveBtn || child == cancelBtn) continue;
+            if (child.mouseClicked(mx, my, button)) {
+                clickedChild = child;
+                this.setFocused(child);
+                if (button == 0) this.setDragging(true);
+                break;
+            }
+        }
+
+        if (button == 0) {
+            defocusAllExcept(clickedChild);
+        }
+
+        return clickedChild != null;
     }
 
     @Override
@@ -102,8 +149,8 @@ public class TabEditorScreen extends Screen {
             this.form = new EditorForm(this.font);
         }
 
-        uiW = 280;
-        uiH = Math.max(160, Math.min(340, this.height - 40));
+        uiW = Math.min(this.width - 24, MAX_UI_WIDTH);
+        uiH = Math.min(this.height - 24, MAX_UI_HEIGHT);
         uiX = (this.width - uiW) / 2;
         uiY = (this.height - uiH) / 2;
 
@@ -161,7 +208,7 @@ public class TabEditorScreen extends Screen {
             if (bTab.has("background_rules")) rulesStr = bTab.get("background_rules").getAsString();
         }
 
-        rulesBox = new MultiLineEditBox(this.font, 0, 0, 100, 70, Component.literal("Background Rules JSON"), Component.empty());
+        rulesBox = new JsonEditorWidget(this.font, 0, 0, 100, 70, Component.literal("Background Rules JSON"));
         rulesBox.setValue(rulesStr);
         form.addCustomWidget("Rules JSON", rulesBox, 82);
 
