@@ -256,9 +256,13 @@ public class ServerAdvancementEditor {
                             ResourceLocation id = ResourceLocation.fromNamespaceAndPath(namespace, path);
                             try {
                                 JsonObject json = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
-                                List<ResourceLocation> parents = MultiParentHelper.parseParents(json);
-                                for (ResourceLocation parent : parents) {
-                                    editParents.put(id, parent);
+                                JsonObject display = json.has("display") && json.get("display").isJsonObject() ? json.getAsJsonObject("display") : null;
+                                boolean isTabRoot = display != null && display.has("background");
+                                if (!isTabRoot) {
+                                    List<ResourceLocation> parents = MultiParentHelper.parseParents(json);
+                                    for (ResourceLocation parent : parents) {
+                                        editParents.put(id, parent);
+                                    }
                                 }
                             } catch (Exception ignored) {
                             }

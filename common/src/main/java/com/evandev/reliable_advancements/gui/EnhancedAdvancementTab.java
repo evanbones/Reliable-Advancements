@@ -111,14 +111,6 @@ public class EnhancedAdvancementTab {
         return this.widgets;
     }
 
-    public Map<ResourceLocation, EnhancedAdvancementWidget> getWidgetsById() {
-        return this.widgetsById;
-    }
-
-    public EnhancedAdvancementWidget getRoot() {
-        return this.root;
-    }
-
     public int getIndex() {
         return this.index;
     }
@@ -329,10 +321,10 @@ public class EnhancedAdvancementTab {
         advancementEntryScreen.attachToParent();
     }
 
-    public void removeWidget(AdvancementHolder holder) {
-        if (holder == null) return;
-        EnhancedAdvancementWidget widget = this.widgets.remove(holder);
-        this.widgetsById.remove(holder.id());
+    public void removeWidget(ResourceLocation id) {
+        if (id == null) return;
+        EnhancedAdvancementWidget widget = this.widgetsById.remove(id);
+        this.widgets.entrySet().removeIf(e -> e.getKey().id().equals(id));
         if (widget != null) {
             for (EnhancedAdvancementWidget p : new ArrayList<>(widget.getParents())) {
                 if (p != null) {

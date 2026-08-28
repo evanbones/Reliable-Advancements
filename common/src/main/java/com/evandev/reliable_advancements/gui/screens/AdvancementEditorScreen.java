@@ -33,6 +33,7 @@ public class AdvancementEditorScreen extends Screen {
     private static final int TAB_ROW_H = 28;
 
     private final EnhancedAdvancementsScreen parentScreen;
+    private final ResourceLocation initialId;
     private final AdvancementDraft draft;
     private final boolean isNew;
     private final int posX, posY;
@@ -51,6 +52,7 @@ public class AdvancementEditorScreen extends Screen {
     public AdvancementEditorScreen(EnhancedAdvancementsScreen parentScreen, ResourceLocation id, boolean isNew, int posX, int posY, String initialTabName, String rawJsonFromServer) {
         super(Component.literal((isNew ? "Create" : "Edit") + " Advancement: " + id));
         this.parentScreen = parentScreen;
+        this.initialId = id;
         this.isNew = isNew;
         this.posX = posX;
         this.posY = posY;
@@ -340,6 +342,18 @@ public class AdvancementEditorScreen extends Screen {
             finalX = layoutTab.getX();
             finalY = layoutTab.getY();
         }
+
+        if (!isNew && !initialId.equals(finalId)) {
+            PersistentData.removePosition(initialId);
+            if (parentScreen.selectedTab != null && initialId.equals(parentScreen.selectedTab.getRootNode().holder().id())) {
+                PersistentData.removeTabProperties(initialId);
+            }
+            EditAdvancementPayload deleteOldPayload = new EditAdvancementPayload(initialId, "{}", true);
+            if (Services.PLATFORM.canSendAdvancementEdit()) {
+                Services.PLATFORM.sendAdvancementEdit(deleteOldPayload);
+            }
+        }
+
         PersistentData.setPosition(finalId, finalX, finalY);
 
         String payloadStr = new GsonBuilder().setPrettyPrinting().create().toJson(draft.rootJson);
