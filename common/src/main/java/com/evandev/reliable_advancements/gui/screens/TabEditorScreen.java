@@ -30,7 +30,7 @@ public class TabEditorScreen extends Screen {
     private final EnhancedAdvancementsScreen parentScreen;
     private final EnhancedAdvancementTab tab;
     private final AdvancementDraft draft;
-    private final EditorForm form;
+    private EditorForm form;
 
     private EditBox nameBox;
     private SuggestingEditBox bgBox;
@@ -51,7 +51,6 @@ public class TabEditorScreen extends Screen {
         this.parentScreen = parentScreen;
         this.tab = tab;
         this.draft = new AdvancementDraft(rawJsonFromServer, tab.getRootNode().holder().id().toString(), false);
-        this.form = new EditorForm(this.font);
     }
 
     @Override
@@ -98,6 +97,10 @@ public class TabEditorScreen extends Screen {
     @Override
     protected void init() {
         this.clearWidgets();
+
+        if (this.form == null) {
+            this.form = new EditorForm(this.font);
+        }
 
         uiW = 280;
         uiH = Math.max(160, Math.min(340, this.height - 40));
