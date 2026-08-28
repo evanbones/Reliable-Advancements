@@ -12,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
@@ -22,6 +23,9 @@ import java.util.*;
 
 @Mixin(AdvancementTree.class)
 public abstract class AdvancementTreeMixin {
+
+    @Unique
+    private final Map<Identifier, Set<Identifier>> reliable_advancements$childrenByParent = new HashMap<>();
 
     @Shadow
     @Final
@@ -45,7 +49,7 @@ public abstract class AdvancementTreeMixin {
     )
     private Collection<AdvancementHolder> sortAdvancementsForDeterministicTree(Collection<AdvancementHolder> advancements) {
         List<AdvancementHolder> sorted = new ArrayList<>(advancements);
-        sorted.sort(Comparator.comparing(a -> a.id().toString()));
+        sorted.sort(Comparator.comparing(AdvancementHolder::id));
         return sorted;
     }
 
@@ -65,6 +69,10 @@ public abstract class AdvancementTreeMixin {
             if (parent != null) {
                 IMultiParentNode.removeChild(parent, stale);
                 IMultiParentNode.removeParent(stale, parent);
+                Set<Identifier> children = this.reliable_advancements$childrenByParent.get(parent.holder().id());
+                if (children != null) {
+                    children.remove(holder.id());
+                }
             }
         }
         if (stale.parent() != null) {
@@ -76,6 +84,11 @@ public abstract class AdvancementTreeMixin {
         this.nodes.remove(holder.id());
     }
 
+    @Inject(method = "clear", at = @At("HEAD"))
+    private void reliable_advancements$onClear(CallbackInfo ci) {
+        this.reliable_advancements$childrenByParent.clear();
+    }
+
     @Inject(method = "tryInsert", at = @At("RETURN"))
     private void linkMultiParents(AdvancementHolder holder, CallbackInfoReturnable<Boolean> cir) {
         if (cir.getReturnValue()) {
@@ -83,6 +96,7 @@ public abstract class AdvancementTreeMixin {
             if (currentNode != null) {
                 List<Identifier> parentIds = IMultiParentAdvancement.getParents(holder.value());
                 for (Identifier parentId : parentIds) {
+                    this.reliable_advancements$childrenByParent.computeIfAbsent(parentId, k -> new HashSet<>()).add(holder.id());
                     AdvancementNode parentNode = this.nodes.get(parentId);
                     if (parentNode != null) {
                         parentNode.addChild(currentNode);
@@ -90,13 +104,14 @@ public abstract class AdvancementTreeMixin {
                     }
                 }
 
-                List<AdvancementNode> existingNodes = new ArrayList<>(this.nodes.values());
-                existingNodes.sort(Comparator.comparing(n -> n.holder().id().toString()));
-                for (AdvancementNode existingNode : existingNodes) {
-                    List<Identifier> existingParents = IMultiParentAdvancement.getParents(existingNode.advancement());
-                    if (existingParents.contains(holder.id())) {
-                        currentNode.addChild(existingNode);
-                        IMultiParentNode.addParent(existingNode, currentNode);
+                Set<Identifier> childIds = this.reliable_advancements$childrenByParent.get(holder.id());
+                if (childIds != null) {
+                    for (Identifier childId : childIds) {
+                        AdvancementNode childNode = this.nodes.get(childId);
+                        if (childNode != null) {
+                            currentNode.addChild(childNode);
+                            IMultiParentNode.addParent(childNode, currentNode);
+                        }
                     }
                 }
             }
@@ -154,8 +169,13 @@ public abstract class AdvancementTreeMixin {
                 if (parent != null) {
                     IMultiParentNode.removeChild(parent, node);
                     IMultiParentNode.removeParent(node, parent);
+                    Set<Identifier> children = this.reliable_advancements$childrenByParent.get(parent.holder().id());
+                    if (children != null) {
+                        children.remove(node.holder().id());
+                    }
                 }
             }
+            this.reliable_advancements$childrenByParent.remove(node.holder().id());
         }
     }
 }

@@ -23,6 +23,7 @@ public class PersistentData {
     public static final File FILE = Services.PLATFORM.getConfigDirectory().resolve(Constants.MOD_ID + "_layout.json").toFile();
     public static final Gson GSON = new Gson().newBuilder().setPrettyPrinting().create();
     private static final Map<String, int[]> advancementPositions = new HashMap<>();
+    private static final Map<String, JsonObject> cachedTabProperties = new HashMap<>();
 
     public static void save(Map<AdvancementHolder, EnhancedAdvancementTab> tabs) {
         try {
@@ -48,9 +49,12 @@ public class PersistentData {
                 for (EnhancedAdvancementTab tab : tabs.values()) {
                     String tabId = tab.getRootNode().holder().id().toString();
                     if (hasCustomTabProperties(tab)) {
-                        tabProperties.add(tabId, tabPropertiesToJson(tab));
+                        JsonObject tObj = tabPropertiesToJson(tab);
+                        tabProperties.add(tabId, tObj);
+                        cachedTabProperties.put(tabId, tObj);
                     } else {
                         tabProperties.remove(tabId);
+                        cachedTabProperties.remove(tabId);
                     }
                 }
             }
@@ -88,6 +92,7 @@ public class PersistentData {
         try (var reader = Files.newBufferedReader(FILE.toPath(), StandardCharsets.UTF_8)) {
             JsonObject json = GSON.fromJson(reader, JsonObject.class);
             advancementPositions.clear();
+            cachedTabProperties.clear();
             if (GsonHelper.isObjectNode(json, "positions")) {
                 JsonObject positions = json.getAsJsonObject("positions");
                 for (String key : positions.keySet()) {
@@ -96,6 +101,14 @@ public class PersistentData {
                         if (arr.size() >= 2) {
                             advancementPositions.put(key, new int[]{arr.get(0).getAsInt(), arr.get(1).getAsInt()});
                         }
+                    }
+                }
+            }
+            if (GsonHelper.isObjectNode(json, "tab_properties")) {
+                JsonObject tabProperties = json.getAsJsonObject("tab_properties");
+                for (String key : tabProperties.keySet()) {
+                    if (tabProperties.get(key).isJsonObject()) {
+                        cachedTabProperties.put(key, tabProperties.getAsJsonObject(key));
                     }
                 }
             }
@@ -123,31 +136,20 @@ public class PersistentData {
 
     public static void loadTabProperties(EnhancedAdvancementTab tab) {
         String id = tab.getRootNode().holder().id().toString();
-        try {
-            if (!FILE.exists()) return;
-            try (var reader = Files.newBufferedReader(FILE.toPath(), StandardCharsets.UTF_8)) {
-                JsonObject json = GSON.fromJson(reader, JsonObject.class);
-                if (GsonHelper.isObjectNode(json, "tab_properties")) {
-                    JsonObject tabProperties = json.getAsJsonObject("tab_properties");
-                    if (tabProperties.has(id)) {
-                        JsonObject tObj = tabProperties.getAsJsonObject(id);
-                        if (tObj.has("title")) tab.customTitle = tObj.get("title").getAsString();
-                        if (tObj.has("background"))
-                            tab.customBackground = Identifier.parse(tObj.get("background").getAsString());
-                        if (tObj.has("static_background"))
-                            tab.isStaticBackground = tObj.get("static_background").getAsBoolean();
-                        if (tObj.has("bg_width")) tab.bgWidth = tObj.get("bg_width").getAsInt();
-                        if (tObj.has("bg_height")) tab.bgHeight = tObj.get("bg_height").getAsInt();
-                        if (tObj.has("width")) tab.customWidth = tObj.get("width").getAsInt();
-                        if (tObj.has("height")) tab.customHeight = tObj.get("height").getAsInt();
-                        if (tObj.has("index")) tab.customIndex = tObj.get("index").getAsInt();
-                        if (tObj.has("background_rules"))
-                            tab.parseBackgroundRules(tObj.get("background_rules").getAsString());
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Constants.LOG.error("Failed to load tab properties", e);
+        JsonObject tObj = cachedTabProperties.get(id);
+        if (tObj != null) {
+            if (tObj.has("title")) tab.customTitle = tObj.get("title").getAsString();
+            if (tObj.has("background"))
+                tab.customBackground = Identifier.parse(tObj.get("background").getAsString());
+            if (tObj.has("static_background"))
+                tab.isStaticBackground = tObj.get("static_background").getAsBoolean();
+            if (tObj.has("bg_width")) tab.bgWidth = tObj.get("bg_width").getAsInt();
+            if (tObj.has("bg_height")) tab.bgHeight = tObj.get("bg_height").getAsInt();
+            if (tObj.has("width")) tab.customWidth = tObj.get("width").getAsInt();
+            if (tObj.has("height")) tab.customHeight = tObj.get("height").getAsInt();
+            if (tObj.has("index")) tab.customIndex = tObj.get("index").getAsInt();
+            if (tObj.has("background_rules"))
+                tab.parseBackgroundRules(tObj.get("background_rules").getAsString());
         }
     }
 
@@ -224,6 +226,9 @@ public class PersistentData {
     }
 
     public static void removeTabProperties(Identifier id) {
+        if (id != null) {
+            cachedTabProperties.remove(id.toString());
+        }
         try {
             if (FILE.exists()) {
                 JsonObject json;

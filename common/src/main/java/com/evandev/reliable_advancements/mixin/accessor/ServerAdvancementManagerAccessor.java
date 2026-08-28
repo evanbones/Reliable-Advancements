@@ -1,4 +1,4 @@
-package com.evandev.reliable_advancements.mixin;
+package com.evandev.reliable_advancements.mixin.accessor;
 
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementTree;

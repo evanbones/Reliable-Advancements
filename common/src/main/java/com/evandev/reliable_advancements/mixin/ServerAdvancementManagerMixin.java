@@ -13,7 +13,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -33,7 +32,7 @@ public abstract class ServerAdvancementManagerMixin {
     private void reliable_advancements$sortAdvancements(Map<Identifier, Advancement> preparations, ResourceManager manager, ProfilerFiller profiler, CallbackInfo ci) {
         Map<Identifier, AdvancementHolder> sortedMap = new LinkedHashMap<>();
         this.advancements.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey(Comparator.comparing(Identifier::toString)))
+                .sorted(Map.Entry.comparingByKey())
                 .forEach(e -> sortedMap.put(e.getKey(), e.getValue()));
         this.advancements = ImmutableMap.copyOf(sortedMap);
     }

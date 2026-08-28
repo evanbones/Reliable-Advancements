@@ -5,17 +5,105 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.0.2] - 2026-06-26
+## [6.1.0] - 2026-08-28
 
 ### Fixed
 
-- Fixed Fabric crash.
+- Massive performance improvements.
+
+## [6.0.0] - 2026-08-27
+
+### Added
+
+- Added a visual advancement editor and revamped the raw JSON criteria editor.
+- Added a loading overlay for when advancements are reloading.
+- Added a config option for how deep advancements are revealed (replaces "discovery mode").
+
+### Changed
+
+- Switched to Codec UI for advancement criteria editing.
+- Rewrote large parts of the UI.
+- Advancements can now have multiple parents or no parents at all.
+- Advancement layouts are now fully deterministic.
+- Most in-game messages now use translation keys.
+
+### Fixed
+
+- Fixed server-side changes requiring a full reload.
+- Fixed issues with tab resetting.
+- Many miscellaneous fixes.
+
+## [5.0.1] - 2026-08-19
+
+### Fixed
+
+- Minor fixes to advancement lines.
+
+## [5.0.0] - 2026-08-18
+
+### Changed
+
+- By default, advancement edits are now saved **globally** for modpack purposes.
+- Advancement edits now use a priority system for edits:
+    - First priority is world-specific edits.
+    - Second is the legacy pre-5.x.x datapacks.
+    - Finally is the global advancement edits in `config/reliable_advancements_edits`
+- Changed mod logo.
+
+### Fixed
+
+- Fixed issues removing Blueprint-based remolded advancements.
+
+## [4.2.0] - 2026-08-18
+
+### Fixed
+
+- Fixed removed child advancements still showing up.
+- Fixed zoom resetting on page reload.
+- Fixed edit mode-visible advancements disappearing on /reload.
+- Fixed scroll position resetting when closing and reopening the advancement tab.
+
+## [4.1.3] - 2026-08-18
+
+### Fixed
+
+- Fixed small visual bug with advancement connections.
+
+## [4.1.2] - 2026-08-05
+
+### Fixed
+
+- Fixed right arrow texture being one pixel off (still literally unplayable).
+- Pressing E from the advancements menu now returns you to your previous screen.
+
+## [4.1.1] - 2026-08-04
+
+### Fixed
+
+- Fixed arrow texture being one pixel off (literally unplayable).
+
+## [4.1.0] - 2026-08-03
+
+### Changed
+
+- Improved error reporting.
+- Reworked advancement arrows.
+
+### Fixed
+
+- Fixed scrolling working strangely on certain tabs.
+
+## [4.0.2] - 2026-06-23
+
+### Fixed
+
+- Fixed calculations for number of tabs.
 
 ## [4.0.1] - 2026-06-23
 
 ### Fixed
 
-- Ported various fixes from 1.20/1.21.
+- Fixed tab pagination on smaller GUI scales.
 
 ## [4.0.0] - 2026-05-31
 

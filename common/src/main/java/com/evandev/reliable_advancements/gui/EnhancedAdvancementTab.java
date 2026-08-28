@@ -30,6 +30,7 @@ public class EnhancedAdvancementTab {
     public static final Map<Identifier, Tuple<Integer, Integer>> scrollHistory = Maps.newLinkedHashMap();
     public final List<BackgroundRule> backgroundRules = new ArrayList<>();
     protected final Map<AdvancementHolder, EnhancedAdvancementWidget> widgets = Maps.newLinkedHashMap();
+    protected final Map<Identifier, EnhancedAdvancementWidget> widgetsById = Maps.newHashMap();
     private final Minecraft minecraft;
     private final EnhancedAdvancementsScreen screen;
     private final AdvancementNode rootNode;
@@ -109,6 +110,18 @@ public class EnhancedAdvancementTab {
 
     public Map<AdvancementHolder, EnhancedAdvancementWidget> getWidgets() {
         return this.widgets;
+    }
+
+    public Map<Identifier, EnhancedAdvancementWidget> getWidgetsById() {
+        return this.widgetsById;
+    }
+
+    public EnhancedAdvancementWidget getRoot() {
+        return this.root;
+    }
+
+    public int getIndex() {
+        return this.index;
     }
 
     public AdvancementNode getRootNode() {
@@ -284,8 +297,27 @@ public class EnhancedAdvancementTab {
         }
     }
 
-    private void addWidget(EnhancedAdvancementWidget advancementEntryScreen, AdvancementHolder advancementHolder) {
+    public void recalculateBounds() {
+        this.minX = Integer.MAX_VALUE;
+        this.maxX = Integer.MIN_VALUE;
+        this.minY = Integer.MAX_VALUE;
+        this.maxY = Integer.MIN_VALUE;
+        for (EnhancedAdvancementWidget widget : this.widgets.values()) {
+            int left = widget.getX();
+            int right = left + 28;
+            int top = widget.getY();
+            int bottom = top + 27;
+            this.minX = Math.min(this.minX, left);
+            this.maxX = Math.max(this.maxX, right);
+            this.minY = Math.min(this.minY, top);
+            this.maxY = Math.max(this.maxY, bottom);
+        }
+    }
+
+    public void addWidget(EnhancedAdvancementWidget advancementEntryScreen, AdvancementHolder advancementHolder) {
+        advancementEntryScreen.setTab(this);
         this.widgets.put(advancementHolder, advancementEntryScreen);
+        this.widgetsById.put(advancementHolder.id(), advancementEntryScreen);
         int left = advancementEntryScreen.getX();
         int right = left + 28;
         int top = advancementEntryScreen.getY();
@@ -295,9 +327,21 @@ public class EnhancedAdvancementTab {
         this.minY = Math.min(this.minY, top);
         this.maxY = Math.max(this.maxY, bottom);
 
-        for (EnhancedAdvancementWidget gui : this.widgets.values()) {
-            gui.attachToParent();
+        advancementEntryScreen.attachToParent();
+    }
+
+    public void removeWidget(AdvancementHolder holder) {
+        if (holder == null) return;
+        EnhancedAdvancementWidget widget = this.widgets.remove(holder);
+        this.widgetsById.remove(holder.id());
+        if (widget != null) {
+            for (EnhancedAdvancementWidget p : new ArrayList<>(widget.getParents())) {
+                if (p != null) {
+                    p.getChildren().remove(widget);
+                }
+            }
         }
+        this.recalculateBounds();
     }
 
     public EnhancedAdvancementWidget getWidget(AdvancementHolder advancementHolder) {
@@ -306,12 +350,7 @@ public class EnhancedAdvancementTab {
 
     public EnhancedAdvancementWidget getWidget(Identifier id) {
         if (id == null) return null;
-        for (Map.Entry<AdvancementHolder, EnhancedAdvancementWidget> entry : this.widgets.entrySet()) {
-            if (entry.getKey().id().equals(id)) {
-                return entry.getValue();
-            }
-        }
-        return null;
+        return this.widgetsById.get(id);
     }
 
     public EnhancedAdvancementsScreen getScreen() {

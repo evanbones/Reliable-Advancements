@@ -3,7 +3,8 @@ package com.evandev.reliable_advancements.network;
 import com.evandev.reliable_advancements.advancements.IMultiParentAdvancement;
 import com.evandev.reliable_advancements.advancements.MultiParentHelper;
 import com.evandev.reliable_advancements.config.ModConfig;
-import com.evandev.reliable_advancements.mixin.ServerAdvancementManagerAccessor;
+import com.evandev.reliable_advancements.mixin.accessor.PlayerAdvancementsAccessor;
+import com.evandev.reliable_advancements.mixin.accessor.ServerAdvancementManagerAccessor;
 import com.evandev.reliable_advancements.platform.Services;
 import com.evandev.reliable_advancements.reference.Constants;
 import com.evandev.reliable_advancements.util.RewardTrackerData;
@@ -338,7 +339,7 @@ public class ServerAdvancementEditor {
 
         AdvancementTree tree = new AdvancementTree();
         List<AdvancementHolder> sorted = new ArrayList<>(map.values());
-        sorted.sort(Comparator.comparing(a -> a.id().toString()));
+        sorted.sort(Comparator.comparing(AdvancementHolder::id));
         tree.addAll(sorted);
 
         for (AdvancementNode root : tree.roots()) {
@@ -442,9 +443,10 @@ public class ServerAdvancementEditor {
 
     private static void sendFullTreeToPlayer(MinecraftServer server, ServerPlayer player) {
         Map<Identifier, AdvancementProgress> progressMap = new HashMap<>();
+        Map<AdvancementHolder, AdvancementProgress> playerProgress = ((PlayerAdvancementsAccessor) player.getAdvancements()).getProgress();
         for (AdvancementHolder holder : server.getAdvancements().getAllAdvancements()) {
-            AdvancementProgress prog = player.getAdvancements().getOrStartProgress(holder);
-            if (prog.hasProgress()) {
+            AdvancementProgress prog = playerProgress.get(holder);
+            if (prog != null && prog.hasProgress()) {
                 progressMap.put(holder.id(), prog);
             }
         }
@@ -466,9 +468,10 @@ public class ServerAdvancementEditor {
 
     public static void sendIncrementalUpdateToPlayer(ServerPlayer player, Collection<AdvancementHolder> added, Set<Identifier> removed) {
         Map<Identifier, AdvancementProgress> progressMap = new HashMap<>();
+        Map<AdvancementHolder, AdvancementProgress> playerProgress = ((PlayerAdvancementsAccessor) player.getAdvancements()).getProgress();
         for (AdvancementHolder holder : added) {
-            AdvancementProgress prog = player.getAdvancements().getOrStartProgress(holder);
-            if (prog.hasProgress()) {
+            AdvancementProgress prog = playerProgress.get(holder);
+            if (prog != null && prog.hasProgress()) {
                 progressMap.put(holder.id(), prog);
             }
         }

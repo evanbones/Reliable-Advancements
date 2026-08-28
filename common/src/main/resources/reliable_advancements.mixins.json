@@ -11,8 +11,9 @@
     "AdvancementTypeMixin",
     "AdvancementVisibilityEvaluatorMixin",
     "MinecraftServerMixin",
+    "accessor.PlayerAdvancementsAccessor",
     "PlayerAdvancementsMixin",
-    "ServerAdvancementManagerAccessor",
+    "accessor.ServerAdvancementManagerAccessor",
     "ServerAdvancementManagerMixin",
     "SimpleJsonResourceReloadListenerMixin",
     "TreeNodePositionMixin"
