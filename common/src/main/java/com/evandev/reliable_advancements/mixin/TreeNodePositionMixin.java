@@ -36,7 +36,7 @@ public abstract class TreeNodePositionMixin {
     private Iterable<AdvancementNode> reliable_advancements$sortChildrenForRoot(AdvancementNode node, Operation<Iterable<AdvancementNode>> original) {
         List<AdvancementNode> sorted = new ArrayList<>();
         original.call(node).forEach(sorted::add);
-        sorted.sort(Comparator.comparing(n -> n.holder().id().toString()));
+        sorted.sort(Comparator.comparing(n -> n.holder().id()));
         return sorted;
     }
 
@@ -47,7 +47,7 @@ public abstract class TreeNodePositionMixin {
     private Iterable<AdvancementNode> reliable_advancements$sortChildrenForChild(AdvancementNode node, Operation<Iterable<AdvancementNode>> original) {
         List<AdvancementNode> sorted = new ArrayList<>();
         original.call(node).forEach(sorted::add);
-        sorted.sort(Comparator.comparing(n -> n.holder().id().toString()));
+        sorted.sort(Comparator.comparing(n -> n.holder().id()));
         return sorted;
     }
 }

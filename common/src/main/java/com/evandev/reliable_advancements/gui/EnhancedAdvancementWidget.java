@@ -39,7 +39,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     private static final int TITLE_SIZE = 32;
     private static final int ICON_SIZE = 26;
     public final AdvancementDisplayInfo enhancedDisplayInfo;
-    private final EnhancedAdvancementTab advancementTabGui;
+    private EnhancedAdvancementTab advancementTabGui;
     private final AdvancementNode advancementNode;
     private final DisplayInfo displayInfo;
     private final String title;
@@ -66,7 +66,10 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         if (PersistentData.hasSavedPosition(this.advancementNode.holder())) {
             PersistentData.loadSavedPosition(this.advancementNode.holder(), this);
         }
-        this.refreshHover();
+    }
+
+    public void setTab(EnhancedAdvancementTab tab) {
+        this.advancementTabGui = tab;
     }
 
     private void refreshHover() {
@@ -356,7 +359,6 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
 
     public void getAdvancementProgress(AdvancementProgress advancementProgressIn) {
         this.advancementProgress = advancementProgressIn;
-        this.refreshHover();
     }
 
     public void addGuiAdvancement(EnhancedAdvancementWidget advancementEntryScreen) {
@@ -514,6 +516,18 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                 }
                 if (!pWidget.getChildren().contains(this)) {
                     pWidget.addGuiAdvancement(this);
+                }
+            }
+        }
+
+        for (AdvancementNode childNode : this.advancementNode.children()) {
+            EnhancedAdvancementWidget childWidget = this.advancementTabGui.getWidget(childNode.holder().id());
+            if (childWidget != null) {
+                if (!this.children.contains(childWidget)) {
+                    this.addGuiAdvancement(childWidget);
+                }
+                if (!childWidget.getParents().contains(this)) {
+                    childWidget.getParents().add(this);
                 }
             }
         }

@@ -12,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
@@ -23,18 +24,17 @@ import java.util.*;
 @Mixin(AdvancementTree.class)
 public abstract class AdvancementTreeMixin {
 
+    @Unique
+    private final Map<ResourceLocation, Set<ResourceLocation>> reliable_advancements$childrenByParent = new HashMap<>();
     @Shadow
     @Final
     private Map<ResourceLocation, AdvancementNode> nodes;
-
     @Shadow
     @Final
     private Set<AdvancementNode> roots;
-
     @Shadow
     @Final
     private Set<AdvancementNode> tasks;
-
     @Shadow
     private @Nullable AdvancementTree.Listener listener;
 
@@ -45,7 +45,7 @@ public abstract class AdvancementTreeMixin {
     )
     private Collection<AdvancementHolder> sortAdvancementsForDeterministicTree(Collection<AdvancementHolder> advancements) {
         List<AdvancementHolder> sorted = new ArrayList<>(advancements);
-        sorted.sort(Comparator.comparing(a -> a.id().toString()));
+        sorted.sort(Comparator.comparing(AdvancementHolder::id));
         return sorted;
     }
 
@@ -65,6 +65,10 @@ public abstract class AdvancementTreeMixin {
             if (parent != null) {
                 IMultiParentNode.removeChild(parent, stale);
                 IMultiParentNode.removeParent(stale, parent);
+                Set<ResourceLocation> children = this.reliable_advancements$childrenByParent.get(parent.holder().id());
+                if (children != null) {
+                    children.remove(advancement.id());
+                }
             }
         }
         if (stale.parent() != null) {
@@ -76,6 +80,11 @@ public abstract class AdvancementTreeMixin {
         this.nodes.remove(advancement.id());
     }
 
+    @Inject(method = "clear", at = @At("HEAD"))
+    private void reliable_advancements$onClear(CallbackInfo ci) {
+        this.reliable_advancements$childrenByParent.clear();
+    }
+
     @Inject(method = "tryInsert", at = @At("RETURN"))
     private void linkMultiParents(AdvancementHolder advancement, CallbackInfoReturnable<Boolean> cir) {
         if (cir.getReturnValue()) {
@@ -83,6 +92,7 @@ public abstract class AdvancementTreeMixin {
             if (currentNode != null) {
                 List<ResourceLocation> parentIds = IMultiParentAdvancement.getParents(advancement.value());
                 for (ResourceLocation parentId : parentIds) {
+                    this.reliable_advancements$childrenByParent.computeIfAbsent(parentId, k -> new HashSet<>()).add(advancement.id());
                     AdvancementNode parentNode = this.nodes.get(parentId);
                     if (parentNode != null) {
                         parentNode.addChild(currentNode);
@@ -90,13 +100,14 @@ public abstract class AdvancementTreeMixin {
                     }
                 }
 
-                List<AdvancementNode> existingNodes = new ArrayList<>(this.nodes.values());
-                existingNodes.sort(Comparator.comparing(n -> n.holder().id().toString()));
-                for (AdvancementNode existingNode : existingNodes) {
-                    List<ResourceLocation> existingParents = IMultiParentAdvancement.getParents(existingNode.advancement());
-                    if (existingParents.contains(advancement.id())) {
-                        currentNode.addChild(existingNode);
-                        IMultiParentNode.addParent(existingNode, currentNode);
+                Set<ResourceLocation> childIds = this.reliable_advancements$childrenByParent.get(advancement.id());
+                if (childIds != null) {
+                    for (ResourceLocation childId : childIds) {
+                        AdvancementNode childNode = this.nodes.get(childId);
+                        if (childNode != null) {
+                            currentNode.addChild(childNode);
+                            IMultiParentNode.addParent(childNode, currentNode);
+                        }
                     }
                 }
             }
@@ -154,8 +165,13 @@ public abstract class AdvancementTreeMixin {
                 if (parent != null) {
                     IMultiParentNode.removeChild(parent, node);
                     IMultiParentNode.removeParent(node, parent);
+                    Set<ResourceLocation> children = this.reliable_advancements$childrenByParent.get(parent.holder().id());
+                    if (children != null) {
+                        children.remove(node.holder().id());
+                    }
                 }
             }
+            this.reliable_advancements$childrenByParent.remove(node.holder().id());
         }
     }
 }
