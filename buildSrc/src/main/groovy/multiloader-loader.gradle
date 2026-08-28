@@ -45,7 +45,7 @@ tasks.named('sourcesJar', Jar) {
 
 publishMods {
     changelog = rootProject.file("CHANGELOG-LATEST.md").text
-    type = BETA
+    type = STABLE
     version = "${project.version}-${minecraft_version}-${project.name}"
     displayName = "${mod_name} ${project.name.capitalize()} ${minecraft_version} - ${project.version}"
     modLoaders.add(project.name)
@@ -53,6 +53,8 @@ publishMods {
     curseforge {
         accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
         projectId = "1527472"
+        client = true
+        server = true
 
         minecraftVersions.add("26.1")
         minecraftVersions.add("26.1.1")
