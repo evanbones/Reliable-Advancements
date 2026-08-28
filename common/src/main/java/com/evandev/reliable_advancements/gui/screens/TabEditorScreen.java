@@ -206,7 +206,7 @@ public class TabEditorScreen extends Screen {
         this.minecraft.setScreen(parentScreen);
     }
 
-    private @NotNull JsonObject getBTab() {
+    private @NotNull JsonObject getBetterTab() {
         JsonObject bTab = new JsonObject();
         if (!nameBox.getValue().isEmpty()) bTab.addProperty("title", nameBox.getValue());
         if (!bgBox.getValue().isEmpty()) bTab.addProperty("background", bgBox.getValue());
@@ -236,8 +236,8 @@ public class TabEditorScreen extends Screen {
             tab.parseBackgroundRules(rulesBox.getValue());
         }
         if (nameBox != null) {
-            JsonObject bTab = getBTab();
-            draft.rootJson.add("better_tab", bTab);
+            JsonObject betterTab = getBetterTab();
+            draft.rootJson.add("better_tab", betterTab);
             tab.customTitle = nameBox.getValue();
             tab.customBackground = bgBox.getValue().isEmpty() ? null : ResourceLocation.parse(bgBox.getValue());
             tab.isStaticBackground = isStaticBg;
