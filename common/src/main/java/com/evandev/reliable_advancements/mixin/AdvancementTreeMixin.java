@@ -2,6 +2,8 @@ package com.evandev.reliable_advancements.mixin;
 
 import com.evandev.reliable_advancements.advancements.IMultiParentAdvancement;
 import com.evandev.reliable_advancements.advancements.IMultiParentNode;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.AdvancementTree;
@@ -12,6 +14,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.*;
@@ -61,8 +64,25 @@ public abstract class AdvancementTreeMixin {
         }
     }
 
+    @WrapOperation(
+            method = "remove(Lnet/minecraft/advancements/AdvancementNode;)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/advancements/AdvancementNode;children()Ljava/lang/Iterable;")
+    )
+    private Iterable<AdvancementNode> reliable_advancements$copyChildrenForSafeRemoval(AdvancementNode instance, Operation<Iterable<AdvancementNode>> original) {
+        Iterable<AdvancementNode> children = original.call(instance);
+        List<AdvancementNode> copy = new ArrayList<>();
+        if (children != null) {
+            for (AdvancementNode child : children) {
+                if (child != null) {
+                    copy.add(child);
+                }
+            }
+        }
+        return copy;
+    }
+
     @Inject(method = "remove(Lnet/minecraft/advancements/AdvancementNode;)V", at = @At("HEAD"))
-    private void reliable_advancements$cleanMultiParentReferences(AdvancementNode node, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+    private void reliable_advancements$cleanMultiParentReferences(AdvancementNode node, CallbackInfo ci) {
         if (node != null) {
             List<AdvancementNode> parents = new ArrayList<>(IMultiParentNode.getParents(node));
             for (AdvancementNode parent : parents) {
@@ -74,4 +94,5 @@ public abstract class AdvancementTreeMixin {
         }
     }
 }
+
 
