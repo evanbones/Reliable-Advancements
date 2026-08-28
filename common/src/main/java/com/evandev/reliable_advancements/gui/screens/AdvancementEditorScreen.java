@@ -1,7 +1,12 @@
 package com.evandev.reliable_advancements.gui.screens;
 
+import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.gui.model.AdvancementDraft;
 import com.evandev.reliable_advancements.gui.tabs.*;
+import com.evandev.reliable_advancements.gui.theme.EditorTheme;
+import com.evandev.reliable_advancements.gui.widgets.ModernButton;
+import com.evandev.reliable_advancements.gui.widgets.ModernDropdown;
+import com.evandev.reliable_advancements.gui.widgets.SuggestingEditBox;
 import com.evandev.reliable_advancements.network.EditAdvancementPayload;
 import com.evandev.reliable_advancements.platform.Services;
 import com.evandev.reliable_advancements.util.PersistentData;
@@ -9,29 +14,24 @@ import com.google.gson.GsonBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class AdvancementEditorScreen extends Screen {
-    private static final int COL_GOLD = 0xFFC8AA64;
-    private static final int COL_BG_OVERLAY = 0xBB101010;
-    private static final int COL_ROW_BG = 0xFF3A3A3A;
-    private static final int COL_SEL_INNER = 0xCCFEFCF5;
-    private static final int COL_SEL_TEXT = 0xFF3A3A3A;
-
-    private static final int MAX_UI_WIDTH = 540;
-    private static final int MAX_UI_HEIGHT = 340;
-    private static final int SIDEBAR_WIDTH = 120;
-    private static final int ROW_H = 24;
+    private static final int MAX_UI_WIDTH = 580;
+    private static final int MAX_UI_HEIGHT = 380;
+    private static final int HEADER_HEIGHT = 36;
+    private static final int TAB_ROW_H = 28;
 
     private final EnhancedAdvancementsScreen parentScreen;
     private final AdvancementDraft draft;
@@ -39,16 +39,15 @@ public class AdvancementEditorScreen extends Screen {
     private final int posX, posY;
 
     private final Map<String, IEditorTab> tabs = new LinkedHashMap<>();
+    private final Set<String> visitedTabs = new HashSet<>();
     private String activeTabName;
     private IEditorTab activeTab;
 
     private int uiX, uiY, uiW, uiH;
-    private int scrollOffset = 0;
-    private int maxScroll = 0;
-    private boolean isDraggingScrollbar = false;
-
-    private Button saveBtn;
-    private Button cancelBtn;
+    private int sidebarWidth = 130;
+    private boolean isResizingSidebar = false;
+    private ModernButton saveBtn;
+    private ModernButton cancelBtn;
 
     public AdvancementEditorScreen(EnhancedAdvancementsScreen parentScreen, Identifier id, boolean isNew, int posX, int posY, String initialTabName, String rawJsonFromServer) {
         super(Component.literal((isNew ? "Create" : "Edit") + " Advancement: " + id));
@@ -70,53 +69,231 @@ public class AdvancementEditorScreen extends Screen {
 
         this.activeTabName = this.tabs.containsKey(initialTabName) ? initialTabName : "Properties";
         this.activeTab = this.tabs.get(this.activeTabName);
+        this.visitedTabs.add(this.activeTabName);
+    }
+
+    private int getMinSidebarWidth() {
+        int maxTextWidth = this.font.width("Properties");
+        for (String tabName : tabs.keySet()) {
+            maxTextWidth = Math.max(maxTextWidth, this.font.width(tabName));
+        }
+        return maxTextWidth + 30;
+    }
+
+    private int getMaxSidebarWidth() {
+        return Math.max(getMinSidebarWidth(), uiW - 200);
+    }
+
+    private void defocusAllExcept(@Nullable GuiEventListener keepFocused) {
+        if (this.getFocused() != keepFocused) {
+            this.setFocused(keepFocused);
+        }
+        for (GuiEventListener child : this.children()) {
+            if (child != keepFocused && child instanceof AbstractWidget aw) {
+                aw.setFocused(false);
+            }
+        }
+        if (activeTab != null) {
+            for (GuiEventListener child : activeTab.getWidgets()) {
+                if (child != keepFocused && child instanceof AbstractWidget aw) {
+                    aw.setFocused(false);
+                }
+            }
+        }
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        this.scrollOffset -= (int) (scrollY * 20);
-        this.scrollOffset = Math.max(0, Math.min(this.scrollOffset, this.maxScroll));
-
-        if (this.activeTab != null) {
-            this.activeTab.saveState(this.draft);
-            this.activeTab.loadState(this.draft);
+        if (activeTab != null) {
+            for (GuiEventListener listener : activeTab.getWidgets()) {
+                if (listener instanceof ModernDropdown md && md.isOpen()) {
+                    if (md.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) {
+                        return true;
+                    }
+                }
+                if (listener instanceof SuggestingEditBox seb && seb.hasSuggestions()) {
+                    if (seb.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) {
+                        return true;
+                    }
+                }
+            }
         }
 
-        this.init();
-        return true;
+        int contentX = uiX + sidebarWidth + 8;
+        int contentW = uiW - sidebarWidth - 16;
+        int contentY = uiY + HEADER_HEIGHT + 2;
+        int contentH = uiH - HEADER_HEIGHT - 40;
+
+        if (mouseX >= contentX && mouseX <= contentX + contentW && mouseY >= contentY && mouseY <= contentY + contentH) {
+            for (GuiEventListener listener : this.children()) {
+                if (listener != saveBtn && listener != cancelBtn) {
+                    if (listener.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) {
+                        return true;
+                    }
+                }
+            }
+            if (activeTab != null && activeTab.getForm() != null) {
+                return activeTab.getForm().mouseScrolled(mouseX, mouseY, scrollY);
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+        if (button == 0) {
+            if (activeTab != null) {
+                for (GuiEventListener child : activeTab.getWidgets()) {
+                    if (child instanceof ModernDropdown md && md.isOpen()) {
+                        if (md.handleDropdownClick(mouseX, mouseY, button)) {
+                            defocusAllExcept(null);
+                            return true;
+                        }
+                    }
+                    if (child instanceof SuggestingEditBox seb && seb.hasSuggestions()) {
+                        if (seb.tryClickSuggestion(mouseX, mouseY)) {
+                            defocusAllExcept(seb);
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            int splitterX = uiX + sidebarWidth;
+            if (mouseX >= splitterX - 4 && mouseX <= splitterX + 4 && mouseY >= uiY + HEADER_HEIGHT && mouseY <= uiY + uiH) {
+                isResizingSidebar = true;
+                defocusAllExcept(null);
+                return true;
+            }
+
+            int tabY = uiY + HEADER_HEIGHT + 10;
+            int i = 0;
+            for (String tabName : tabs.keySet()) {
+                int ry = tabY + i * (TAB_ROW_H + 4);
+                if (mouseX >= uiX + 8 && mouseX <= uiX + sidebarWidth - 8 && mouseY >= ry && mouseY <= ry + TAB_ROW_H) {
+                    defocusAllExcept(null);
+                    switchTab(tabName);
+                    return true;
+                }
+                i++;
+            }
+
+            if (saveBtn != null && saveBtn.mouseClicked(event, doubleClick)) {
+                defocusAllExcept(saveBtn);
+                return true;
+            }
+            if (cancelBtn != null && cancelBtn.mouseClicked(event, doubleClick)) {
+                defocusAllExcept(cancelBtn);
+                return true;
+            }
+
+            if (activeTab != null && activeTab.getForm() != null) {
+                if (activeTab.getForm().mouseClicked(mouseX, mouseY, button)) {
+                    defocusAllExcept(null);
+                    return true;
+                }
+            }
+        }
+
+        int contentX = uiX + sidebarWidth + 8;
+        int contentW = uiW - sidebarWidth - 16;
+        int contentY = uiY + HEADER_HEIGHT + 2;
+        int contentH = uiH - HEADER_HEIGHT - 40;
+
+        GuiEventListener clickedChild = null;
+        if (mouseX >= contentX && mouseX <= contentX + contentW && mouseY >= contentY && mouseY <= contentY + contentH) {
+            for (GuiEventListener child : this.children()) {
+                if (child == saveBtn || child == cancelBtn) continue;
+                if (child.mouseClicked(event, doubleClick)) {
+                    clickedChild = child;
+                    this.setFocused(child);
+                    if (button == 0) this.setDragging(true);
+                    break;
+                }
+            }
+        }
+
+        if (button == 0) {
+            defocusAllExcept(clickedChild);
+        }
+
+        return clickedChild != null;
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+        if (isResizingSidebar && button == 0) {
+            int newWidth = (int) (mouseX - uiX);
+            int minW = getMinSidebarWidth();
+            int maxW = getMaxSidebarWidth();
+            newWidth = Math.max(minW, Math.min(newWidth, maxW));
+            if (newWidth != this.sidebarWidth) {
+                this.sidebarWidth = newWidth;
+                ModConfig.get().editorSidebarWidth = this.sidebarWidth;
+                ModConfig.save();
+                this.init();
+            }
+            return true;
+        }
+
+        if (activeTab != null && activeTab.getForm() != null) {
+            if (activeTab.getForm().mouseDragged(mouseX, mouseY, button, dragX, dragY)) return true;
+        }
+        int contentX = uiX + sidebarWidth + 8;
+        int contentW = uiW - sidebarWidth - 16;
+        int contentY = uiY + HEADER_HEIGHT + 2;
+        int contentH = uiH - HEADER_HEIGHT - 40;
+
+        if (mouseX >= contentX && mouseX <= contentX + contentW && mouseY >= contentY && mouseY <= contentY + contentH) {
+            return super.mouseDragged(event, dragX, dragY);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+        if (button == 0 && isResizingSidebar) {
+            isResizingSidebar = false;
+            return true;
+        }
+        if (activeTab != null && activeTab.getForm() != null) {
+            if (activeTab.getForm().mouseReleased(mouseX, mouseY, button)) return true;
+        }
+        return super.mouseReleased(event);
     }
 
     @Override
     protected void init() {
+        if (activeTab != null) {
+            activeTab.syncFromWidgets();
+        }
         this.clearWidgets();
         setupBounds();
 
-        int contentX = uiX + SIDEBAR_WIDTH + 20;
-        int contentW = uiW - SIDEBAR_WIDTH - 40;
-        int contentY = uiY + 50 - scrollOffset;
-        int contentH = uiH - 80;
+        this.sidebarWidth = Math.max(getMinSidebarWidth(), Math.min(ModConfig.get().editorSidebarWidth, getMaxSidebarWidth()));
+
+        int contentX = uiX + sidebarWidth + 16;
+        int contentW = uiW - sidebarWidth - 28;
+        int contentY = uiY + HEADER_HEIGHT + 10;
+        int contentH = uiH - HEADER_HEIGHT - 55;
 
         activeTab.init(contentX, contentY, contentW, contentH, this::init);
 
-        int bottomMostY = uiY + 50;
         for (GuiEventListener listener : activeTab.getWidgets()) {
-            if (listener instanceof AbstractWidget aw) {
-                bottomMostY = Math.max(bottomMostY, aw.getY() + aw.getHeight());
-                this.addRenderableWidget(aw);
+            if (listener instanceof NarratableEntry) {
+                this.addWidget((GuiEventListener & NarratableEntry) listener);
             }
-        }
-
-        int actualContentHeight = (bottomMostY + scrollOffset) - (uiY + 50);
-        this.maxScroll = Math.max(0, actualContentHeight - (uiH - 90));
-
-        if (this.scrollOffset > this.maxScroll) {
-            this.scrollOffset = this.maxScroll;
-            this.clearWidgets();
-            activeTab.init(contentX, uiY + 50 - scrollOffset, contentW, contentH, this::init);
-            for (GuiEventListener listener : activeTab.getWidgets()) {
-                if (listener instanceof AbstractWidget aw) {
-                    this.addRenderableWidget(aw);
-                }
+            if (listener.isFocused()) {
+                this.setFocused(listener);
             }
         }
 
@@ -124,21 +301,24 @@ public class AdvancementEditorScreen extends Screen {
     }
 
     private void setupBounds() {
-        uiW = Math.min(this.width - 20, MAX_UI_WIDTH);
-        uiH = Math.min(this.height - 20, MAX_UI_HEIGHT);
+        uiW = Math.min(this.width - 24, MAX_UI_WIDTH);
+        uiH = Math.min(this.height - 24, MAX_UI_HEIGHT);
         uiX = (this.width - uiW) / 2;
         uiY = (this.height - uiH) / 2;
     }
 
     private void addControlButtons() {
-        int btnW = 60, btnH = 20;
+        int btnW = 95, btnH = 20;
         int saveBtnX = uiX + uiW - btnW * 2 - 16;
         int saveBtnY = uiY + uiH - btnH - 10;
 
-        saveBtn = Button.builder(Component.literal("Save"), _ -> saveAndClose())
+        saveBtn = ModernButton.modernBuilder(Component.literal("Save Changes"), b -> saveAndClose())
+                .style(ModernButton.Style.PRIMARY)
                 .pos(saveBtnX, saveBtnY).size(btnW, btnH).build();
-        cancelBtn = Button.builder(Component.literal("Cancel"), _ -> this.minecraft.setScreenAndShow(parentScreen))
-                .pos(saveBtnX + btnW + 6, saveBtnY).size(btnW, btnH).build();
+
+        cancelBtn = ModernButton.modernBuilder(Component.literal("Cancel"), b -> this.minecraft.setScreenAndShow(parentScreen))
+                .style(ModernButton.Style.SECONDARY)
+                .pos(saveBtnX + btnW + 6, saveBtnY).size(btnW - 15, btnH).build();
 
         this.addRenderableWidget(saveBtn);
         this.addRenderableWidget(cancelBtn);
@@ -150,13 +330,17 @@ public class AdvancementEditorScreen extends Screen {
         activeTab.saveState(draft);
         activeTabName = tabName;
         activeTab = tabs.get(tabName);
+        visitedTabs.add(tabName);
         activeTab.loadState(draft);
-        scrollOffset = 0;
         this.init();
     }
 
     private void saveAndClose() {
-        activeTab.saveState(draft);
+        for (Map.Entry<String, IEditorTab> entry : tabs.entrySet()) {
+            if (visitedTabs.contains(entry.getKey())) {
+                entry.getValue().saveState(draft);
+            }
+        }
 
         Identifier finalId = Identifier.parse(draft.id);
 
@@ -178,140 +362,70 @@ public class AdvancementEditorScreen extends Screen {
     }
 
     @Override
-    public void extractRenderState(@NonNull GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
-        gfx.fill(0, 0, this.width, this.height, COL_BG_OVERLAY);
-        gfx.fill(uiX, uiY, uiX + uiW, uiY + uiH, 0xFF202020);
-        gfx.fill(uiX, uiY, uiX + SIDEBAR_WIDTH, uiY + uiH, 0xFF181818);
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
+        gfx.fill(0, 0, this.width, this.height, EditorTheme.BG_OVERLAY);
+        EditorTheme.drawWindow(gfx, uiX, uiY, uiW, uiH);
 
-        gfx.text(this.font, (isNew ? "Create" : "Edit") + " Advancement", uiX + SIDEBAR_WIDTH + 20, uiY + 15, COL_GOLD, false);
-        gfx.fill(uiX + SIDEBAR_WIDTH + 20, uiY + 30, uiX + uiW - 20, uiY + 31, 0x55808080);
+        String title = (isNew ? "Create" : "Edit") + " Advancement";
+        gfx.text(this.font, title, uiX + 16, uiY + 12, EditorTheme.TEXT_GOLD, false);
+        int titleW = this.font.width(title);
+        if (isNew) {
+            EditorTheme.drawBadge(gfx, font, "NEW", uiX + titleW + 24, uiY + 10, 0xFF2D3748, EditorTheme.TEXT_PRIMARY);
+        }
 
-        int treeTop = uiY + 15;
+        gfx.fill(uiX + 1, uiY + HEADER_HEIGHT, uiX + uiW - 1, uiY + HEADER_HEIGHT + 1, EditorTheme.BORDER_INNER);
+
+        gfx.fill(uiX + 1, uiY + HEADER_HEIGHT + 1, uiX + sidebarWidth, uiY + uiH - 1, EditorTheme.SIDEBAR_BG);
+
+        int splitterX = uiX + sidebarWidth;
+        boolean splitterHovered = mouseX >= splitterX - 3 && mouseX <= splitterX + 3 && mouseY >= uiY + HEADER_HEIGHT && mouseY <= uiY + uiH;
+        if (isResizingSidebar) {
+            gfx.fill(splitterX - 1, uiY + HEADER_HEIGHT + 1, splitterX + 2, uiY + uiH - 1, EditorTheme.ACCENT_GOLD);
+        } else if (splitterHovered) {
+            gfx.fill(splitterX, uiY + HEADER_HEIGHT + 1, splitterX + 1, uiY + uiH - 1, 0xFF6A7B9F);
+        } else {
+            gfx.fill(splitterX, uiY + HEADER_HEIGHT + 1, splitterX + 1, uiY + uiH - 1, EditorTheme.BORDER_INNER);
+        }
+
+        int tabY = uiY + HEADER_HEIGHT + 10;
         int i = 0;
         for (String tabName : tabs.keySet()) {
-            int ry = treeTop + i * (ROW_H + 4);
-            int rowBot = ry + ROW_H;
-            boolean selected = (tabName.equals(activeTabName));
+            int ry = tabY + i * (TAB_ROW_H + 4);
+            int rowBot = ry + TAB_ROW_H;
+            boolean selected = tabName.equals(activeTabName);
+            boolean hovered = mouseX >= uiX + 8 && mouseX <= uiX + sidebarWidth - 8 && mouseY >= ry && mouseY <= rowBot;
 
-            gfx.fill(uiX + 5, ry, uiX + SIDEBAR_WIDTH - 5, rowBot, COL_ROW_BG);
+            int bg = selected ? EditorTheme.TAB_ACTIVE_BG : (hovered ? EditorTheme.TAB_HOVER_BG : EditorTheme.TAB_INACTIVE_BG);
+            gfx.fill(uiX + 8, ry, uiX + sidebarWidth - 8, rowBot, bg);
+            gfx.outline(uiX + 8, ry, sidebarWidth - 16, TAB_ROW_H, selected ? EditorTheme.ACCENT_GOLD_MUTED : EditorTheme.CARD_BORDER);
+
             if (selected) {
-                gfx.fill(uiX + 5, ry, uiX + SIDEBAR_WIDTH - 5, rowBot, COL_SEL_INNER);
-                gfx.fill(uiX + 5, ry + 1, uiX + 7, rowBot - 1, COL_GOLD);
+                gfx.fill(uiX + 8, ry, uiX + 11, rowBot, EditorTheme.ACCENT_GOLD);
             }
 
-            int textCol = selected ? COL_SEL_TEXT : COL_GOLD;
-            gfx.text(font, tabName, uiX + 15, ry + (ROW_H - font.lineHeight) / 2 + 1, textCol, false);
+            int textCol = selected ? EditorTheme.TEXT_GOLD : (hovered ? EditorTheme.TEXT_PRIMARY : EditorTheme.TEXT_MUTED);
+            gfx.text(font, tabName, uiX + 16, ry + (TAB_ROW_H - font.lineHeight) / 2, textCol, false);
             i++;
         }
 
-        if (this.maxScroll > 0) {
-            int scrollX = uiX + uiW - 12;
-            int scrollY = uiY + 32;
-            int scrollH = uiH - 72;
-            int thumbH = Math.max(20, scrollH * scrollH / (scrollH + maxScroll));
-            int thumbY = scrollY + (int) ((scrollH - thumbH) * (this.scrollOffset / (float) this.maxScroll));
-
-            gfx.fill(scrollX, scrollY, scrollX + 8, scrollY + scrollH, 0xFF000000);
-            gfx.fill(scrollX + 1, thumbY, scrollX + 7, thumbY + thumbH, 0xFF888888);
-        }
-
-        gfx.nextStratum();
-        gfx.enableScissor(uiX + SIDEBAR_WIDTH, uiY + 32, uiX + uiW, uiY + uiH - 40);
+        gfx.enableScissor(uiX + sidebarWidth + 8, uiY + HEADER_HEIGHT + 2, uiX + uiW - 8, uiY + uiH - 38);
         activeTab.render(gfx, mouseX, mouseY, partialTicks);
         super.extractRenderState(gfx, mouseX, mouseY, partialTicks);
-        gfx.nextStratum();
         gfx.disableScissor();
 
         if (saveBtn != null) saveBtn.extractRenderState(gfx, mouseX, mouseY, partialTicks);
         if (cancelBtn != null) cancelBtn.extractRenderState(gfx, mouseX, mouseY, partialTicks);
-    }
 
-    private void updateScrollFromMouse(double my) {
-        int scrollY = uiY + 32;
-        int scrollH = uiH - 72;
-        int thumbH = Math.max(20, scrollH * scrollH / (scrollH + maxScroll));
-        int trackH = scrollH - thumbH;
-
-        double pct = (my - scrollY - thumbH / 2.0) / trackH;
-        pct = Math.max(0, Math.min(pct, 1));
-        this.scrollOffset = (int) (pct * this.maxScroll);
-
-        if (this.activeTab != null) {
-            this.activeTab.saveState(this.draft);
-            this.activeTab.loadState(this.draft);
-        }
-
-        this.init();
-    }
-
-    @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        double mx = event.x();
-        double my = event.y();
-        int button = event.button();
-
-        if (this.maxScroll > 0 && button == 0) {
-            int scrollX = uiX + uiW - 12;
-            int scrollY = uiY + 32;
-            int scrollH = uiH - 72;
-            if (mx >= scrollX && mx <= scrollX + 8 && my >= scrollY && my <= scrollY + scrollH) {
-                this.isDraggingScrollbar = true;
-                updateScrollFromMouse(my);
-                return true;
+        if (activeTab != null) {
+            for (GuiEventListener child : activeTab.getWidgets()) {
+                if (child instanceof ModernDropdown md && md.isOpen()) {
+                    md.renderDropdownPopup(gfx, mouseX, mouseY);
+                }
+                if (child instanceof SuggestingEditBox seb && seb.hasSuggestions()) {
+                    seb.renderSuggestionsPopup(gfx, mouseX, mouseY);
+                }
             }
+            activeTab.renderOverlay(gfx, mouseX, mouseY, partialTicks);
         }
-
-        int x = (int) mx, y = (int) my;
-        int treeTop = uiY + 15;
-        int i = 0;
-        for (String tabName : tabs.keySet()) {
-            int ry = treeTop + i * (ROW_H + 4);
-            if (x >= uiX + 5 && x < uiX + SIDEBAR_WIDTH - 5 && y >= ry && y < ry + ROW_H) {
-                switchTab(tabName);
-                return true;
-            }
-            i++;
-        }
-
-        if (x > uiX + SIDEBAR_WIDTH && x < uiX + uiW) {
-            if (y > uiY && y < uiY + 32) return false;
-            if (y > uiY + uiH - 40 && y < uiY + uiH) {
-                if (saveBtn != null && saveBtn.isMouseOver(mx, my)) return saveBtn.mouseClicked(event, doubleClick);
-                if (cancelBtn != null && cancelBtn.isMouseOver(mx, my))
-                    return cancelBtn.mouseClicked(event, doubleClick);
-                return false;
-            }
-        }
-
-        return super.mouseClicked(event, doubleClick);
-    }
-
-    @Override
-    public boolean mouseDragged(@NonNull MouseButtonEvent event, double dragX, double dragY) {
-        if (this.isDraggingScrollbar) {
-            updateScrollFromMouse(event.y());
-            return true;
-        }
-        return super.mouseDragged(event, dragX, dragY);
-    }
-
-    @Override
-    public boolean mouseReleased(@NonNull MouseButtonEvent event) {
-        this.isDraggingScrollbar = false;
-        return super.mouseReleased(event);
-    }
-
-    @Override
-    public boolean keyPressed(KeyEvent event) {
-        if (event.key() == 256) {
-            this.minecraft.setScreenAndShow(parentScreen);
-            return true;
-        }
-        return super.keyPressed(event);
-    }
-
-    @Override
-    public boolean isPauseScreen() {
-        return false;
     }
 }

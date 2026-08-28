@@ -9,6 +9,7 @@ import com.evandev.reliable_advancements.util.PersistentData;
 import com.google.common.collect.Maps;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
@@ -17,7 +18,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.core.ClientAsset;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
@@ -26,10 +26,11 @@ import net.minecraft.world.item.ItemStack;
 import java.util.*;
 
 public class EnhancedAdvancementTab {
-    public record ScrollPos(int getA, int getB) {}
+    public record ScrollPos(int x, int y) {}
     public static final Map<Identifier, ScrollPos> scrollHistory = Maps.newLinkedHashMap();
     public final List<BackgroundRule> backgroundRules = new ArrayList<>();
     protected final Map<AdvancementHolder, EnhancedAdvancementWidget> widgets = Maps.newLinkedHashMap();
+    protected final Map<Identifier, EnhancedAdvancementWidget> widgetsById = Maps.newHashMap();
     private final Minecraft minecraft;
     private final EnhancedAdvancementsScreen screen;
     private final AdvancementNode rootNode;
@@ -70,21 +71,14 @@ public class EnhancedAdvancementTab {
         this.addWidget(this.root, advancementNode.holder());
 
         String id = advancementNode.holder().id().toString();
-        this.customIndex = switch (id) {
-            case "minecraft:story/root" -> 0;
-            case "minecraft:adventure/root" -> 1;
-            case "minecraft:husbandry/root" -> 2;
-            case "minecraft:nether/root" -> 3;
-            case "minecraft:end/root" -> 4;
-            default -> 5;
-        };
+        this.customIndex = PersistentData.getDefaultTabIndex(id);
 
         PersistentData.loadTabProperties(this);
     }
 
     public static EnhancedAdvancementTab create(Minecraft mc, EnhancedAdvancementsScreen advancementsScreen, int index, AdvancementNode advancementNode, int width, int height) {
         Optional<DisplayInfo> optional = advancementNode.advancement().display();
-        if (optional.isEmpty()) {
+        if (optional.isEmpty() || optional.get().getBackground().isEmpty()) {
             return null;
         } else {
             EnhancedAdvancementTabType advancementTabType = EnhancedAdvancementTabType.getTabType(width, height, index);
@@ -118,6 +112,18 @@ public class EnhancedAdvancementTab {
         return this.widgets;
     }
 
+    public Map<Identifier, EnhancedAdvancementWidget> getWidgetsById() {
+        return this.widgetsById;
+    }
+
+    public EnhancedAdvancementWidget getRoot() {
+        return this.root;
+    }
+
+    public int getIndex() {
+        return this.index;
+    }
+
     public AdvancementNode getRootNode() {
         return this.rootNode;
     }
@@ -127,15 +133,15 @@ public class EnhancedAdvancementTab {
         return this.title;
     }
 
-    public void drawTab(GuiGraphicsExtractor guiGraphicsExtractor, int left, int top, int width, int height, boolean selected) {
-        this.type.draw(guiGraphicsExtractor, left, top, width, height, selected, this.index);
+    public void drawTab(GuiGraphicsExtractor guiGraphics, int left, int top, int width, int height, boolean selected) {
+        this.type.draw(guiGraphics, left, top, width, height, selected, this.index);
     }
 
-    public void drawIcon(GuiGraphicsExtractor guiGraphicsExtractor, int left, int top, int width, int height) {
-        this.type.drawIcon(guiGraphicsExtractor, left, top, width, height, this.index, this.icon);
+    public void drawIcon(GuiGraphicsExtractor guiGraphics, int left, int top, int width, int height) {
+        this.type.drawIcon(guiGraphics, left, top, width, height, this.index, this.icon);
     }
 
-    public void drawContents(GuiGraphicsExtractor guiGraphicsExtractor, int left, int top, int width, int height, double mouseX, double mouseY) {
+    public void drawContents(GuiGraphicsExtractor guiGraphics, int left, int top, int width, int height, double mouseX, double mouseY) {
         float zoom = this.screen.getZoom();
         int scaledWidth = (int) (width / zoom);
         int scaledHeight = (int) (height / zoom);
@@ -149,19 +155,15 @@ public class EnhancedAdvancementTab {
             this.centered = true;
         }
 
-        guiGraphicsExtractor.enableScissor(left, top, left + width, top + height);
-        guiGraphicsExtractor.pose().pushMatrix();
-        guiGraphicsExtractor.pose().translate((float) left, (float) top);
-        guiGraphicsExtractor.pose().scale(zoom, zoom);
+        guiGraphics.enableScissor(left, top, left + width, top + height);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(left, top);
+        guiGraphics.pose().scale(zoom, zoom);
 
-        Identifier defaultRes = this.customBackground != null
-                ? this.customBackground
-                : this.display.getBackground()
-                .map(ClientAsset.Texture::texturePath)
-                .orElse(TextureManager.INTENTIONAL_MISSING_TEXTURE);
+        Identifier defaultRes = this.customBackground != null ? this.customBackground : this.display.getBackground().map(net.minecraft.core.ClientAsset.ResourceTexture::texturePath).orElse(TextureManager.INTENTIONAL_MISSING_TEXTURE);
 
         if (this.isStaticBackground && this.bgWidth == 0 && this.bgHeight == 0) {
-            guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, defaultRes, 0, 0, 0.0F, 0.0F, scaledWidth, scaledHeight, scaledWidth, scaledHeight);
+            guiGraphics.blit(RenderPipelines.GUI_TEXTURED, defaultRes, 0, 0, 0.0F, 0.0F, scaledWidth, scaledHeight, scaledWidth, scaledHeight);
         } else {
             int texW = this.bgWidth > 0 ? this.bgWidth : 16;
             int texH = this.bgHeight > 0 ? this.bgHeight : 16;
@@ -198,7 +200,7 @@ public class EnhancedAdvancementTab {
                         }
                     }
 
-                    guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, texToDraw, i + texW * k, j + texH * l, 0.0F, 0.0F, texW, texH, texW, texH);
+                    guiGraphics.blit(RenderPipelines.GUI_TEXTURED, texToDraw, i + texW * k, j + texH * l, 0.0F, 0.0F, texW, texH, texW, texH);
                 }
             }
         }
@@ -207,29 +209,36 @@ public class EnhancedAdvancementTab {
             int alpha = (int) (ModConfig.get().blurBackgroundOpacity / 100.0f * 255.0f);
             int color = (alpha << 24);
 
-            guiGraphicsExtractor.fill(0, 0, scaledWidth, scaledHeight, color);
+            guiGraphics.fill(0, 0, scaledWidth, scaledHeight, color);
         }
 
-        this.root.drawConnectivity(guiGraphicsExtractor, this.scrollX, this.scrollY, true);
-        this.root.drawConnectivity(guiGraphicsExtractor, this.scrollX, this.scrollY, false);
-        this.root.draw(guiGraphicsExtractor, this.scrollX, this.scrollY, unzoomedX, unzoomedY);
+        for (EnhancedAdvancementWidget widget : this.widgets.values()) {
+            widget.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, true);
+        }
+        for (EnhancedAdvancementWidget widget : this.widgets.values()) {
+            widget.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, false);
+        }
+        for (EnhancedAdvancementWidget widget : this.widgets.values()) {
+            widget.draw(guiGraphics, this.scrollX, this.scrollY, unzoomedX, unzoomedY);
+        }
 
         for (EnhancedAdvancementWidget advancementWidget : this.widgets.values()) {
             if (EnhancedAdvancementsScreen.selectedWidgets.contains(advancementWidget)) {
-                guiGraphicsExtractor.fill(advancementWidget.getX() + this.scrollX + 1, advancementWidget.getY() + this.scrollY - 2, advancementWidget.getX() + this.scrollX + 31, advancementWidget.getY() + this.scrollY + 28, 0x6600FF00);
+                guiGraphics.fill(advancementWidget.getX() + this.scrollX + 1, advancementWidget.getY() + this.scrollY - 2, advancementWidget.getX() + this.scrollX + 31, advancementWidget.getY() + this.scrollY + 28, 0x6600FF00);
             }
         }
-        guiGraphicsExtractor.pose().popMatrix();
-        guiGraphicsExtractor.disableScissor();
+        guiGraphics.pose().popMatrix();
+        guiGraphics.disableScissor();
     }
 
     public void setCentered(boolean centered) {
         this.centered = centered;
     }
 
-    public void drawToolTips(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, int left, int top, int width, int height) {
-        guiGraphicsExtractor.pose().pushMatrix();
-        guiGraphicsExtractor.fill(0, 0, width, height, Mth.floor(this.fade * 255.0F) << 24);
+    public void drawToolTips(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, int left, int top, int width, int height) {
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(0, 0);
+        guiGraphics.fill(0, 0, width, height, Mth.floor(this.fade * 255.0F) << 24);
         boolean flag = false;
 
         float zoom = this.screen.getZoom();
@@ -240,16 +249,16 @@ public class EnhancedAdvancementTab {
             for (EnhancedAdvancementWidget advancementWidget : this.widgets.values()) {
                 if (advancementWidget.isMouseOver(this.scrollX, this.scrollY, scaledMouseX, scaledMouseY)) {
                     flag = true;
-                    guiGraphicsExtractor.pose().pushMatrix();
-                    guiGraphicsExtractor.pose().scale(zoom, zoom);
-                    advancementWidget.drawHover(guiGraphicsExtractor, this.scrollX, this.scrollY, (int) (left / zoom), (int) (top / zoom));
-                    guiGraphicsExtractor.pose().popMatrix();
+                    guiGraphics.pose().pushMatrix();
+                    guiGraphics.pose().scale(zoom, zoom);
+                    advancementWidget.drawHover(guiGraphics, this.scrollX, this.scrollY, (int) (left / zoom), (int) (top / zoom));
+                    guiGraphics.pose().popMatrix();
                     break;
                 }
             }
         }
 
-        guiGraphicsExtractor.pose().popMatrix();
+        guiGraphics.pose().popMatrix();
 
         if (ModConfig.get().doFade && flag) {
             this.fade = Mth.clamp(this.fade + 0.02F, 0.0F, 0.3F);
@@ -263,6 +272,12 @@ public class EnhancedAdvancementTab {
     }
 
     public void scroll(double scrollX, double scrollY, int width, int height) {
+        if (ModConfig.get().unclampedScrolling) {
+            this.scrollX = (int) Math.round(this.scrollX + scrollX);
+            this.scrollY = (int) Math.round(this.scrollY + scrollY);
+            return;
+        }
+
         float zoom = this.screen.getZoom();
         int scaledWidth = (int) (width / zoom);
         int scaledHeight = (int) (height / zoom);
@@ -282,8 +297,27 @@ public class EnhancedAdvancementTab {
         }
     }
 
-    private void addWidget(EnhancedAdvancementWidget advancementEntryScreen, AdvancementHolder advancementHolder) {
+    public void recalculateBounds() {
+        this.minX = Integer.MAX_VALUE;
+        this.maxX = Integer.MIN_VALUE;
+        this.minY = Integer.MAX_VALUE;
+        this.maxY = Integer.MIN_VALUE;
+        for (EnhancedAdvancementWidget widget : this.widgets.values()) {
+            int left = widget.getX();
+            int right = left + 28;
+            int top = widget.getY();
+            int bottom = top + 27;
+            this.minX = Math.min(this.minX, left);
+            this.maxX = Math.max(this.maxX, right);
+            this.minY = Math.min(this.minY, top);
+            this.maxY = Math.max(this.maxY, bottom);
+        }
+    }
+
+    public void addWidget(EnhancedAdvancementWidget advancementEntryScreen, AdvancementHolder advancementHolder) {
+        advancementEntryScreen.setTab(this);
         this.widgets.put(advancementHolder, advancementEntryScreen);
+        this.widgetsById.put(advancementHolder.id(), advancementEntryScreen);
         int left = advancementEntryScreen.getX();
         int right = left + 28;
         int top = advancementEntryScreen.getY();
@@ -293,13 +327,30 @@ public class EnhancedAdvancementTab {
         this.minY = Math.min(this.minY, top);
         this.maxY = Math.max(this.maxY, bottom);
 
-        for (EnhancedAdvancementWidget gui : this.widgets.values()) {
-            gui.attachToParent();
+        advancementEntryScreen.attachToParent();
+    }
+
+    public void removeWidget(AdvancementHolder holder) {
+        if (holder == null) return;
+        EnhancedAdvancementWidget widget = this.widgets.remove(holder);
+        this.widgetsById.remove(holder.id());
+        if (widget != null) {
+            for (EnhancedAdvancementWidget p : new ArrayList<>(widget.getParents())) {
+                if (p != null) {
+                    p.getChildren().remove(widget);
+                }
+            }
         }
+        this.recalculateBounds();
     }
 
     public EnhancedAdvancementWidget getWidget(AdvancementHolder advancementHolder) {
         return this.widgets.get(advancementHolder);
+    }
+
+    public EnhancedAdvancementWidget getWidget(Identifier id) {
+        if (id == null) return null;
+        return this.widgetsById.get(id);
     }
 
     public EnhancedAdvancementsScreen getScreen() {
@@ -320,8 +371,8 @@ public class EnhancedAdvancementTab {
         ScrollPos scroll = scrollHistory.get(this.rootNode.holder().id());
         if (scroll != null) {
             this.centered = true;
-            this.scrollX = scroll.getA();
-            this.scrollY = scroll.getB();
+            this.scrollX = scroll.x();
+            this.scrollY = scroll.y();
         }
     }
 
@@ -332,7 +383,7 @@ public class EnhancedAdvancementTab {
         public boolean absoluteY = false;
         public Identifier texture;
 
-        public static BackgroundRule fromJson(com.google.gson.JsonObject json) {
+        public static BackgroundRule fromJson(JsonObject json) {
             BackgroundRule rule = new BackgroundRule();
             if (json.has("min_y")) rule.minY = json.get("min_y").getAsInt();
             if (json.has("max_y")) rule.maxY = json.get("max_y").getAsInt();

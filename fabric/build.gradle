@@ -40,6 +40,10 @@ repositories {
             includeGroupAndSubgroups("cc.cassian")
         }
     }
+    maven {
+        name = "SomethingCatchy"
+        url = "https://registry.somethingcatchy.net/repository/maven-public/"
+    }
     mavenCentral()
 }
 
@@ -52,6 +56,9 @@ dependencies {
     // YACL
     implementation "dev.isxander:yet-another-config-lib:${yacl_version}-fabric"
     implementation "com.terraformersmc:modmenu:${mod_menu_version}"
+
+    implementation "net.mehvahdjukaar:codecui-fabric:${codecui_version}"
+    include "net.mehvahdjukaar:codecui-fabric:${codecui_version}"
 
     implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"

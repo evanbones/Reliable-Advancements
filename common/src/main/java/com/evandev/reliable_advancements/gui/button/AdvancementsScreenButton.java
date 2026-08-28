@@ -25,7 +25,13 @@ public class AdvancementsScreenButton extends AbstractButton {
     private final Supplier<Integer> ySupplier;
 
     public AdvancementsScreenButton(Supplier<Integer> xSupplier, Supplier<Integer> ySupplier, Component buttonText) {
-        super(calculateX(xSupplier.get()), calculateY(ySupplier.get()), calculateWidth(), calculateHeight(), buttonText);
+        super(
+                calculateX(xSupplier.get()),
+                calculateY(ySupplier.get()),
+                calculateWidth(),
+                calculateHeight(),
+                buttonText
+        );
         this.xSupplier = xSupplier;
         this.ySupplier = ySupplier;
     }
@@ -49,7 +55,7 @@ public class AdvancementsScreenButton extends AbstractButton {
     }
 
     @Override
-    public void extractContents(@NotNull GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
+    protected void extractContents(@NotNull GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
         if (!this.visible) return;
 
         this.setX(calculateX(this.xSupplier.get()));
@@ -63,44 +69,43 @@ public class AdvancementsScreenButton extends AbstractButton {
         if (ModConfig.get().inventoryButtonStyle == InventoryButtonStyle.BUTTON) {
             if (ModConfig.get().customInventoryButtonTexture == null || ModConfig.get().customInventoryButtonTexture.isEmpty()) {
                 Identifier sprite = this.isHovered ? Identifier.withDefaultNamespace("widget/button_highlighted") : Identifier.withDefaultNamespace("widget/button");
-                guiGraphicsExtractor.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, this.getX(), this.getY(), this.getWidth(), this.getHeight());
+                guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, this.getX(), this.getY(), this.getWidth(), this.getHeight());
             } else {
                 String texToUse = (this.isHovered && ModConfig.get().customInventoryButtonTextureHovered != null && !ModConfig.get().customInventoryButtonTextureHovered.isEmpty()) ? ModConfig.get().customInventoryButtonTextureHovered : ModConfig.get().customInventoryButtonTexture;
                 Identifier tex = Identifier.parse(texToUse);
-                guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, tex, this.getX(), this.getY(), 0f, 0f, this.getWidth(), this.getHeight(), 256, 256);
+                guiGraphics.blit(RenderPipelines.GUI_TEXTURED, tex, this.getX(), this.getY(), 0, 0, this.getWidth(), this.getHeight(), this.getWidth(), this.getHeight());
             }
 
             if (ModConfig.get().customInventoryButtonIcon != null && !ModConfig.get().customInventoryButtonIcon.isEmpty()) {
-                guiGraphicsExtractor.fakeItem(getIconStack(), this.getX() + 2, this.getY() + 1);
+                guiGraphics.fakeItem(getIconStack(), this.getX() + 2, this.getY() + 1);
             }
         } else {
-            guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.TABS, this.getX(), this.getY(), 56f, 0f, 28, 32, 256, 256);
-            guiGraphicsExtractor.fakeItem(getIconStack(), this.getX() + 6, this.getY() + 10);
+            guiGraphics.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.TABS, this.getX(), this.getY(), 56, 0, 28, 32, 256, 256);
+            guiGraphics.fakeItem(getIconStack(), this.getX() + 6, this.getY() + 10);
         }
 
         if (this.isHovered && ModConfig.get().enableButtonTooltip) {
-            guiGraphicsExtractor.setTooltipForNextFrame(mc.font, Component.translatable("gui.advancements"), mouseX, mouseY);
+            guiGraphics.setTooltipForNextFrame(mc.font, Component.translatable("gui.advancements"), mouseX, mouseY);
         }
     }
 
     private ItemStack getIconStack() {
-        String iconPath = ModConfig.get().customInventoryButtonIcon;
-        if (iconPath == null || iconPath.isEmpty()) {
+        if (ModConfig.get().customInventoryButtonIcon == null || ModConfig.get().customInventoryButtonIcon.isEmpty())
             return ItemStack.EMPTY;
+        try {
+            return new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(ModConfig.get().customInventoryButtonIcon)));
+        } catch (Exception e) {
+            return new ItemStack(Items.BOOK);
         }
-
-        return BuiltInRegistries.ITEM.getOptional(Identifier.parse(iconPath))
-                .map(holder -> new ItemStack(holder.asItem()))
-                .orElse(new ItemStack(Items.BOOK));
     }
 
     @Override
-    public void onPress(@NotNull InputWithModifiers input) {
-        Minecraft.getInstance().setScreenAndShow(new EnhancedAdvancementsScreen(Minecraft.getInstance().player.connection.getAdvancements()));
+    public void onPress(InputWithModifiers input) {
+        Minecraft mc = Minecraft.getInstance();
+        mc.setScreenAndShow(new EnhancedAdvancementsScreen(mc.player.connection.getAdvancements(), mc.gui.screen()));
     }
 
     @Override
     protected void updateWidgetNarration(@NotNull NarrationElementOutput narrationElementOutput) {
-        this.defaultButtonNarrationText(narrationElementOutput);
     }
 }

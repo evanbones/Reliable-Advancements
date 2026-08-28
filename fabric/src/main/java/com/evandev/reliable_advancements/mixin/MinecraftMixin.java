@@ -14,7 +14,7 @@ public class MinecraftMixin {
     private Screen swapAdvancementsScreen(Screen screen) {
         if (screen instanceof AdvancementsScreen) {
             Minecraft mc = Minecraft.getInstance();
-            return new EnhancedAdvancementsScreen(mc.player.connection.getAdvancements());
+            return new EnhancedAdvancementsScreen(mc.player.connection.getAdvancements(), mc.gui.screen());
         } else {
             return screen;
         }

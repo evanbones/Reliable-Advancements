@@ -152,10 +152,17 @@ public class YaclConfigScreen {
                 .build());
 
         generalCategory.option(Option.<Boolean>createBuilder()
-                .name(Component.translatable("config.reliable_advancements.discoveryMode"))
-                .description(OptionDescription.of(Component.translatable("config.reliable_advancements.discoveryMode.tooltip")))
-                .binding(defaults.discoveryMode, () -> config.discoveryMode, val -> config.discoveryMode = val)
+                .name(Component.translatable("config.reliable_advancements.unclampedScrolling"))
+                .description(OptionDescription.of(Component.translatable("config.reliable_advancements.unclampedScrolling.tooltip")))
+                .binding(defaults.unclampedScrolling, () -> config.unclampedScrolling, val -> config.unclampedScrolling = val)
                 .controller(TickBoxControllerBuilder::create)
+                .build());
+
+        generalCategory.option(Option.<Integer>createBuilder()
+                .name(Component.translatable("config.reliable_advancements.visibilityDepth"))
+                .description(OptionDescription.of(Component.translatable("config.reliable_advancements.visibilityDepth.tooltip")))
+                .binding(defaults.visibilityDepth, () -> config.visibilityDepth, val -> config.visibilityDepth = val)
+                .controller(opt -> IntegerFieldControllerBuilder.create(opt).min(-1))
                 .build());
 
         generalCategory.option(Option.<Boolean>createBuilder()
@@ -197,6 +204,20 @@ public class YaclConfigScreen {
                 .name(Component.translatable("config.reliable_advancements.showEditModeButton"))
                 .description(OptionDescription.of(Component.translatable("config.reliable_advancements.showEditModeButton.tooltip")))
                 .binding(defaults.showEditModeButton, () -> config.showEditModeButton, val -> config.showEditModeButton = val)
+                .controller(TickBoxControllerBuilder::create)
+                .build());
+
+        editingCategory.option(Option.<Boolean>createBuilder()
+                .name(Component.translatable("config.reliable_advancements.storeAdvancementEditsGlobally"))
+                .description(OptionDescription.of(Component.translatable("config.reliable_advancements.storeAdvancementEditsGlobally.tooltip")))
+                .binding(defaults.storeAdvancementEditsGlobally, () -> config.storeAdvancementEditsGlobally, val -> config.storeAdvancementEditsGlobally = val)
+                .controller(TickBoxControllerBuilder::create)
+                .build());
+
+        editingCategory.option(Option.<Boolean>createBuilder()
+                .name(Component.translatable("config.reliable_advancements.storeAdvancementEditsAsDatapack"))
+                .description(OptionDescription.of(Component.translatable("config.reliable_advancements.storeAdvancementEditsAsDatapack.tooltip")))
+                .binding(defaults.storeAdvancementEditsAsDatapack, () -> config.storeAdvancementEditsAsDatapack, val -> config.storeAdvancementEditsAsDatapack = val)
                 .controller(TickBoxControllerBuilder::create)
                 .build());
 

@@ -32,7 +32,7 @@ public class GuiOpenHandler {
         if (event.getScreen() instanceof AdvancementsScreen) {
             event.setCanceled(true);
             Minecraft mc = Minecraft.getInstance();
-            mc.setScreenAndShow(new EnhancedAdvancementsScreen(mc.player.connection.getAdvancements()));
+            mc.setScreenAndShow(new EnhancedAdvancementsScreen(mc.player.connection.getAdvancements(), mc.gui.screen()));
         }
     }
 
@@ -56,31 +56,6 @@ public class GuiOpenHandler {
                         },
                         Component.literal("BA")
                 ));
-            }
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGH) // put on HIGH to be before Triumph sorting, giving them priority
-    public void onGuiAboutToOpen(final ScreenEvent.Init.Pre event) {
-        if (event.getScreen() instanceof EnhancedAdvancementsScreen) {
-            if (ModConfig.get().orderTabsAlphabetically) {
-                Minecraft mc = Minecraft.getInstance();
-                ClientAdvancements clientAdvancements = mc.player.connection.getAdvancements();
-                AdvancementTree advancementTree = clientAdvancements.getTree();
-                Set<AdvancementNode> roots = (Set<AdvancementNode>) advancementTree.roots();
-
-                List<String> advancementLocations = roots.stream().sorted(AdvancementComparer.sortByTitle()).map(n -> n.holder().id().toString()).toList();
-
-                List<AdvancementNode> advancements = new ArrayList<>(roots);
-                roots.clear();
-
-                for (String location : advancementLocations) {
-                    for (AdvancementNode advancement : advancements) {
-                        if (advancement.holder().id().toString().equals(location)) {
-                            roots.add(advancement);
-                        }
-                    }
-                }
             }
         }
     }

@@ -46,6 +46,9 @@ dependencies {
 
     // YACL
     implementation "dev.isxander:yet-another-config-lib:${yacl_version}-neoforge"
+
+    implementation "net.mehvahdjukaar:codecui-neoforge:${codecui_version}"
+    jarJar "net.mehvahdjukaar:codecui-neoforge:${codecui_version}"
 }
 
 def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)

@@ -19,7 +19,7 @@ public class AdvancementComparer {
                 Optional<DisplayInfo> info2 = a2.display();
 
                 if (info1.isEmpty() && info2.isEmpty()) {
-                    return 0;
+                    return n1.holder().id().toString().compareTo(n2.holder().id().toString());
                 } else if (info1.isEmpty()) {
                     return 1;
                 } else if (info2.isEmpty()) {
@@ -27,7 +27,8 @@ public class AdvancementComparer {
                 } else {
                     String title1 = info1.get().getTitle().getString().toLowerCase();
                     String title2 = info2.get().getTitle().getString().toLowerCase();
-                    return title1.compareTo(title2);
+                    int cmp = title1.compareTo(title2);
+                    return cmp != 0 ? cmp : n1.holder().id().toString().compareTo(n2.holder().id().toString());
                 }
             }
         };

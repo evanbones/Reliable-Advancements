@@ -13,6 +13,7 @@ neoForge {
 
 dependencies {
     compileOnly "dev.isxander:yet-another-config-lib:${yacl_version}-neoforge"
+    compileOnly "net.mehvahdjukaar:codecui-common:${codecui_version}"
 
     compileOnly group: 'org.spongepowered', name: 'mixin', version: '0.8.5'
     compileOnly group: 'io.github.llamalad7', name: 'mixinextras-common', version: '0.3.5'

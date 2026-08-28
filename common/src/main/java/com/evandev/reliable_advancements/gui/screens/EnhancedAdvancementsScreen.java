@@ -1,5 +1,8 @@
 package com.evandev.reliable_advancements.gui.screens;
 
+import com.evandev.reliable_advancements.advancements.IAdvancementSyncListener;
+import com.evandev.reliable_advancements.advancements.IMultiParentAdvancement;
+import com.evandev.reliable_advancements.advancements.IMultiParentNode;
 import com.evandev.reliable_advancements.client.ClientRewardTracker;
 import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.gui.AdvancementContextMenu;
@@ -20,6 +23,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
+import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.util.Util;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.AdvancementProgress;
@@ -29,26 +35,25 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.multiplayer.ClientAdvancements;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundSeenAdvancementsPacket;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.permissions.Permissions;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
-import net.minecraft.util.Util;
 import org.jetbrains.annotations.NotNull;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.*;
 
-public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancements.Listener {
+public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancements.Listener, IAdvancementSyncListener {
     public static final Set<EnhancedAdvancementWidget> selectedWidgets = new LinkedHashSet<>();
     private static final Component VERY_SAD_LABEL = Component.translatable("advancements.sad_label");
     private static final Component NO_ADVANCEMENTS_LABEL = Component.translatable("advancements.empty");
@@ -62,15 +67,20 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     private static ClientAdvancements lastAdvancementsManager = null;
     private static int tabPage, maxPages;
     private static Identifier savedSelectedTab = null;
+    private static float savedZoom = 1.0F;
     private final ClientAdvancements clientAdvancements;
+    private final Screen parent;
     private final Map<AdvancementHolder, EnhancedAdvancementTab> tabs = Maps.newLinkedHashMap();
     public EnhancedAdvancementWidget linkingWidget = null;
     public EnhancedAdvancementTab selectedTab;
     public int internalWidth;
     protected int internalHeight;
-    private boolean isInitializing = false;
-    private boolean isDirty = false;
-    private float zoom = 1.0F;
+    private boolean isLoading = false;
+    private long loadingTimeout = 0;
+    private Button prevPageBtn;
+    private Button nextPageBtn;
+    private Button editModeBtn;
+    private float zoom = savedZoom;
     private boolean isScrolling;
     private EnhancedAdvancementWidget advConnectedToMouse = null;
     private AdvancementContextMenu contextMenu = null;
@@ -80,13 +90,22 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     private long linkingErrorTime = 0;
 
     public EnhancedAdvancementsScreen(ClientAdvancements clientAdvancements) {
+        this(clientAdvancements, null);
+    }
+
+    public EnhancedAdvancementsScreen(ClientAdvancements clientAdvancements, Screen parent) {
         super(GameNarrator.NO_TITLE);
         this.clientAdvancements = clientAdvancements;
+        this.parent = parent;
 
         if (lastAdvancementsManager != clientAdvancements) {
             lastAdvancementsManager = clientAdvancements;
             clientHasFullTree = false;
         }
+    }
+
+    public static void setSavedSelectedTab(Identifier id) {
+        savedSelectedTab = id;
     }
 
     public static boolean canEdit() {
@@ -103,12 +122,210 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         return InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_CONTROL) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_CONTROL);
     }
 
+    private static int tabSortOrdinal(AdvancementHolder root) {
+        List<String> order = ModConfig.get().tabSortOrder;
+        if (order == null || order.isEmpty()) {
+            return Integer.MAX_VALUE;
+        }
+        int index = order.indexOf(root.id().toString());
+        return index < 0 ? Integer.MAX_VALUE : index;
+    }
+
+    public void setLoading(boolean loading) {
+        this.isLoading = loading;
+        if (loading) {
+            this.loadingTimeout = Util.getMillis() + 6000;
+            this.advConnectedToMouse = null;
+            this.linkingWidget = null;
+            this.contextMenu = null;
+            selectedWidgets.clear();
+        }
+    }
+
     @Override
     public void tick() {
         super.tick();
-        if (this.isDirty) {
-            this.isDirty = false;
-            this.minecraft.setScreenAndShow(new EnhancedAdvancementsScreen(this.clientAdvancements));
+        if (this.isLoading && Util.getMillis() > this.loadingTimeout) {
+            this.isLoading = false;
+        }
+        if (editModeBtn == null && ModConfig.get().showEditModeButton && this.minecraft.player != null && this.minecraft.player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) {
+            rebuildEditModeButton();
+        }
+    }
+
+    @Override
+    public void onAdvancementSyncComplete() {
+        this.isLoading = false;
+        this.finalizeResync();
+    }
+
+    public void finalizeResync() {
+        Identifier draggingId = this.advConnectedToMouse != null
+                ? this.advConnectedToMouse.getAdvancement().holder().id() : null;
+        Set<Identifier> selectedIds = new LinkedHashSet<>();
+        for (EnhancedAdvancementWidget w : selectedWidgets) {
+            selectedIds.add(w.getAdvancement().holder().id());
+        }
+        for (EnhancedAdvancementTab t : this.tabs.values()) {
+            PersistentData.snapshotTabPositions(t);
+        }
+
+        if (this.selectedTab != null) {
+            this.selectedTab.storeScroll();
+            if (savedSelectedTab == null) {
+                savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+            }
+        }
+
+        sortTabs();
+        this.selectedTab = findTabById(savedSelectedTab);
+        if (this.selectedTab == null && !this.tabs.isEmpty()) {
+            this.selectedTab = this.tabs.values().iterator().next();
+            if (savedSelectedTab == null) {
+                savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+            }
+        }
+        if (this.selectedTab != null) {
+            this.clientAdvancements.setSelectedTab(this.selectedTab.getRootNode().holder(), true);
+            this.selectedTab.loadScroll();
+        }
+        rebuildNavigationWidgets();
+        rebuildEditModeButton();
+        this.isLoading = false;
+
+        this.advConnectedToMouse = draggingId != null ? findWidgetById(draggingId) : null;
+        selectedWidgets.clear();
+        for (Identifier id : selectedIds) {
+            EnhancedAdvancementWidget w = findWidgetById(id);
+            if (w != null) selectedWidgets.add(w);
+        }
+    }
+
+    private @Nullable EnhancedAdvancementWidget findWidgetById(Identifier id) {
+        if (id == null) return null;
+        for (EnhancedAdvancementTab t : this.tabs.values()) {
+            EnhancedAdvancementWidget w = t.getWidget(id);
+            if (w != null) {
+                return w;
+            }
+        }
+        return null;
+    }
+
+    public TabBounds getTabBounds() {
+        int tabW = getTabInternalWidth();
+        int tabH = getTabInternalHeight();
+        int left = SIDE + (this.width - tabW) / 2;
+        int top = TOP + (this.height - tabH) / 2;
+        int right = tabW - SIDE + (this.width - tabW) / 2;
+        int bottom = tabH - SIDE + (this.height - tabH) / 2;
+        int w = right - left;
+        int h = bottom - top;
+        int maxTabs = EnhancedAdvancementTabType.getMaxTabs(w, h);
+        return new TabBounds(left, top, right, bottom, w, h, maxTabs);
+    }
+
+    public @Nullable EnhancedAdvancementTab findTabById(@Nullable Identifier id) {
+        if (id == null) return null;
+        for (EnhancedAdvancementTab tab : this.tabs.values()) {
+            if (tab.getRootNode().holder().id().equals(id)) {
+                return tab;
+            }
+        }
+        return null;
+    }
+
+    public JsonObject createDefaultAdvancementJson(String titleText, String descText, @Nullable String background, @Nullable Identifier parent) {
+        JsonObject root = new JsonObject();
+        JsonObject display = new JsonObject();
+        JsonObject icon = new JsonObject();
+        icon.addProperty("id", "minecraft:stone");
+        display.add("icon", icon);
+
+        JsonObject title = new JsonObject();
+        title.addProperty("text", titleText);
+        display.add("title", title);
+
+        JsonObject description = new JsonObject();
+        description.addProperty("text", descText);
+        display.add("description", description);
+
+        if (background != null) {
+            display.addProperty("background", background);
+        }
+        root.add("display", display);
+
+        JsonObject criteria = new JsonObject();
+        JsonObject crit = new JsonObject();
+        crit.addProperty("trigger", "minecraft:impossible");
+        criteria.add("impossible", crit);
+        root.add("criteria", criteria);
+
+        if (parent != null) {
+            root.addProperty("parent", parent.toString());
+        }
+        return root;
+    }
+
+    public AdvancementEditorScreen createEditorScreen(Identifier id, int posX, int posY, JsonObject rootJson) {
+        return new AdvancementEditorScreen(this, id, true, posX, posY, "Properties", rootJson.toString());
+    }
+
+    public void updateTabPage(int maxTabs) {
+        if (maxTabs > 0 && this.selectedTab != null) {
+            int tabIndex = new ArrayList<>(this.tabs.values()).indexOf(this.selectedTab);
+            if (tabIndex >= 0) {
+                tabPage = Math.min(tabIndex / maxTabs, maxPages);
+            }
+        }
+    }
+
+    public void rebuildNavigationWidgets() {
+        if (prevPageBtn != null) removeWidget(prevPageBtn);
+        if (nextPageBtn != null) removeWidget(nextPageBtn);
+
+        TabBounds bounds = getTabBounds();
+
+        if (this.tabs.size() > bounds.maxTabs && bounds.maxTabs > 0) {
+            maxPages = (this.tabs.size() - 1) / bounds.maxTabs;
+            updateTabPage(bounds.maxTabs);
+            prevPageBtn = Button.builder(Component.literal("<"), b -> tabPage = Math.max(tabPage - 1, 0)).pos(bounds.left, bounds.bottom + 4).size(20, 20).build();
+            nextPageBtn = Button.builder(Component.literal(">"), b -> tabPage = Math.min(tabPage + 1, maxPages)).pos(bounds.right - 20, bounds.bottom + 4).size(20, 20).build();
+            addRenderableWidget(prevPageBtn);
+            addRenderableWidget(nextPageBtn);
+        } else {
+            maxPages = 0;
+            tabPage = 0;
+        }
+    }
+
+    public void rebuildEditModeButton() {
+        if (editModeBtn != null) {
+            removeWidget(editModeBtn);
+            editModeBtn = null;
+        }
+
+        if (ModConfig.get().showEditModeButton && this.minecraft.player != null && this.minecraft.player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) {
+            int editBtnWidth = 80;
+            editModeBtn = Button.builder(Component.literal("Edit: " + (ModConfig.get().enableEditMode ? "ON" : "OFF")), b -> {
+                ModConfig.get().enableEditMode = !ModConfig.get().enableEditMode;
+                if (this.selectedTab != null) {
+                    savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+                    this.selectedTab.storeScroll();
+                    PersistentData.snapshotTabPositions(this.selectedTab);
+                }
+                this.setLoading(true);
+                if (ModConfig.get().enableEditMode) {
+                    clientHasFullTree = true;
+                    Services.PLATFORM.sendRequestFullTree();
+                } else {
+                    clientHasFullTree = false;
+                    Services.PLATFORM.sendAdvancementJsonRequest(new RequestAdvancementJsonPayload(
+                            Identifier.fromNamespaceAndPath(Constants.MOD_ID, "resync"), "Resync"));
+                }
+                b.setMessage(Component.literal("Edit: " + (ModConfig.get().enableEditMode ? "ON" : "OFF")));
+            }).pos(this.width - editBtnWidth - 30, 10).size(editBtnWidth, 20).build();
+            addRenderableWidget(editModeBtn);
         }
     }
 
@@ -120,6 +337,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
         if (targetTab != null) {
             this.selectedTab = targetTab;
+            savedSelectedTab = root.holder().id();
             this.clientAdvancements.setSelectedTab(root.holder(), true);
             EnhancedAdvancementWidget widget = targetTab.getWidgets().get(node.holder());
 
@@ -138,6 +356,11 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
     }
 
+    @Override
+    public boolean isPauseScreen() {
+        return false;
+    }
+
     public Map<AdvancementHolder, EnhancedAdvancementTab> getTabs() {
         return this.tabs;
     }
@@ -152,8 +375,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     public void sortTabs() {
         List<Map.Entry<AdvancementHolder, EnhancedAdvancementTab>> list = new ArrayList<>(this.tabs.entrySet());
-        list.sort(Comparator.comparingInt((Map.Entry<AdvancementHolder, EnhancedAdvancementTab> e) -> e.getValue().customIndex)
-                .thenComparing(e -> ModConfig.get().orderTabsAlphabetically ? e.getValue().getTitle().getString() : ""));
+        list.sort(Comparator.comparingInt((Map.Entry<AdvancementHolder, EnhancedAdvancementTab> e) -> tabSortOrdinal(e.getKey()))
+                .thenComparingInt(e -> e.getValue().customIndex)
+                .thenComparing(e -> ModConfig.get().orderTabsAlphabetically ? e.getValue().getTitle().getString() : "")
+                .thenComparing(e -> e.getKey().id().toString()));
         this.tabs.clear();
         int newIndex = 0;
         int tabW = getTabInternalWidth();
@@ -181,10 +406,30 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public void removeWidgetFromClient(EnhancedAdvancementWidget widget) {
         if (selectedTab != null) {
             selectedTab.getWidgets().remove(widget.getAdvancement().holder());
-            if (widget.getParent() != null) {
-                widget.getParent().getChildren().remove(widget);
+            for (EnhancedAdvancementWidget p : widget.getParents()) {
+                p.getChildren().remove(widget);
             }
         }
+    }
+
+    public void unlinkAllParents(EnhancedAdvancementWidget widget) {
+        if (widget == null) return;
+        if (this.selectedTab != null) {
+            savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+            this.selectedTab.storeScroll();
+            PersistentData.snapshotTabPositions(this.selectedTab);
+        }
+        Identifier childId = widget.getAdvancement().holder().id();
+        PersistentData.save(this.tabs);
+
+        for (EnhancedAdvancementWidget parentWidget : new ArrayList<>(widget.getParents())) {
+            LinkAdvancementPayload payload = new LinkAdvancementPayload(childId, parentWidget.getAdvancement().holder().id(), true);
+            Services.PLATFORM.sendLinkAdvancement(payload);
+            parentWidget.getChildren().remove(widget);
+        }
+        widget.getParents().clear();
+        IMultiParentAdvancement.setParents(widget.getAdvancement().advancement(), List.of());
+        this.setLoading(true);
     }
 
     public float getZoom() {
@@ -206,22 +451,38 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         this.minecraft.setScreenAndShow(new ConfirmScreen(
                 (confirmed) -> {
                     if (confirmed) {
-                        String dummyJson = "{\"criteria\":{\"impossible\":{\"trigger\":\"minecraft:impossible\"}}}";
-                        EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), dummyJson, false);
+                        if (this.selectedTab != null) {
+                            savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+                            this.selectedTab.storeScroll();
+                            PersistentData.snapshotTabPositions(this.selectedTab);
+                        }
 
+                        Identifier deletedId = widget.getAdvancement().holder().id();
+
+                        for (EnhancedAdvancementWidget child : new ArrayList<>(widget.getChildren())) {
+                            LinkAdvancementPayload unlinkPayload = new LinkAdvancementPayload(child.getAdvancement().holder().id(), deletedId, true);
+                            Services.PLATFORM.sendLinkAdvancement(unlinkPayload);
+                            child.getParents().remove(widget);
+                        }
+                        widget.getChildren().clear();
+
+                        String dummyJson = "{\"criteria\":{\"impossible\":{\"trigger\":\"minecraft:impossible\"}}}";
+                        EditAdvancementPayload payload = new EditAdvancementPayload(deletedId, dummyJson, false);
                         if (Services.PLATFORM.canSendAdvancementEdit()) {
                             Services.PLATFORM.sendAdvancementEdit(payload);
                         }
-                        PersistentData.removePosition(widget.getAdvancement().holder().id());
-                        if (this.selectedTab != null && widget.getAdvancement().holder().id().equals(this.selectedTab.getRootNode().holder().id())) {
-                            PersistentData.removeTabProperties(this.selectedTab.getRootNode().holder().id());
+                        PersistentData.removePosition(deletedId);
+                        if (this.selectedTab != null && deletedId.equals(this.selectedTab.getRootNode().holder().id())) {
+                            PersistentData.removeTabProperties(deletedId);
                         }
+                        PersistentData.save(this.tabs);
                         removeWidgetFromClient(widget);
+                        this.setLoading(true);
                     }
                     this.minecraft.setScreenAndShow(this);
                 },
-                Component.literal("Delete Advancement?"),
-                Component.literal("Are you sure you want to delete this advancement from the game? This cannot be undone.")
+                Component.translatable("gui.reliable_advancements.dialog.delete.title"),
+                Component.translatable("gui.reliable_advancements.dialog.delete.message")
         ));
         this.contextMenu = null;
     }
@@ -230,6 +491,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         this.minecraft.setScreenAndShow(new ConfirmScreen(
                 (confirmed) -> {
                     if (confirmed) {
+                        if (this.selectedTab != null) {
+                            savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+                            this.selectedTab.storeScroll();
+                        }
                         EditAdvancementPayload payload = new EditAdvancementPayload(widget.getAdvancement().holder().id(), "{}", true);
                         if (Services.PLATFORM.canSendAdvancementEdit()) {
                             Services.PLATFORM.sendAdvancementEdit(payload);
@@ -239,12 +504,12 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                             PersistentData.removeTabProperties(this.selectedTab.getRootNode().holder().id());
                         }
 
-                        Services.PLATFORM.sendRequestFullTree();
+                        this.setLoading(true);
                     }
                     this.minecraft.setScreenAndShow(this);
                 },
-                Component.literal("Reset Advancement?"),
-                Component.literal("Are you sure you want to reset this advancement to its vanilla state? Any edits will be lost.")
+                Component.translatable("gui.reliable_advancements.dialog.reset_advancement.title"),
+                Component.translatable("gui.reliable_advancements.dialog.reset_advancement.message")
         ));
         this.contextMenu = null;
     }
@@ -284,6 +549,9 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         int newPosX = (int) Math.round(unzoomedX - (this.selectedTab != null ? this.selectedTab.scrollX : 0)) - EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
         int newPosY = (int) Math.round(unzoomedY - (this.selectedTab != null ? this.selectedTab.scrollY : 0)) - EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
 
+        if (this.selectedTab != null) {
+            PersistentData.snapshotTabPositions(this.selectedTab);
+        }
         PersistentData.setPosition(newId, newPosX, newPosY);
 
         if (this.selectedTab != null) {
@@ -296,6 +564,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         if (Services.PLATFORM.canSendAdvancementEdit()) {
             Services.PLATFORM.sendAdvancementEdit(payload);
         }
+        this.setLoading(true);
     }
 
     public void createNewAdvancement(int mouseX, int mouseY) {
@@ -315,44 +584,17 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             counter++;
         }
 
-        int tabW = getTabInternalWidth();
-        int tabH = getTabInternalHeight();
-        int left = SIDE + (width - tabW) / 2;
-        int top = TOP + (height - tabH) / 2;
-        double unzoomedX = (mouseX - left - PADDING) / this.zoom;
-        double unzoomedY = (mouseY - top - 2 * PADDING) / this.zoom;
+        TabBounds bounds = getTabBounds();
+        double unzoomedX = (mouseX - bounds.left - PADDING) / this.zoom;
+        double unzoomedY = (mouseY - bounds.top - 2 * PADDING) / this.zoom;
 
         int newPosX = (int) Math.round(unzoomedX - (this.selectedTab != null ? this.selectedTab.scrollX : 0)) - EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
         int newPosY = (int) Math.round(unzoomedY - (this.selectedTab != null ? this.selectedTab.scrollY : 0)) - EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
 
-        JsonObject root = new JsonObject();
-        JsonObject display = new JsonObject();
-        JsonObject icon = new JsonObject();
-        icon.addProperty("id", "minecraft:stone");
-        display.add("icon", icon);
+        Identifier parentId = this.selectedTab != null ? this.selectedTab.getRootNode().holder().id() : null;
+        JsonObject root = createDefaultAdvancementJson("New Advancement", "Description", null, parentId);
 
-        JsonObject title = new JsonObject();
-        title.addProperty("text", "New Advancement");
-        display.add("title", title);
-
-        JsonObject description = new JsonObject();
-        description.addProperty("text", "Description");
-        display.add("description", description);
-        root.add("display", display);
-
-        JsonObject criteria = new JsonObject();
-        JsonObject crit = new JsonObject();
-        crit.addProperty("trigger", "minecraft:impossible");
-        criteria.add("impossible", crit);
-        root.add("criteria", criteria);
-
-        if (this.selectedTab != null) {
-            root.addProperty("parent", this.selectedTab.getRootNode().holder().id().toString());
-        }
-
-        AdvancementEditorScreen editor = new AdvancementEditorScreen(
-                this, newId, true, newPosX, newPosY, "Properties", root.toString()
-        );
+        AdvancementEditorScreen editor = createEditorScreen(newId, newPosX, newPosY, root);
         Minecraft.getInstance().setScreenAndShow(editor);
         this.contextMenu = null;
     }
@@ -360,7 +602,11 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     @Override
     protected void init() {
         this.clearWidgets();
-        this.isInitializing = true;
+        this.editModeBtn = null;
+        this.advConnectedToMouse = null;
+        this.linkingWidget = null;
+        this.contextMenu = null;
+        selectedWidgets.clear();
 
         if (this.selectedTab != null) {
             this.selectedTab.storeScroll();
@@ -369,77 +615,44 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         PersistentData.load();
         this.internalHeight = this.height * ModConfig.get().uiScaling / 100;
         this.internalWidth = this.width * ModConfig.get().uiScaling / 100;
-        this.tabs.clear();
-        this.selectedTab = null;
-
-        if (EnhancedAdvancementsScreen.canEdit() && !clientHasFullTree) {
-            Services.PLATFORM.sendRequestFullTree();
-            clientHasFullTree = true;
-        }
-
         this.clientAdvancements.setListener(this);
 
-        if (savedSelectedTab != null) {
-            for (EnhancedAdvancementTab tab : this.tabs.values()) {
-                if (tab.getRootNode().holder().id().equals(savedSelectedTab)) {
-                    this.selectedTab = tab;
-                    break;
-                }
-            }
+        if (EnhancedAdvancementsScreen.canEdit() && !clientHasFullTree) {
+            this.setLoading(true);
+            Services.PLATFORM.sendRequestFullTree();
+            clientHasFullTree = true;
+            return;
         }
 
+        sortTabs();
+
+        this.selectedTab = findTabById(savedSelectedTab);
         if (this.selectedTab == null && !this.tabs.isEmpty()) {
             this.selectedTab = this.tabs.values().iterator().next();
         }
 
         if (this.selectedTab != null) {
+            if (savedSelectedTab == null || this.selectedTab.getRootNode().holder().id().equals(savedSelectedTab)) {
+                savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+            }
             this.clientAdvancements.setSelectedTab(this.selectedTab.getRootNode().holder(), true);
             this.selectedTab.loadScroll();
         }
 
-        int tabW = getTabInternalWidth();
-        int tabH = getTabInternalHeight();
-        int left = SIDE + (width - tabW) / 2;
-        int top = TOP + (height - tabH) / 2;
-        int right = tabW - SIDE + (width - tabW) / 2;
-        int bottom = tabH - SIDE + (height - tabH) / 2;
-        int width = right - left;
-        int height = bottom - top;
-        int maxTabs = EnhancedAdvancementTabType.getMaxTabs(width, height);
-
-        if (this.tabs.size() > maxTabs) {
-            maxPages = (this.tabs.size() - 1) / maxTabs;
-            tabPage = Math.min(tabPage, maxPages);
-            addRenderableWidget(Button.builder(Component.literal("<"), _ -> tabPage = Math.max(tabPage - 1, 0)).pos(left, bottom + 4).size(20, 20).build());
-            addRenderableWidget(Button.builder(Component.literal(">"), _ -> tabPage = Math.min(tabPage + 1, maxPages)).pos(right - 20, bottom + 4).size(20, 20).build());
-        } else {
-            maxPages = 0;
-            tabPage = 0;
-        }
-
-        if (ModConfig.get().showEditModeButton && this.minecraft.player != null && this.minecraft.player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) {
-            int editBtnWidth = 80;
-            addRenderableWidget(Button.builder(Component.literal("Edit Mode: " + (ModConfig.get().enableEditMode ? "ON" : "OFF")), b -> {
-                ModConfig.get().enableEditMode = !ModConfig.get().enableEditMode;
-                if (ModConfig.get().enableEditMode) {
-                    clientHasFullTree = true;
-                    Services.PLATFORM.sendRequestFullTree();
-                } else {
-                    clientHasFullTree = false;
-                    Services.PLATFORM.sendAdvancementJsonRequest(new RequestAdvancementJsonPayload(
-                            Identifier.fromNamespaceAndPath(Constants.MOD_ID, "resync"), "Resync"));
-                }
-                b.setMessage(Component.literal("Edit: " + (ModConfig.get().enableEditMode ? "ON" : "OFF")));
-            }).pos(this.width - editBtnWidth - 30, 10).size(editBtnWidth, 20).build());
-        }
-
-        this.isInitializing = false;
+        this.rebuildNavigationWidgets();
+        this.rebuildEditModeButton();
     }
 
     private boolean isDescendant(EnhancedAdvancementWidget potentialAncestor, EnhancedAdvancementWidget potentialDescendant) {
-        if (potentialAncestor == potentialDescendant) return true;
-        for (EnhancedAdvancementWidget child : potentialAncestor.getChildren()) {
-            if (isDescendant(child, potentialDescendant)) return true;
+        Set<EnhancedAdvancementWidget> visited = new HashSet<>();
+        return isDescendant(potentialAncestor, potentialDescendant, visited);
+    }
+
+    private boolean isDescendant(EnhancedAdvancementWidget current, EnhancedAdvancementWidget target, Set<EnhancedAdvancementWidget> visited) {
+        if (current == target) return true;
+        if (!visited.add(current)) return false;
+        for (EnhancedAdvancementWidget child : current.getChildren()) {
+            if (isDescendant(child, target, visited)) return true;
         }
         return false;
     }
@@ -449,6 +662,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         double mouseX = event.x();
         double mouseY = event.y();
         int button = event.button();
+
+        if (this.isLoading) return true;
 
         if (EnhancedAdvancementsScreen.canEdit() && button == 0 && this.contextMenu == null) {
             EnhancedAdvancementWidget hovered = getHoveredWidget(mouseX, mouseY);
@@ -466,9 +681,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     }
                 }
             } else {
-                int left = SIDE + (width - getTabInternalWidth()) / 2;
-                int top = TOP + (height - getTabInternalHeight()) / 2;
-                if (mouseX >= left && mouseX <= left + getTabInternalWidth() && mouseY >= top && mouseY <= top + getTabInternalHeight()) {
+                TabBounds bounds = getTabBounds();
+                if (mouseX >= bounds.left && mouseX <= bounds.right && mouseY >= bounds.top && mouseY <= bounds.bottom) {
                     selectedWidgets.clear();
                 }
             }
@@ -482,44 +696,52 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             }
         }
 
-        int tabW = getTabInternalWidth();
-        int tabH = getTabInternalHeight();
-        int left = SIDE + (width - tabW) / 2;
-        int top = TOP + (height - tabH) / 2;
-        int right = tabW - SIDE + (width - tabW) / 2;
-        int bottom = tabH - SIDE + (height - tabH) / 2;
-        int width = right - left;
-        int height = bottom - top;
+        TabBounds bounds = getTabBounds();
+        int left = bounds.left;
+        int top = bounds.top;
+        int width = bounds.width;
+        int height = bounds.height;
 
         if (this.linkingWidget != null && button == 0) {
             EnhancedAdvancementWidget target = getHoveredWidget(mouseX, mouseY);
             if (target != null && target != this.linkingWidget) {
-
-                if (isDescendant(this.linkingWidget, target)) {
-                    this.linkingError = "Cannot link: Creates a cyclic dependency!";
-                    this.linkingErrorTime = Util.getMillis() + 3000;
-                    this.linkingWidget = null;
-                    return true;
+                if (this.selectedTab != null) {
+                    savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+                    this.selectedTab.storeScroll();
+                    PersistentData.snapshotTabPositions(this.selectedTab);
                 }
 
                 Identifier id = linkingWidget.getAdvancement().holder().id();
-
                 Identifier parentResId = target.getAdvancement().holder().id();
-                LinkAdvancementPayload payload = new LinkAdvancementPayload(id, parentResId);
-                Services.PLATFORM.sendLinkAdvancement(payload);
 
-                if (linkingWidget.getParent() != null) {
-                    linkingWidget.getParent().getChildren().remove(linkingWidget);
+                PersistentData.save(this.tabs);
+
+                if (linkingWidget.getParents().contains(target)) {
+                    LinkAdvancementPayload payload = new LinkAdvancementPayload(id, parentResId, true);
+                    Services.PLATFORM.sendLinkAdvancement(payload);
+
+                    linkingWidget.removeParent(target);
+                    target.getChildren().remove(linkingWidget);
+                } else {
+                    if (isDescendant(this.linkingWidget, target)) {
+                        this.linkingError = Component.translatable("gui.reliable_advancements.linking.error.cycle").getString();
+                        this.linkingErrorTime = Util.getMillis() + 3000;
+                        this.linkingWidget = null;
+                        return true;
+                    }
+
+                    LinkAdvancementPayload payload = new LinkAdvancementPayload(id, parentResId, false);
+                    Services.PLATFORM.sendLinkAdvancement(payload);
+
+                    linkingWidget.addParent(target);
+                    if (!target.getChildren().contains(linkingWidget)) {
+                        target.getChildren().add(linkingWidget);
+                    }
                 }
-                linkingWidget.setParent(target);
-                target.getChildren().add(linkingWidget);
 
-                this.linkingWidget = null;
-                return true;
-            } else if (target == null) {
-                this.linkingWidget = null;
-                return true;
             }
+            this.linkingWidget = null;
+            return true;
         }
 
         if (button == 0) {
@@ -562,11 +784,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     private EnhancedAdvancementWidget getHoveredWidget(double mouseX, double mouseY) {
         if (this.selectedTab == null) return null;
 
-        int left = SIDE + (width - getTabInternalWidth()) / 2;
-        int top = TOP + (height - getTabInternalHeight()) / 2;
+        TabBounds bounds = getTabBounds();
 
-        double unzoomedX = (mouseX - left - PADDING) / this.zoom;
-        double unzoomedY = (mouseY - top - 2 * PADDING) / this.zoom;
+        double unzoomedX = (mouseX - bounds.left - PADDING) / this.zoom;
+        double unzoomedY = (mouseY - bounds.top - 2 * PADDING) / this.zoom;
 
         for (EnhancedAdvancementWidget widget : this.selectedTab.getWidgets().values()) {
             if (widget.isMouseOver(this.selectedTab.scrollX, this.selectedTab.scrollY, unzoomedX, unzoomedY)) {
@@ -578,18 +799,17 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (this.isLoading) return true;
         if (this.contextMenu != null) this.contextMenu = null;
-
         if (this.selectedTab != null) {
             if (hasControlDown()) {
                 int left = SIDE + (width - internalWidth) / 2;
                 int top = TOP + (height - internalHeight) / 2;
-
                 double relMouseX = mouseX - (left + PADDING);
                 double relMouseY = mouseY - (top + 2 * PADDING);
-
                 float oldZoom = this.zoom;
                 this.zoom = Mth.clamp(this.zoom + (float) scrollY * ZOOM_STEP, MIN_ZOOM, MAX_ZOOM);
+                savedZoom = this.zoom;
 
                 if (this.zoom != oldZoom) {
                     double shiftX = (relMouseX / this.zoom) - (relMouseX / oldZoom);
@@ -609,17 +829,29 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     @Override
     public boolean keyPressed(KeyEvent event) {
         int keyCode = event.key();
-
+        int scanCode = event.scancode();
+        if (this.isLoading) {
+            if (keyCode == 256) {
+                this.onClose();
+                return true;
+            }
+            return true;
+        }
         if (this.contextMenu != null) this.contextMenu = null;
+
+        if (keyCode == 256 && this.linkingWidget != null) {
+            this.linkingWidget = null;
+            return true;
+        }
 
         if (EnhancedAdvancementsScreen.canEdit()) {
             if (!selectedWidgets.isEmpty()) {
                 int shift = hasShiftDown() ? 4 : 1;
                 int dx = 0, dy = 0;
-                if (keyCode == 265) dy = -shift; // Up
-                else if (keyCode == 264) dy = shift; // Down
-                else if (keyCode == 263) dx = -shift; // Left
-                else if (keyCode == 262) dx = shift; // Right
+                if (keyCode == 265) dy = -shift;
+                else if (keyCode == 264) dy = shift;
+                else if (keyCode == 263) dx = -shift;
+                else if (keyCode == 262) dx = shift;
 
                 if (dx != 0 || dy != 0) {
                     for (EnhancedAdvancementWidget w : selectedWidgets) {
@@ -633,7 +865,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                 }
             }
 
-            if (hasControlDown() && keyCode == 67) { // C
+            if (hasControlDown() && keyCode == 67) {
                 double mouseX = this.minecraft.mouseHandler.xpos() * (double) this.width / (double) this.minecraft.getWindow().getScreenWidth();
                 double mouseY = this.minecraft.mouseHandler.ypos() * (double) this.height / (double) this.minecraft.getWindow().getScreenHeight();
                 EnhancedAdvancementWidget target = selectedWidgets.size() == 1 ? selectedWidgets.iterator().next() : null;
@@ -642,12 +874,12 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     copyAdvancement(target);
                 }
                 return true;
-            } else if (hasControlDown() && keyCode == 86) { // V
+            } else if (hasControlDown() && keyCode == 86) {
                 double mouseX = this.minecraft.mouseHandler.xpos() * (double) this.width / (double) this.minecraft.getWindow().getScreenWidth();
                 double mouseY = this.minecraft.mouseHandler.ypos() * (double) this.height / (double) this.minecraft.getWindow().getScreenHeight();
                 pasteAdvancement((int) mouseX, (int) mouseY);
                 return true;
-            } else if (keyCode == 261 || keyCode == 259) { // Delete / backspace
+            } else if (keyCode == 261 || keyCode == 259) {
                 double mouseX = this.minecraft.mouseHandler.xpos() * (double) this.width / (double) this.minecraft.getWindow().getScreenWidth();
                 double mouseY = this.minecraft.mouseHandler.ypos() * (double) this.height / (double) this.minecraft.getWindow().getScreenHeight();
                 EnhancedAdvancementWidget target = selectedWidgets.size() == 1 ? selectedWidgets.iterator().next() : null;
@@ -659,9 +891,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             }
         }
 
-        if (this.minecraft.options.keyAdvancements.matches(event)) {
-            this.minecraft.setScreenAndShow(null);
-            this.minecraft.mouseHandler.grabMouse();
+        if (this.minecraft.options.keyAdvancements.matches(event) || this.minecraft.options.keyInventory.matches(event)) {
+            this.onClose();
             return true;
         } else {
             return super.keyPressed(event);
@@ -669,7 +900,11 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     @Override
-    public boolean mouseReleased(@NonNull MouseButtonEvent event) {
+    public boolean mouseReleased(MouseButtonEvent event) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+        if (this.isLoading) return true;
         if (this.advConnectedToMouse != null) {
             if (selectedWidgets.contains(this.advConnectedToMouse)) {
                 for (EnhancedAdvancementWidget w : selectedWidgets) {
@@ -681,6 +916,9 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                 PersistentData.setMemoryPosition(this.advConnectedToMouse.getAdvancement().holder().id(), this.advConnectedToMouse.getX(), this.advConnectedToMouse.getY());
             }
             this.advConnectedToMouse = null;
+            if (this.selectedTab != null) {
+                this.selectedTab.recalculateBounds();
+            }
             if (EnhancedAdvancementsScreen.canEdit()) {
                 PersistentData.save(this.tabs);
             }
@@ -696,7 +934,12 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
         if (this.selectedTab != null) {
             savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+            this.selectedTab.storeScroll();
         }
+        this.advConnectedToMouse = null;
+        this.linkingWidget = null;
+        this.contextMenu = null;
+        selectedWidgets.clear();
         super.removed();
     }
 
@@ -707,17 +950,16 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         if (clientpacketlistener != null) {
             clientpacketlistener.send(ServerboundSeenAdvancementsPacket.closedScreen());
         }
-        super.onClose();
+        this.minecraft.setScreenAndShow(this.parent);
     }
 
     @Override
-    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+    public boolean mouseDragged(MouseButtonEvent event, double mouseDeltaX, double mouseDeltaY) {
         double mouseX = event.x();
         double mouseY = event.y();
         int button = event.button();
-
-        int left = SIDE + (width - getTabInternalWidth()) / 2;
-        int top = TOP + (height - getTabInternalHeight()) / 2;
+        if (this.isLoading) return true;
+        TabBounds bounds = getTabBounds();
 
         if (button != 0 && button != 2) {
             this.isScrolling = false;
@@ -728,10 +970,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
         if (!this.isScrolling) {
             if (this.advConnectedToMouse == null) {
-                boolean inGui = mouseX < left + getTabInternalWidth() - 2 * SIDE - PADDING && mouseX > left + PADDING && mouseY < top + getTabInternalHeight() - TOP + 1 && mouseY > top + 2 * PADDING;
+                boolean inGui = mouseX < bounds.right - PADDING && mouseX > bounds.left + PADDING && mouseY < bounds.bottom + 1 && mouseY > bounds.top + 2 * PADDING;
                 if (this.selectedTab != null && inGui) {
-                    double unzoomedMouseX = (mouseX - left - PADDING) / this.zoom;
-                    double unzoomedMouseY = (mouseY - top - 2 * PADDING) / this.zoom;
+                    double unzoomedMouseX = (mouseX - bounds.left - PADDING) / this.zoom;
+                    double unzoomedMouseY = (mouseY - bounds.top - 2 * PADDING) / this.zoom;
 
                     for (EnhancedAdvancementWidget betterAdvancementEntryScreen : this.selectedTab.getWidgets().values()) {
                         if (betterAdvancementEntryScreen.isMouseOver(this.selectedTab.scrollX, this.selectedTab.scrollY, unzoomedMouseX, unzoomedMouseY)) {
@@ -745,8 +987,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     }
                 }
             } else {
-                double unzoomedMouseX = (mouseX - left - PADDING) / this.zoom;
-                double unzoomedMouseY = (mouseY - top - 2 * PADDING) / this.zoom;
+                double unzoomedMouseX = (mouseX - bounds.left - PADDING) / this.zoom;
+                double unzoomedMouseY = (mouseY - bounds.top - 2 * PADDING) / this.zoom;
 
                 int newPosX = (int) Math.round(unzoomedMouseX - this.dragOffsetX - this.selectedTab.scrollX);
                 int newPosY = (int) Math.round(unzoomedMouseY - this.dragOffsetY - this.selectedTab.scrollY);
@@ -782,175 +1024,215 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             if (!this.isScrolling) {
                 this.isScrolling = true;
             } else if (this.selectedTab != null) {
-                this.selectedTab.scroll(dragX / this.zoom, dragY / this.zoom, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
+                this.selectedTab.scroll(mouseDeltaX / this.zoom, mouseDeltaY / this.zoom, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
             }
         }
         return true;
     }
 
     @Override
-    public void extractRenderState(@NotNull GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, float partialTicks) {
+    public void extractRenderState(@NotNull GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
+        TabBounds bounds = getTabBounds();
         int tabW = getTabInternalWidth();
-        int tabH = getTabInternalHeight();
-        int left = SIDE + (width - tabW) / 2;
-        int top = TOP + (height - tabH) / 2;
-        int right = tabW - SIDE + (width - tabW) / 2;
-        int bottom = tabH - SIDE + (height - tabH) / 2;
-        int width = right - left;
-        int height = bottom - top;
-        int maxTabs = EnhancedAdvancementTabType.getMaxTabs(width, height);
+        int left = bounds.left;
+        int top = bounds.top;
+        int right = bounds.right;
+        int bottom = bounds.bottom;
+        int maxTabs = bounds.maxTabs;
         int skip = tabPage * maxTabs;
 
         if (maxPages != 0) {
             Component page = Component.literal(String.format("%d / %d", tabPage + 1, maxPages + 1));
             int textWidth = this.font.width(page);
-            guiGraphicsExtractor.text(this.font, page.getVisualOrderText(), left + (tabW - textWidth) / 2 - textWidth, bottom + 8, -1);
+            guiGraphics.text(this.font, page.getVisualOrderText(), left + (tabW - textWidth) / 2 - textWidth, bottom + 8, -1);
         }
 
-        // This replaces the old renderables loop and super.render calls natively
-        super.extractRenderState(guiGraphicsExtractor, mouseX, mouseY, partialTicks);
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTicks);
 
-        guiGraphicsExtractor.nextStratum();
-        this.renderInside(guiGraphicsExtractor, mouseX, mouseY, left, top, right, bottom);
+        this.renderInside(guiGraphics, mouseX, mouseY, left, top, right, bottom);
 
-        guiGraphicsExtractor.nextStratum();
-        this.renderWindow(guiGraphicsExtractor, left, top, right, bottom, maxTabs, skip);
+        if (!this.isLoading) {
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(left + PADDING, top + 2 * PADDING);
+            guiGraphics.pose().scale(zoom, zoom);
 
-        guiGraphicsExtractor.pose().pushMatrix();
-        guiGraphicsExtractor.pose().translate(left + PADDING, top + 2 * PADDING);
-        guiGraphicsExtractor.pose().scale(zoom, zoom);
-
-        if (EnhancedAdvancementsScreen.canEdit() && this.selectedTab != null) {
-            if (this.advConnectedToMouse != null) {
-                java.util.Set<EnhancedAdvancementWidget> draggingWidgets = selectedWidgets.contains(this.advConnectedToMouse) ? selectedWidgets : java.util.Set.of(this.advConnectedToMouse);
-                for (EnhancedAdvancementWidget w : draggingWidgets) {
-                    int ax = w.getX() + this.selectedTab.scrollX;
-                    int ay = w.getY() + this.selectedTab.scrollY;
-                    guiGraphicsExtractor.outline(ax + 2, ay - 1, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 2, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 2, 0xFF00FF00);
-                    guiGraphicsExtractor.outline(ax + 1, ay - 2, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 4, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 4, 0xFF00FF00);
-                }
-            }
-        }
-        guiGraphicsExtractor.pose().popMatrix();
-
-        if (this.linkingWidget != null) {
-            int startX = (int) ((this.linkingWidget.getX() + this.selectedTab.scrollX + (float) EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2) * zoom) + left + PADDING;
-            int startY = (int) ((this.linkingWidget.getY() + this.selectedTab.scrollY + (float) EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2) * zoom) + top + 2 * PADDING;
-
-            RenderUtil.line(guiGraphicsExtractor, startX, startY, mouseX, mouseY, 2, 0xFF00FF00);
-            guiGraphicsExtractor.text(this.font, "Select parent to link...", mouseX + 15, mouseY + 10, 0xFF00FF00);
-        }
-
-        if (this.advConnectedToMouse == null && this.contextMenu == null) {
-            this.renderToolTips(guiGraphicsExtractor, mouseX, mouseY, left, top, right, bottom, maxTabs, skip);
-        }
-
-        if (this.advConnectedToMouse != null) {
-            guiGraphicsExtractor.pose().pushMatrix();
-            guiGraphicsExtractor.pose().translate(left + PADDING, top + 2 * PADDING);
-            guiGraphicsExtractor.pose().scale(zoom, zoom);
-
-            for (EnhancedAdvancementWidget advancementEntryScreen : this.selectedTab.getWidgets().values()) {
-                if (advancementEntryScreen != this.advConnectedToMouse) {
-                    int x1 = advancementEntryScreen.getX() + this.selectedTab.scrollX + 3;
-                    int x2 = this.advConnectedToMouse.getX() + this.selectedTab.scrollX + 3;
-                    int y1 = advancementEntryScreen.getY() + this.selectedTab.scrollY;
-                    int y2 = this.advConnectedToMouse.getY() + this.selectedTab.scrollY;
-                    int centerX1 = x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
-                    int centerX2 = x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
-                    int centerY1 = y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
-                    int centerY2 = y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
-                    double degrees = Math.toDegrees(Math.atan2(centerX1 - centerX2, centerY1 - centerY2));
-                    if (degrees < 0) {
-                        degrees += 360;
-                    }
-
-                    if (advancementEntryScreen.getX() == this.advConnectedToMouse.getX()) {
-                        if (y1 > y2) {
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y2, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x2, y1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, x2, y2, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, 1, 0x00FF00);
-                        } else {
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, x2, y2, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x2, y1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, 1, 0x00FF00);
-                        }
-                    }
-                    if (advancementEntryScreen.getY() == this.advConnectedToMouse.getY()) {
-                        if (x1 > x2) {
-                            RenderUtil.drawRect(guiGraphicsExtractor, x2, y1, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1, y1, x1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x2, y1, x2, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x2, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                        } else {
-                            RenderUtil.drawRect(guiGraphicsExtractor, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x1, y2, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x2, y1, x2, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1, y1, x1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                        }
-                    }
-                    if (degrees == 45 || degrees == 135 || degrees == 225 || degrees == 315) {
-                        RenderUtil.drawRect(guiGraphicsExtractor, x1, y1, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, 1, 0x00FF00);
-                        RenderUtil.drawRect(guiGraphicsExtractor, x1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                        RenderUtil.drawRect(guiGraphicsExtractor, x1, y1, x1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                        RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-
-                        RenderUtil.drawRect(guiGraphicsExtractor, x2, y2, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, 1, 0x00FF00);
-                        RenderUtil.drawRect(guiGraphicsExtractor, x2, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                        RenderUtil.drawRect(guiGraphicsExtractor, x2, y2, x2, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                        RenderUtil.drawRect(guiGraphicsExtractor, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-
-                        if (degrees == 45 || degrees == 225) {
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, 1, 0x00FF00);
-                        } else {
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1, y1, x2, y2, 1, 0x00FF00);
-                            RenderUtil.drawRect(guiGraphicsExtractor, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0x00FF00);
-                        }
+            if (EnhancedAdvancementsScreen.canEdit() && this.selectedTab != null) {
+                if (this.advConnectedToMouse != null) {
+                    Set<EnhancedAdvancementWidget> draggingWidgets = selectedWidgets.contains(this.advConnectedToMouse) ? selectedWidgets : Set.of(this.advConnectedToMouse);
+                    for (EnhancedAdvancementWidget w : draggingWidgets) {
+                        int ax = w.getX() + this.selectedTab.scrollX;
+                        int ay = w.getY() + this.selectedTab.scrollY;
+                        guiGraphics.outline(ax + 2, ay - 1, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 2, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 2, 0xFF00FF00);
+                        guiGraphics.outline(ax + 1, ay - 2, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 4, EnhancedAdvancementWidget.ADVANCEMENT_SIZE + 4, 0xFF00FF00);
                     }
                 }
             }
-            guiGraphicsExtractor.pose().popMatrix();
-        }
+            guiGraphics.pose().popMatrix();
 
-        if (ModConfig.get().showDebugCoordinates && this.selectedTab != null && mouseX < getTabInternalWidth() - SIDE - PADDING && mouseX > SIDE + PADDING && mouseY < getTabInternalHeight() - top + 1 && mouseY > top + PADDING * 2) {
-            if (this.advConnectedToMouse != null) {
-                int currentX = (int) ((this.advConnectedToMouse.getX() + this.selectedTab.scrollX + 4) * zoom) + left + PADDING;
-                int currentY = (int) ((this.advConnectedToMouse.getY() + this.selectedTab.scrollY) * zoom) + top + 2 * PADDING - font.lineHeight + 1;
-                guiGraphicsExtractor.text(font, this.advConnectedToMouse.getX() + "," + this.advConnectedToMouse.getY(), currentX, currentY, 0xFFFFFFFF);
-            } else {
-                int xMouse = (int) ((mouseX - left - PADDING) / zoom);
-                int yMouse = (int) ((mouseY - top - 2 * PADDING) / zoom);
-                int currentX = xMouse - this.selectedTab.scrollX - 4;
-                int currentY = yMouse - this.selectedTab.scrollY - 1;
-                guiGraphicsExtractor.text(font, currentX + "," + currentY, mouseX, mouseY - font.lineHeight, 0xFFFFFFFF);
+            if (this.linkingWidget != null && this.selectedTab != null) {
+                int startX = (int) ((this.linkingWidget.getX() + this.selectedTab.scrollX + (float) EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2) * zoom) + left + PADDING;
+                int startY = (int) ((this.linkingWidget.getY() + this.selectedTab.scrollY + (float) EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2) * zoom) + top + 2 * PADDING;
+
+                EnhancedAdvancementWidget hoveredTarget = getHoveredWidget(mouseX, mouseY);
+                int lineColor = 0xFF00FF00;
+                Component promptText = Component.translatable("gui.reliable_advancements.linking.prompt");
+
+                if (hoveredTarget != null && hoveredTarget != this.linkingWidget) {
+                    if (linkingWidget.getParents().contains(hoveredTarget)) {
+                        lineColor = 0xFFFF5555;
+                        promptText = Component.translatable("gui.reliable_advancements.linking.unlink", Advancement.name(hoveredTarget.getAdvancement().holder()));
+                    } else if (isDescendant(this.linkingWidget, hoveredTarget)) {
+                        lineColor = 0xFFAA0000;
+                        promptText = Component.translatable("gui.reliable_advancements.linking.error.cycle");
+                    } else {
+                        lineColor = 0xFF55FF55;
+                        promptText = Component.translatable("gui.reliable_advancements.linking.link", Advancement.name(hoveredTarget.getAdvancement().holder()));
+                    }
+                }
+
+                
+                RenderUtil.line(guiGraphics, startX, startY, mouseX, mouseY, 1, lineColor);
+                
+
+                guiGraphics.text(this.font, promptText, mouseX + 15, mouseY + 10, lineColor);
             }
         }
 
-        if (this.contextMenu != null) {
-            this.contextMenu.render(guiGraphicsExtractor, mouseX, mouseY, partialTicks);
-        }
+        this.renderWindow(guiGraphics, left, top, right, bottom, maxTabs, skip);
 
-        if (this.linkingError != null && Util.getMillis() < this.linkingErrorTime) {
-            int errW = this.font.width(this.linkingError);
-            guiGraphicsExtractor.fill(mouseX + 10, mouseY - 15, mouseX + 16 + errW, mouseY + 1, 0xDD000000);
-            guiGraphicsExtractor.outline(mouseX + 10, mouseY - 15, errW + 6, 16, 0xFFFF5555);
-            guiGraphicsExtractor.text(this.font, this.linkingError, mouseX + 13, mouseY - 11, 0xFFFF5555);
+        if (this.isLoading) {
+            guiGraphics.pose().pushMatrix();
+            
+
+            int boxLeft = left + PADDING;
+            int boxTop = top + 2 * PADDING;
+            int boxRight = right - PADDING;
+            int boxBottom = bottom - PADDING;
+            guiGraphics.fill(boxLeft, boxTop, boxRight, boxBottom, 0xEE0B0F19);
+
+            int cardW = 190, cardH = 46;
+            int cardX = boxLeft + (boxRight - boxLeft - cardW) / 2;
+            int cardY = boxTop + (boxBottom - boxTop - cardH) / 2;
+            guiGraphics.fill(cardX, cardY, cardX + cardW, cardY + cardH, 0xF0161B22);
+            guiGraphics.outline(cardX, cardY, cardW, cardH, 0xFF30363D);
+
+            String dots = ".".repeat((int) ((Util.getMillis() / 350) % 4));
+            String msg = "Loading Advancements" + dots;
+            guiGraphics.text(this.font, msg, cardX + (cardW - this.font.width(msg)) / 2, cardY + (cardH - this.font.lineHeight) / 2, 0xFFE6EDF3, false);
+
+            
+            guiGraphics.pose().popMatrix();
+        } else {
+            if (this.advConnectedToMouse == null && this.contextMenu == null) {
+                this.renderToolTips(guiGraphics, mouseX, mouseY, left, top, right, bottom, maxTabs, skip);
+            }
+
+            if (this.advConnectedToMouse != null && this.selectedTab != null) {
+                guiGraphics.pose().pushMatrix();
+                guiGraphics.pose().translate(left + PADDING, top + 2 * PADDING);
+                guiGraphics.pose().scale(zoom, zoom);
+
+                for (EnhancedAdvancementWidget advancementEntryScreen : this.selectedTab.getWidgets().values()) {
+                    if (advancementEntryScreen != this.advConnectedToMouse) {
+                        int x1 = advancementEntryScreen.getX() + this.selectedTab.scrollX + 3;
+                        int x2 = this.advConnectedToMouse.getX() + this.selectedTab.scrollX + 3;
+                        int y1 = advancementEntryScreen.getY() + this.selectedTab.scrollY;
+                        int y2 = this.advConnectedToMouse.getY() + this.selectedTab.scrollY;
+                        int centerX1 = x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
+                        int centerX2 = x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
+                        int centerY1 = y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
+                        int centerY2 = y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
+                        double degrees = Math.toDegrees(Math.atan2(centerX1 - centerX2, centerY1 - centerY2));
+                        if (degrees < 0) {
+                            degrees += 360;
+                        }
+
+                        if (advancementEntryScreen.getX() == this.advConnectedToMouse.getX()) {
+                            if (y1 > y2) {
+                                RenderUtil.drawRect(guiGraphics, x1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y2, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x2, y1, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y2, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, x2, y2, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, 1, 0xFF00FF00);
+                            } else {
+                                RenderUtil.drawRect(guiGraphics, x1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y1, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y2, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, x2, y2, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x2, y1, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, 1, 0xFF00FF00);
+                            }
+                        }
+                        if (advancementEntryScreen.getY() == this.advConnectedToMouse.getY()) {
+                            if (x1 > x2) {
+                                RenderUtil.drawRect(guiGraphics, x2, y1, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1, y1, x1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x2, y1, x2, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x2, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                            } else {
+                                RenderUtil.drawRect(guiGraphics, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x1, y2, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x2, y1, x2, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1, y1, x1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                            }
+                        }
+                        if (degrees == 45 || degrees == 135 || degrees == 225 || degrees == 315) {
+                            RenderUtil.drawRect(guiGraphics, x1, y1, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, 1, 0xFF00FF00);
+                            RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                            RenderUtil.drawRect(guiGraphics, x1, y1, x1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                            RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+
+                            RenderUtil.drawRect(guiGraphics, x2, y2, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, 1, 0xFF00FF00);
+                            RenderUtil.drawRect(guiGraphics, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                            RenderUtil.drawRect(guiGraphics, x2, y2, x2, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                            RenderUtil.drawRect(guiGraphics, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+
+                            if (degrees == 45 || degrees == 225) {
+                                RenderUtil.drawRect(guiGraphics, x1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2, 1, 0xFF00FF00);
+                            } else {
+                                RenderUtil.drawRect(guiGraphics, x1, y1, x2, y2, 1, 0xFF00FF00);
+                                RenderUtil.drawRect(guiGraphics, x1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y1 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, x2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, y2 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE - 1, 1, 0xFF00FF00);
+                            }
+                        }
+                    }
+                }
+                guiGraphics.pose().popMatrix();
+            }
+
+            if (ModConfig.get().showDebugCoordinates && this.selectedTab != null && mouseX < getTabInternalWidth() - SIDE - PADDING && mouseX > SIDE + PADDING && mouseY < getTabInternalHeight() - top + 1 && mouseY > top + PADDING * 2) {
+                if (this.advConnectedToMouse != null) {
+                    int currentX = (int) ((this.advConnectedToMouse.getX() + this.selectedTab.scrollX + 4) * zoom) + left + PADDING;
+                    int currentY = (int) ((this.advConnectedToMouse.getY() + this.selectedTab.scrollY) * zoom) + top + 2 * PADDING - font.lineHeight + 1;
+                    guiGraphics.text(font, this.advConnectedToMouse.getX() + "," + this.advConnectedToMouse.getY(), currentX, currentY, 0xFFFFFFFF);
+                } else {
+                    int xMouse = (int) ((mouseX - left - PADDING) / zoom);
+                    int yMouse = (int) ((mouseY - top - 2 * PADDING) / zoom);
+                    int currentX = xMouse - this.selectedTab.scrollX - 4;
+                    int currentY = yMouse - this.selectedTab.scrollY - 1;
+                    guiGraphics.text(font, currentX + "," + currentY, mouseX, mouseY - font.lineHeight, 0xFFFFFFFF);
+                }
+            }
+
+            if (this.contextMenu != null) {
+                this.contextMenu.render(guiGraphics, mouseX, mouseY, partialTicks);
+            }
+
+            if (this.linkingError != null && Util.getMillis() < this.linkingErrorTime) {
+                int errW = this.font.width(this.linkingError);
+                guiGraphics.fill(mouseX + 10, mouseY - 15, mouseX + 16 + errW, mouseY + 1, 0xDD000000);
+                guiGraphics.outline(mouseX + 10, mouseY - 15, errW + 6, 16, 0xFFFF5555);
+                guiGraphics.text(this.font, this.linkingError, mouseX + 13, mouseY - 11, 0xFFFF5555);
+            }
         }
     }
 
-    private void renderInside(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, int left, int top, int right, int bottom) {
-        EnhancedAdvancementTab betterAdvancementTab = this.selectedTab;
+    private void renderInside(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, int left, int top, int right, int bottom) {
         int boxLeft = left + PADDING;
         int boxTop = top + 2 * PADDING;
         int boxRight = right - PADDING;
@@ -959,36 +1241,47 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         int width = boxRight - boxLeft;
         int height = boxBottom - boxTop;
 
+        if (this.isLoading) {
+            guiGraphics.fill(boxLeft, boxTop, boxRight, boxBottom, 0xFF0E131F);
+            return;
+        }
+
+        EnhancedAdvancementTab betterAdvancementTab = this.selectedTab;
+        if (betterAdvancementTab == null && !this.tabs.isEmpty()) {
+            this.selectedTab = this.tabs.values().iterator().next();
+            betterAdvancementTab = this.selectedTab;
+        }
+
         if (betterAdvancementTab == null) {
-            guiGraphicsExtractor.fill(boxLeft, boxTop, boxRight, boxBottom, -16777216);
-            guiGraphicsExtractor.text(this.font, NO_ADVANCEMENTS_LABEL, boxLeft + (width - this.font.width(NO_ADVANCEMENTS_LABEL)) / 2, boxTop + height / 2 - this.font.lineHeight, -1);
-            guiGraphicsExtractor.text(this.font, VERY_SAD_LABEL, boxLeft + (width - this.font.width(VERY_SAD_LABEL)) / 2, boxTop + height / 2 + this.font.lineHeight, -1);
+            guiGraphics.fill(boxLeft, boxTop, boxRight, boxBottom, -16777216);
+            guiGraphics.text(this.font, NO_ADVANCEMENTS_LABEL, boxLeft + (width - this.font.width(NO_ADVANCEMENTS_LABEL)) / 2, boxTop + height / 2 - this.font.lineHeight, -1);
+            guiGraphics.text(this.font, VERY_SAD_LABEL, boxLeft + (width - this.font.width(VERY_SAD_LABEL)) / 2, boxTop + height / 2 + this.font.lineHeight, -1);
         } else {
-            betterAdvancementTab.drawContents(guiGraphicsExtractor, boxLeft, boxTop, width, height, mouseX, mouseY);
+            betterAdvancementTab.drawContents(guiGraphics, boxLeft, boxTop, width, height, mouseX, mouseY);
         }
     }
 
-    public void renderWindow(GuiGraphicsExtractor guiGraphicsExtractor, int left, int top, int right, int bottom, int maxTabs, int skip) {
-        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WINDOW, left, top, 0f, 0f, CORNER_SIZE, CORNER_SIZE, 256, 256);
+    public void renderWindow(GuiGraphicsExtractor guiGraphics, int left, int top, int right, int bottom, int maxTabs, int skip) {
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WINDOW, left, top, 0f, 0f, CORNER_SIZE, CORNER_SIZE, 256, 256);
         int tabW = getTabInternalWidth();
-        RenderUtil.renderRepeating(Resources.Gui.WINDOW, guiGraphicsExtractor, left + CORNER_SIZE, top, tabW - CORNER_SIZE - 2 * SIDE - CORNER_SIZE, CORNER_SIZE, CORNER_SIZE, 0, WIDTH - CORNER_SIZE - CORNER_SIZE, CORNER_SIZE);
-        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WINDOW, right - CORNER_SIZE, top, (float) (WIDTH - CORNER_SIZE), 0f, CORNER_SIZE, CORNER_SIZE, 256, 256);
-        RenderUtil.renderRepeating(Resources.Gui.WINDOW, guiGraphicsExtractor, left, top + CORNER_SIZE, CORNER_SIZE, bottom - top - 2 * CORNER_SIZE, 0, CORNER_SIZE, CORNER_SIZE, HEIGHT - CORNER_SIZE - CORNER_SIZE);
-        RenderUtil.renderRepeating(Resources.Gui.WINDOW, guiGraphicsExtractor, right - CORNER_SIZE, top + CORNER_SIZE, CORNER_SIZE, bottom - top - 2 * CORNER_SIZE, WIDTH - CORNER_SIZE, CORNER_SIZE, CORNER_SIZE, HEIGHT - CORNER_SIZE - CORNER_SIZE);
-        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WINDOW, left, bottom - CORNER_SIZE, 0f, (float) (HEIGHT - CORNER_SIZE), CORNER_SIZE, CORNER_SIZE, 256, 256);
-        RenderUtil.renderRepeating(Resources.Gui.WINDOW, guiGraphicsExtractor, left + CORNER_SIZE, bottom - CORNER_SIZE, tabW - CORNER_SIZE - 2 * SIDE - CORNER_SIZE, CORNER_SIZE, CORNER_SIZE, HEIGHT - CORNER_SIZE, WIDTH - CORNER_SIZE - CORNER_SIZE, CORNER_SIZE);
-        guiGraphicsExtractor.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WINDOW, right - CORNER_SIZE, bottom - CORNER_SIZE, (float) (WIDTH - CORNER_SIZE), (float) (HEIGHT - CORNER_SIZE), CORNER_SIZE, CORNER_SIZE, 256, 256);
+        RenderUtil.renderRepeating(Resources.Gui.WINDOW, guiGraphics, left + CORNER_SIZE, top, tabW - CORNER_SIZE - 2 * SIDE - CORNER_SIZE, CORNER_SIZE, CORNER_SIZE, 0, WIDTH - CORNER_SIZE - CORNER_SIZE, CORNER_SIZE);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WINDOW, right - CORNER_SIZE, top, (float) (WIDTH - CORNER_SIZE), 0f, CORNER_SIZE, CORNER_SIZE, 256, 256);
+        RenderUtil.renderRepeating(Resources.Gui.WINDOW, guiGraphics, left, top + CORNER_SIZE, CORNER_SIZE, bottom - top - 2 * CORNER_SIZE, 0, CORNER_SIZE, CORNER_SIZE, HEIGHT - CORNER_SIZE - CORNER_SIZE);
+        RenderUtil.renderRepeating(Resources.Gui.WINDOW, guiGraphics, right - CORNER_SIZE, top + CORNER_SIZE, CORNER_SIZE, bottom - top - 2 * CORNER_SIZE, WIDTH - CORNER_SIZE, CORNER_SIZE, CORNER_SIZE, HEIGHT - CORNER_SIZE - CORNER_SIZE);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WINDOW, left, bottom - CORNER_SIZE, 0f, (float) (HEIGHT - CORNER_SIZE), CORNER_SIZE, CORNER_SIZE, 256, 256);
+        RenderUtil.renderRepeating(Resources.Gui.WINDOW, guiGraphics, left + CORNER_SIZE, bottom - CORNER_SIZE, tabW - CORNER_SIZE - 2 * SIDE - CORNER_SIZE, CORNER_SIZE, CORNER_SIZE, HEIGHT - CORNER_SIZE, WIDTH - CORNER_SIZE - CORNER_SIZE, CORNER_SIZE);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.WINDOW, right - CORNER_SIZE, bottom - CORNER_SIZE, (float) (WIDTH - CORNER_SIZE), (float) (HEIGHT - CORNER_SIZE), CORNER_SIZE, CORNER_SIZE, 256, 256);
 
         int width = right - left;
         int height = bottom - top;
 
         if (this.tabs.size() > 1) {
             for (EnhancedAdvancementTab tab : this.tabs.values().stream().skip(skip).limit(maxTabs).toList()) {
-                tab.drawTab(guiGraphicsExtractor, left, top, width, height, tab == this.selectedTab);
+                tab.drawTab(guiGraphics, left, top, width, height, tab == this.selectedTab);
             }
 
             for (EnhancedAdvancementTab tab : this.tabs.values().stream().skip(skip).limit(maxTabs).toList()) {
-                tab.drawIcon(guiGraphicsExtractor, left, top, width, height);
+                tab.drawIcon(guiGraphics, left, top, width, height);
             }
         }
 
@@ -1000,16 +1293,17 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     selectedTab.getTitle().getVisualOrderText()
             );
         }
-        guiGraphicsExtractor.text(this.font, windowTitle, left + 8, top + 6, -12566464, false);
+        guiGraphics.text(this.font, windowTitle, left + 8, top + 6, 0xFF404040, false);
     }
 
-    private void renderToolTips(GuiGraphicsExtractor guiGraphicsExtractor, int mouseX, int mouseY, int left, int top, int right, int bottom, int maxTabs, int skip) {
+    private void renderToolTips(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, int left, int top, int right, int bottom, int maxTabs, int skip) {
         if (this.selectedTab != null) {
-            guiGraphicsExtractor.pose().pushMatrix();
-            guiGraphicsExtractor.nextStratum();
-            guiGraphicsExtractor.pose().translate(left + PADDING, top + 2 * PADDING);
-            this.selectedTab.drawToolTips(guiGraphicsExtractor, mouseX - left - PADDING, mouseY - top - 2 * PADDING, left, top, right - left - 2 * PADDING, bottom - top - 3 * PADDING);
-            guiGraphicsExtractor.pose().popMatrix();
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(left + PADDING, top + 2 * PADDING);
+            
+            this.selectedTab.drawToolTips(guiGraphics, mouseX - left - PADDING, mouseY - top - 2 * PADDING, left, top, right - left - 2 * PADDING, bottom - top - 3 * PADDING);
+            
+            guiGraphics.pose().popMatrix();
         }
 
         int width = right - left;
@@ -1018,13 +1312,17 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         if (this.tabs.size() > 1) {
             for (EnhancedAdvancementTab tab : this.tabs.values().stream().skip(skip).limit(maxTabs).toList()) {
                 if (tab.isMouseOver(left, top, width, height, mouseX, mouseY)) {
-                    guiGraphicsExtractor.setTooltipForNextFrame(this.font, tab.getTitle(), mouseX, mouseY);
+                    guiGraphics.setTooltipForNextFrame(this.font, tab.getTitle(), mouseX, mouseY);
                 }
             }
         }
     }
 
     public void createNewTab() {
+        if (this.selectedTab != null) {
+            PersistentData.snapshotTabPositions(this.selectedTab);
+        }
+
         Identifier newId;
         int counter = 1;
         while (true) {
@@ -1038,66 +1336,56 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             counter++;
         }
 
-        JsonObject root = new JsonObject();
-        JsonObject display = new JsonObject();
-        JsonObject icon = new JsonObject();
+        JsonObject root = createDefaultAdvancementJson("New Tab", "Description", "minecraft:textures/gui/advancements/backgrounds/stone.png", null);
 
-        icon.addProperty("id", "minecraft:stone");
-        display.add("icon", icon);
-
-        JsonObject title = new JsonObject();
-        title.addProperty("text", "New Tab");
-        display.add("title", title);
-
-        JsonObject description = new JsonObject();
-        description.addProperty("text", "Description");
-        display.add("description", description);
-
-        display.addProperty("background", "minecraft:textures/gui/advancements/backgrounds/stone.png");
-        root.add("display", display);
-
-        JsonObject criteria = new JsonObject();
-        JsonObject crit = new JsonObject();
-        crit.addProperty("trigger", "minecraft:impossible");
-        criteria.add("impossible", crit);
-        root.add("criteria", criteria);
-
-        AdvancementEditorScreen editor = new AdvancementEditorScreen(
-                this, newId, true, 0, 0, "Properties", root.toString()
-        );
+        AdvancementEditorScreen editor = createEditorScreen(newId, 0, 0, root);
         Minecraft.getInstance().setScreenAndShow(editor);
         this.contextMenu = null;
     }
 
     @Override
     public void onAdvancementsCleared() {
+        this.setLoading(true);
         if (this.selectedTab != null) {
             savedSelectedTab = this.selectedTab.getRootNode().holder().id();
             this.selectedTab.storeScroll();
         }
         this.tabs.clear();
         this.selectedTab = null;
-
-        if (!this.isInitializing) {
-            this.isDirty = true;
-        }
     }
 
     @Override
     public void onAddAdvancementRoot(@NotNull AdvancementNode advancement) {
-        EnhancedAdvancementTab betterAdvancementTabGui = EnhancedAdvancementTab.create(this.minecraft, this, this.tabs.size(), advancement, internalWidth - 2 * SIDE, internalHeight - TOP - SIDE);
+        EnhancedAdvancementTab existingTab = findTabById(advancement.holder().id());
+        EnhancedAdvancementTab betterAdvancementTabGui = EnhancedAdvancementTab.create(this.minecraft, this, existingTab != null ? existingTab.getIndex() : this.tabs.size(), advancement, internalWidth - 2 * SIDE, internalHeight - TOP - SIDE);
         if (betterAdvancementTabGui != null) {
-            this.tabs.put(advancement.holder(), betterAdvancementTabGui);
-            sortTabs();
-            if (advancement.holder().id().equals(savedSelectedTab) || this.selectedTab == null) {
-                this.selectedTab = betterAdvancementTabGui;
-                this.clientAdvancements.setSelectedTab(advancement.holder(), true);
-                this.selectedTab.loadScroll();
-            }
-        }
+            if (existingTab != null) {
+                betterAdvancementTabGui.scrollX = existingTab.scrollX;
+                betterAdvancementTabGui.scrollY = existingTab.scrollY;
+                betterAdvancementTabGui.setCentered(true);
 
-        if (!this.isInitializing) {
-            this.isDirty = true;
+                for (Map.Entry<AdvancementHolder, EnhancedAdvancementWidget> entry : existingTab.getWidgets().entrySet()) {
+                    if (!entry.getKey().id().equals(advancement.holder().id())) {
+                        EnhancedAdvancementWidget childWidget = entry.getValue();
+                        betterAdvancementTabGui.addWidget(childWidget, entry.getKey());
+                    }
+                }
+
+                for (EnhancedAdvancementWidget widget : betterAdvancementTabGui.getWidgets().values()) {
+                    widget.attachToParent();
+                }
+
+                this.tabs.remove(existingTab.getRootNode().holder());
+            }
+
+            this.tabs.put(advancement.holder(), betterAdvancementTabGui);
+            if (advancement.holder().id().equals(savedSelectedTab) || (existingTab != null && existingTab == this.selectedTab)) {
+                this.selectedTab = betterAdvancementTabGui;
+                this.selectedTab.loadScroll();
+                this.clientAdvancements.setSelectedTab(this.selectedTab.getRootNode().holder(), true);
+            }
+        } else {
+            this.onAddAdvancementTask(advancement);
         }
     }
 
@@ -1110,10 +1398,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             } else {
                 this.selectedTab = null;
             }
-        }
-
-        if (!this.isInitializing) {
-            this.isDirty = true;
+        } else if (tab == null) {
+            this.onRemoveAdvancementTask(advancement);
         }
     }
 
@@ -1121,28 +1407,14 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public void onAddAdvancementTask(@NotNull AdvancementNode advancement) {
         EnhancedAdvancementTab betterAdvancementTabGui = this.getTab(advancement);
         if (betterAdvancementTabGui != null) {
-
             Identifier id = advancement.holder().id();
-            EnhancedAdvancementWidget oldWidget = null;
-            for (EnhancedAdvancementWidget w : betterAdvancementTabGui.getWidgets().values()) {
-                if (w.getAdvancement().holder().id().equals(id)) {
-                    oldWidget = w;
-                    break;
-                }
-            }
+            EnhancedAdvancementWidget oldWidget = betterAdvancementTabGui.getWidget(id);
 
             if (oldWidget != null) {
-                betterAdvancementTabGui.getWidgets().remove(oldWidget.getAdvancement().holder());
-                if (oldWidget.getParent() != null) {
-                    oldWidget.getParent().getChildren().remove(oldWidget);
-                }
+                betterAdvancementTabGui.removeWidget(oldWidget.getAdvancement().holder());
             }
 
             betterAdvancementTabGui.addAdvancement(advancement);
-        }
-
-        if (!this.isInitializing) {
-            this.isDirty = true;
         }
     }
 
@@ -1150,36 +1422,42 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public void onRemoveAdvancementTask(@NotNull AdvancementNode advancement) {
         EnhancedAdvancementTab betterAdvancementTabGui = this.getTab(advancement);
         if (betterAdvancementTabGui != null) {
-            EnhancedAdvancementWidget widget = betterAdvancementTabGui.getWidget(advancement.holder());
-            if (widget != null) {
-                betterAdvancementTabGui.getWidgets().remove(advancement.holder());
-                if (widget.getParent() != null) {
-                    widget.getParent().getChildren().remove(widget);
-                }
+            betterAdvancementTabGui.removeWidget(advancement.holder());
+        }
+    }
+
+    @Override
+    public void onUpdateAdvancementProgress(@NotNull AdvancementNode advancement, @NotNull AdvancementProgress progress) {
+        EnhancedAdvancementWidget betterAdvancementWidget = this.getAdvancementWidget(advancement);
+        if (betterAdvancementWidget != null) {
+            betterAdvancementWidget.getAdvancementProgress(progress);
+        }
+    }
+
+    @Override
+    public void onSelectedTabChanged(@Nullable AdvancementHolder advancement) {
+        TabBounds bounds = getTabBounds();
+        if (advancement != null && this.tabs.containsKey(advancement)) {
+            if (this.selectedTab != null) {
+                this.selectedTab.storeScroll();
             }
-        }
-
-        if (!this.isInitializing) {
-            this.isDirty = true;
-        }
-    }
-
-    @Override
-    public void onUpdateAdvancementProgress(@NotNull AdvancementNode advancement, @NotNull AdvancementProgress advancementProgress) {
-        EnhancedAdvancementWidget betterAdvancementEntryScreen = this.getAdvancementWidget(advancement);
-        if (betterAdvancementEntryScreen != null) {
-            betterAdvancementEntryScreen.getAdvancementProgress(advancementProgress);
-        }
-    }
-
-    @Override
-    public void onSelectedTabChanged(AdvancementHolder advancement) {
-        if (this.selectedTab != null) {
-            this.selectedTab.storeScroll();
-        }
-        this.selectedTab = this.tabs.get(advancement);
-        if (this.selectedTab != null) {
+            this.selectedTab = this.tabs.get(advancement);
+            savedSelectedTab = this.selectedTab.getRootNode().holder().id();
             this.selectedTab.loadScroll();
+            updateTabPage(bounds.maxTabs);
+            return;
+        }
+
+        if (this.selectedTab == null && !this.tabs.isEmpty()) {
+            this.selectedTab = findTabById(savedSelectedTab);
+            if (this.selectedTab == null) {
+                this.selectedTab = this.tabs.values().iterator().next();
+            }
+            if (savedSelectedTab == null) {
+                savedSelectedTab = this.selectedTab.getRootNode().holder().id();
+            }
+            this.selectedTab.loadScroll();
+            updateTabPage(bounds.maxTabs);
         }
     }
 
@@ -1189,7 +1467,54 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     private EnhancedAdvancementTab getTab(AdvancementNode advancement) {
-        AdvancementNode advancementNode = advancement.root();
-        return this.tabs.get(advancementNode.holder());
+        if (advancement == null) return this.selectedTab;
+
+        AdvancementNode rootNode = advancement.root();
+        EnhancedAdvancementTab tab = this.tabs.get(rootNode.holder());
+        if (tab != null) {
+            return tab;
+        }
+
+        for (AdvancementNode parent : IMultiParentNode.getParents(advancement)) {
+            if (parent != null && parent != advancement) {
+                AdvancementNode pRoot = parent.root();
+                EnhancedAdvancementTab pTab = this.tabs.get(pRoot.holder());
+                if (pTab != null) {
+                    return pTab;
+                }
+            }
+        }
+
+        for (EnhancedAdvancementTab t : this.tabs.values()) {
+            if (t.getWidget(advancement.holder().id()) != null) {
+                return t;
+            }
+        }
+
+        Identifier advId = advancement.holder().id();
+        for (EnhancedAdvancementTab t : this.tabs.values()) {
+            Identifier tabRootId = t.getRootNode().holder().id();
+            if (advId.getNamespace().equals(tabRootId.getNamespace())) {
+                String advPath = advId.getPath();
+                String rootPath = tabRootId.getPath();
+                int advSlash = advPath.indexOf('/');
+                int rootSlash = rootPath.indexOf('/');
+                if (advSlash != -1 && rootSlash != -1 && advPath.substring(0, advSlash).equals(rootPath.substring(0, rootSlash))) {
+                    return t;
+                }
+            }
+        }
+
+        EnhancedAdvancementTab savedTab = findTabById(savedSelectedTab);
+        if (savedTab != null) {
+            return savedTab;
+        }
+        if (this.selectedTab != null) {
+            return this.selectedTab;
+        }
+        return !this.tabs.isEmpty() ? this.tabs.values().iterator().next() : null;
+    }
+
+    public record TabBounds(int left, int top, int right, int bottom, int width, int height, int maxTabs) {
     }
 }
