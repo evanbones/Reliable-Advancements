@@ -1,3 +1,1 @@
-### Fixed
-
-- Fixed Fabric crash.
+- Ported Reliable Advancements 5 and 6 from 1.21.1.

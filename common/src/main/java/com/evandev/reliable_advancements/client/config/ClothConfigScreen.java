@@ -69,6 +69,18 @@ public class ClothConfigScreen {
                 .setSaveConsumer(newValue -> config.orderTabsAlphabetically = newValue)
                 .build());
 
+        general.addEntry(entryBuilder.startStrList(Component.translatable("config.reliable_advancements.tabSortOrder"), config.tabSortOrder)
+                .setDefaultValue(defaults.tabSortOrder)
+                .setTooltip(Component.translatable("config.reliable_advancements.tabSortOrder.tooltip"))
+                .setSaveConsumer(newValue -> config.tabSortOrder = newValue)
+                .build());
+
+        general.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.reliable_advancements.unclampedScrolling"), config.unclampedScrolling)
+                .setDefaultValue(defaults.unclampedScrolling)
+                .setTooltip(Component.translatable("config.reliable_advancements.unclampedScrolling.tooltip"))
+                .setSaveConsumer(newValue -> config.unclampedScrolling = newValue)
+                .build());
+
         general.addEntry(entryBuilder.startIntSlider(Component.translatable("config.reliable_advancements.uiScaling"), config.uiScaling, 1, 100)
                 .setDefaultValue(defaults.uiScaling)
                 .setTooltip(Component.translatable("config.reliable_advancements.uiScaling.tooltip"))
@@ -124,10 +136,11 @@ public class ClothConfigScreen {
                 .setSaveConsumer(newValue -> config.customInventoryButtonIcon = newValue)
                 .build());
 
-        general.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.reliable_advancements.discoveryMode"), config.discoveryMode)
-                .setDefaultValue(defaults.discoveryMode)
-                .setTooltip(Component.translatable("config.reliable_advancements.discoveryMode.tooltip"))
-                .setSaveConsumer(newValue -> config.discoveryMode = newValue)
+        general.addEntry(entryBuilder.startIntField(Component.translatable("config.reliable_advancements.visibilityDepth"), config.visibilityDepth)
+                .setDefaultValue(defaults.visibilityDepth)
+                .setMin(-1)
+                .setTooltip(Component.translatable("config.reliable_advancements.visibilityDepth.tooltip"))
+                .setSaveConsumer(newValue -> config.visibilityDepth = newValue)
                 .build());
 
         general.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.reliable_advancements.requireRewardClaiming"), config.requireRewardClaiming)
@@ -165,6 +178,18 @@ public class ClothConfigScreen {
                 .setDefaultValue(defaults.showEditModeButton)
                 .setTooltip(Component.translatable("config.reliable_advancements.showEditModeButton.tooltip"))
                 .setSaveConsumer(newValue -> config.showEditModeButton = newValue)
+                .build());
+
+        editing.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.reliable_advancements.storeAdvancementEditsGlobally"), config.storeAdvancementEditsGlobally)
+                .setDefaultValue(defaults.storeAdvancementEditsGlobally)
+                .setTooltip(Component.translatable("config.reliable_advancements.storeAdvancementEditsGlobally.tooltip"))
+                .setSaveConsumer(newValue -> config.storeAdvancementEditsGlobally = newValue)
+                .build());
+
+        editing.addEntry(entryBuilder.startBooleanToggle(Component.translatable("config.reliable_advancements.storeAdvancementEditsAsDatapack"), config.storeAdvancementEditsAsDatapack)
+                .setDefaultValue(defaults.storeAdvancementEditsAsDatapack)
+                .setTooltip(Component.translatable("config.reliable_advancements.storeAdvancementEditsAsDatapack.tooltip"))
+                .setSaveConsumer(newValue -> config.storeAdvancementEditsAsDatapack = newValue)
                 .build());
 
         ConfigCategory visuals = builder.getOrCreateCategory(Component.translatable("config.reliable_advancements.category.visuals"));

@@ -63,6 +63,11 @@ repositories {
             includeGroupAndSubgroups("cc.cassian")
         }
     }
+
+    maven {
+        name = "SomethingCatchy"
+        url = "https://registry.somethingcatchy.net/repository/maven-public/"
+    }
 }
 
 ['apiElements', 'runtimeElements', 'sourcesElements'].each { variant ->

@@ -32,7 +32,9 @@ public class EnhancedAdvancementTabType {
     }
 
     public static EnhancedAdvancementTabType getTabType(int width, int height, int index) {
-        int indexOnPage = index % getMaxTabs(width, height);
+        int maxTabs = getMaxTabs(width, height);
+        if (maxTabs <= 0) return null;
+        int indexOnPage = index % maxTabs;
 
         int tabsAbove = ABOVE.getMax(width, height);
         int tabsRight = RIGHT.getMax(width, height);
@@ -51,15 +53,18 @@ public class EnhancedAdvancementTabType {
 
     public static int getMaxTabs(int width, int height) {
         if (ModConfig.get().onlyUseAboveAdvancementTabs) {
-            return ABOVE.getMax(width, height);
+            return Math.max(0, ABOVE.getMax(width, height));
         }
 
-        return ALL.stream().mapToInt(tab -> tab.getMax(width, height)).sum();
+        return Math.max(0, ALL.stream().mapToInt(tab -> Math.max(0, tab.getMax(width, height))).sum());
     }
 
-    public void draw(GuiGraphicsExtractor guiGraphicsExtractor, int x, int y, int width, int height, boolean selected, int index) {
+    public void draw(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height, boolean selected, int index) {
         int i = this.textureX;
-        index %= getMax(width, height);
+        int max = getMax(width, height);
+        if (max > 0) {
+            index %= max;
+        }
 
         if (index > 0) {
             i += this.width;
@@ -70,18 +75,10 @@ public class EnhancedAdvancementTabType {
         }
 
         int j = selected ? this.textureY + this.height : this.textureY;
-        guiGraphicsExtractor.blit(
-                RenderPipelines.GUI_TEXTURED,
-                Resources.Gui.TABS,
-                x + this.getX(index, width, height),
-                y + this.getY(index, width, height),
-                (float)i, (float)j,
-                this.width, this.height,
-                256, 256
-        );
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, Resources.Gui.TABS, x + this.getX(index, width, height), y + this.getY(index, width, height), i, j, this.width, this.height, 256, 256);
     }
 
-    public void drawIcon(GuiGraphicsExtractor guiGraphicsExtractor, int left, int top, int width, int height, int index, ItemStack stack) {
+    public void drawIcon(GuiGraphicsExtractor guiGraphics, int left, int top, int width, int height, int index, ItemStack stack) {
         int i = left + this.getX(index, width, height);
         int j = top + this.getY(index, width, height);
 
@@ -104,11 +101,14 @@ public class EnhancedAdvancementTabType {
             }
         }
 
-        guiGraphicsExtractor.fakeItem(stack, i, j);
+        guiGraphics.fakeItem(stack, i, j);
     }
 
     public int getX(int index, int width, int height) {
-        index %= getMax(width, height);
+        int max = getMax(width, height);
+        if (max > 0) {
+            index %= max;
+        }
         return switch (tabType) {
             case ABOVE, BELOW -> (this.width + 4) * index;
             case LEFT -> -this.width + 4;
@@ -117,7 +117,10 @@ public class EnhancedAdvancementTabType {
     }
 
     public int getY(int index, int width, int height) {
-        index %= getMax(width, height);
+        int max = getMax(width, height);
+        if (max > 0) {
+            index %= max;
+        }
         return switch (tabType) {
             case ABOVE -> -this.height + 4;
             case BELOW -> height - 4;
@@ -132,10 +135,9 @@ public class EnhancedAdvancementTabType {
     }
 
     private int getMax(int width, int height) {
-        return switch (tabType) {
+        return Math.max(0, switch (tabType) {
             case LEFT, RIGHT -> height / 32;
             case ABOVE, BELOW -> width / 32;
-            default -> tabType.getMax();
-        };
+        });
     }
 }

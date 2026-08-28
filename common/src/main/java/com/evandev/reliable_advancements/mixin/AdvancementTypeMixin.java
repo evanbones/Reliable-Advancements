@@ -17,8 +17,9 @@ public class AdvancementTypeMixin {
     private void addClickEventToAnnouncement(final AdvancementHolder holder, final ServerPlayer player, final CallbackInfoReturnable<MutableComponent> cir) {
         MutableComponent original = cir.getReturnValue();
         if (original != null) {
-            Style clickableStyle = original.getStyle()
-                    .withClickEvent(new ClickEvent.RunCommand("/!open_advancement " + holder.id()));
+            Style clickableStyle = original.getStyle().withClickEvent(new ClickEvent.RunCommand(
+                    "/!open_advancement " + holder.id()
+            ));
 
             cir.setReturnValue(original.copy().setStyle(clickableStyle));
         }
