@@ -112,10 +112,25 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
     }
 
     @Override
-    public void sendResetTab(ResetTabPayload payload) {
+    public void sendTabAction(TabActionPayload payload) {
         var connection = Minecraft.getInstance().getConnection();
-        if (connection != null && connection.hasChannel(ResetTabPayload.TYPE)) {
+        if (connection != null && connection.hasChannel(TabActionPayload.TYPE)) {
             PacketDistributor.sendToServer(payload);
+        }
+    }
+
+    @Override
+    public void sendAdvancementBatch(AdvancementBatchPayload payload) {
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection != null && connection.hasChannel(AdvancementBatchPayload.TYPE)) {
+            PacketDistributor.sendToServer(payload);
+        }
+    }
+
+    @Override
+    public void sendTabsToClient(ServerPlayer player, SyncTabsPayload payload) {
+        if (player.connection.hasChannel(SyncTabsPayload.TYPE)) {
+            PacketDistributor.sendToPlayer(player, payload);
         }
     }
 }

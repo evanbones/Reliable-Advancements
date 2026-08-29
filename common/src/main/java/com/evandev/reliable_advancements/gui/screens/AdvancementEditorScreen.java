@@ -1,15 +1,17 @@
 package com.evandev.reliable_advancements.gui.screens;
 
 import com.evandev.reliable_advancements.config.ModConfig;
+import com.evandev.reliable_advancements.gui.EnhancedAdvancementTab;
 import com.evandev.reliable_advancements.gui.model.AdvancementDraft;
 import com.evandev.reliable_advancements.gui.tabs.*;
 import com.evandev.reliable_advancements.gui.theme.EditorTheme;
 import com.evandev.reliable_advancements.gui.widgets.ModernButton;
 import com.evandev.reliable_advancements.gui.widgets.ModernDropdown;
 import com.evandev.reliable_advancements.gui.widgets.SuggestingEditBox;
+import com.evandev.reliable_advancements.network.AdvancementBatchPayload;
 import com.evandev.reliable_advancements.network.EditAdvancementPayload;
+import com.evandev.reliable_advancements.network.TabActionPayload;
 import com.evandev.reliable_advancements.platform.Services;
-import com.evandev.reliable_advancements.util.PersistentData;
 import com.google.gson.GsonBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -21,10 +23,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class AdvancementEditorScreen extends Screen {
     private static final int MAX_UI_WIDTH = 580;
@@ -344,17 +343,15 @@ public class AdvancementEditorScreen extends Screen {
         }
 
         if (!isNew && !initialId.equals(finalId)) {
-            PersistentData.removePosition(initialId);
-            if (parentScreen.selectedTab != null && initialId.equals(parentScreen.selectedTab.getRootNode().holder().id())) {
-                PersistentData.removeTabProperties(initialId);
-            }
-            EditAdvancementPayload deleteOldPayload = new EditAdvancementPayload(initialId, "{}", true);
-            if (Services.PLATFORM.canSendAdvancementEdit()) {
-                Services.PLATFORM.sendAdvancementEdit(deleteOldPayload);
-            }
+            Services.PLATFORM.sendAdvancementBatch(new AdvancementBatchPayload(
+                    AdvancementBatchPayload.Op.RESET_TO_VANILLA, List.of(initialId)));
         }
 
-        PersistentData.setPosition(finalId, finalX, finalY);
+        EnhancedAdvancementTab owningTab = parentScreen.findTabContaining(finalId);
+        if (owningTab == null) owningTab = parentScreen.selectedTab;
+        if (owningTab != null) {
+            parentScreen.savePositions(owningTab.getId(), Map.of(finalId, new int[]{finalX, finalY}));
+        }
 
         String payloadStr = new GsonBuilder().setPrettyPrinting().create().toJson(draft.rootJson);
         EditAdvancementPayload payload = new EditAdvancementPayload(finalId, payloadStr, false);
@@ -362,6 +359,11 @@ public class AdvancementEditorScreen extends Screen {
         if (Services.PLATFORM.canSendAdvancementEdit()) {
             Services.PLATFORM.sendAdvancementEdit(payload);
         }
+
+        if (isNew && !draft.rootJson.has("parent") && !draft.rootJson.has("parents") && parentScreen.selectedTab != null) {
+            Services.PLATFORM.sendTabAction(TabActionPayload.addRoot(parentScreen.selectedTab.getId(), finalId));
+        }
+
         this.minecraft.setScreen(parentScreen);
     }
 

@@ -5,7 +5,7 @@ import com.evandev.reliable_advancements.advancements.AdvancementDisplayInfoRegi
 import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.reliable_advancements.reference.Constants;
-import com.evandev.reliable_advancements.util.PersistentData;
+import com.evandev.reliable_advancements.tabs.ResolvedTab;
 import com.google.common.collect.Maps;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -16,112 +16,82 @@ import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.util.Tuple;
-import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
 public class EnhancedAdvancementTab {
     public static final Map<ResourceLocation, Tuple<Integer, Integer>> scrollHistory = Maps.newLinkedHashMap();
+
     public final List<BackgroundRule> backgroundRules = new ArrayList<>();
     protected final Map<AdvancementHolder, EnhancedAdvancementWidget> widgets = Maps.newLinkedHashMap();
     protected final Map<ResourceLocation, EnhancedAdvancementWidget> widgetsById = Maps.newHashMap();
+
     private final Minecraft minecraft;
     private final EnhancedAdvancementsScreen screen;
-    private final AdvancementNode rootNode;
-    private final DisplayInfo display;
-    private final ItemStack icon;
-    private final Component title;
-    private final EnhancedAdvancementWidget root;
-    private final AdvancementDisplayInfoRegistry displayInfos;
+    private final AdvancementDisplayInfoRegistry displayInfos = new AdvancementDisplayInfoRegistry();
+
+    private final ResolvedTab definition;
+    private final EnhancedAdvancementTabType type;
+    private final int index;
     public int scrollX;
     public int scrollY;
-    public String customTitle = "";
-    public ResourceLocation customBackground = null;
-    public boolean isStaticBackground = false;
-    public int bgWidth = 16;
-    public int bgHeight = 16;
-    public int customWidth = 0;
-    public int customHeight = 0;
-    public int customIndex = 0;
-    public String rawBackgroundRules = "[]";
-    private EnhancedAdvancementTabType type;
-    private int index;
     private int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
     private int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
     private float fade;
     private boolean centered;
 
-    protected EnhancedAdvancementTab(Minecraft mc, EnhancedAdvancementsScreen advancementsScreen, EnhancedAdvancementTabType type, int index, AdvancementNode advancementNode, DisplayInfo displayInfo) {
+    protected EnhancedAdvancementTab(Minecraft mc, EnhancedAdvancementsScreen screen, EnhancedAdvancementTabType type,
+                                     int index, ResolvedTab definition) {
         this.minecraft = mc;
-        this.screen = advancementsScreen;
+        this.screen = screen;
         this.type = type;
         this.index = index;
-        this.rootNode = advancementNode;
-        this.display = displayInfo;
-        this.icon = displayInfo.getIcon();
-        this.title = displayInfo.getTitle();
-        this.displayInfos = new AdvancementDisplayInfoRegistry(advancementNode);
-        this.root = new EnhancedAdvancementWidget(this, mc, advancementNode, displayInfo);
-        this.addWidget(this.root, advancementNode.holder());
-
-        String id = advancementNode.holder().id().toString();
-        this.customIndex = PersistentData.getDefaultTabIndex(id);
-
-        PersistentData.loadTabProperties(this);
+        this.definition = definition;
+        parseBackgroundRules(definition.backgroundRules());
     }
 
-    public static EnhancedAdvancementTab create(Minecraft mc, EnhancedAdvancementsScreen advancementsScreen, int index, AdvancementNode advancementNode, int width, int height) {
-        Optional<DisplayInfo> optional = advancementNode.advancement().display();
-        if (optional.isEmpty() || optional.get().getBackground().isEmpty()) {
-            return null;
-        } else {
-            EnhancedAdvancementTabType advancementTabType = EnhancedAdvancementTabType.getTabType(width, height, index);
-            if (advancementTabType == null) {
-                return null;
-            } else {
-                return new EnhancedAdvancementTab(mc, advancementsScreen, advancementTabType, index, advancementNode, optional.get());
-            }
-        }
+    public static @Nullable EnhancedAdvancementTab create(Minecraft mc, EnhancedAdvancementsScreen screen, int index,
+                                                          ResolvedTab definition, int width, int height) {
+        EnhancedAdvancementTabType type = EnhancedAdvancementTabType.getTabType(width, height, index);
+        return type == null ? null : new EnhancedAdvancementTab(mc, screen, type, index, definition);
+    }
+
+    public ResourceLocation getId() {
+        return this.definition.id();
+    }
+
+    public ResolvedTab getDefinition() {
+        return this.definition;
+    }
+
+    public @Nullable AdvancementNode getPrimaryRoot() {
+        return this.definition.primaryRoot();
+    }
+
+    public Component getTitle() {
+        return this.definition.title();
     }
 
     public void parseBackgroundRules(String jsonStr) {
         this.backgroundRules.clear();
-        this.rawBackgroundRules = jsonStr != null ? jsonStr : "[]";
+        if (jsonStr == null || jsonStr.isEmpty()) return;
         try {
-            JsonArray arr = JsonParser.parseString(this.rawBackgroundRules).getAsJsonArray();
+            JsonArray arr = JsonParser.parseString(jsonStr).getAsJsonArray();
             for (JsonElement el : arr) {
                 this.backgroundRules.add(BackgroundRule.fromJson(el.getAsJsonObject()));
             }
         } catch (Exception e) {
-            Constants.LOG.error("Failed to parse background rules", e);
+            Constants.LOG.error("Failed to parse background rules for tab {}", getId(), e);
         }
-    }
-
-    public void updateIndex(int index, int width, int height) {
-        this.index = index;
-        this.type = EnhancedAdvancementTabType.getTabType(width, height, index);
     }
 
     public Map<AdvancementHolder, EnhancedAdvancementWidget> getWidgets() {
         return this.widgets;
-    }
-
-    public int getIndex() {
-        return this.index;
-    }
-
-    public AdvancementNode getRootNode() {
-        return this.rootNode;
-    }
-
-    public Component getTitle() {
-        if (this.customTitle != null && !this.customTitle.isEmpty()) return Component.literal(this.customTitle);
-        return this.title;
     }
 
     public void drawTab(GuiGraphics guiGraphics, int left, int top, int width, int height, boolean selected) {
@@ -129,7 +99,7 @@ public class EnhancedAdvancementTab {
     }
 
     public void drawIcon(GuiGraphics guiGraphics, int left, int top, int width, int height) {
-        this.type.drawIcon(guiGraphics, left, top, width, height, this.index, this.icon);
+        this.type.drawIcon(guiGraphics, left, top, width, height, this.index, this.definition.icon());
     }
 
     public void drawContents(GuiGraphics guiGraphics, int left, int top, int width, int height, double mouseX, double mouseY) {
@@ -141,8 +111,7 @@ public class EnhancedAdvancementTab {
         double unzoomedY = (mouseY - top) / zoom;
 
         if (!this.centered) {
-            this.scrollX = (scaledWidth / 2) - (this.root.getX() + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2);
-            this.scrollY = (scaledHeight / 2) - (this.root.getY() + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2);
+            centreOnContent(scaledWidth, scaledHeight);
             this.centered = true;
         }
 
@@ -151,26 +120,27 @@ public class EnhancedAdvancementTab {
         guiGraphics.pose().translate(left, top, 0);
         guiGraphics.pose().scale(zoom, zoom, 1.0F);
 
-        ResourceLocation defaultRes = this.customBackground != null ? this.customBackground : this.display.getBackground().orElse(TextureManager.INTENTIONAL_MISSING_TEXTURE);
+        ResourceLocation defaultRes = this.definition.background();
+        boolean isStatic = this.definition.staticBackground();
+        int configuredW = this.definition.bgWidth();
+        int configuredH = this.definition.bgHeight();
 
-        if (this.isStaticBackground && this.bgWidth == 0 && this.bgHeight == 0) {
+        if (isStatic && configuredW == 0 && configuredH == 0) {
             guiGraphics.blit(defaultRes, 0, 0, 0.0F, 0.0F, scaledWidth, scaledHeight, scaledWidth, scaledHeight);
         } else {
-            int texW = this.bgWidth > 0 ? this.bgWidth : 16;
-            int texH = this.bgHeight > 0 ? this.bgHeight : 16;
+            int texW = configuredW > 0 ? configuredW : 16;
+            int texH = configuredH > 0 ? configuredH : 16;
 
-            int i = this.isStaticBackground ? 0 : this.scrollX % texW;
-            int j = this.isStaticBackground ? 0 : this.scrollY % texH;
+            int i = isStatic ? 0 : this.scrollX % texW;
+            int j = isStatic ? 0 : this.scrollY % texH;
 
             Random random = new Random();
 
-            int k = -1;
-            for (; k <= 1 + scaledWidth / texW; k++) {
-                int l = -1;
-                for (; l <= 1 + scaledHeight / texH; l++) {
+            for (int k = -1; k <= 1 + scaledWidth / texW; k++) {
+                for (int l = -1; l <= 1 + scaledHeight / texH; l++) {
                     ResourceLocation texToDraw = defaultRes;
 
-                    if (!this.backgroundRules.isEmpty() && !this.isStaticBackground) {
+                    if (!this.backgroundRules.isEmpty() && !isStatic) {
                         int absoluteX = i + (texW * k) - this.scrollX;
                         int absoluteY = j + (texH * l) - this.scrollY;
                         int cellX = Math.floorDiv(absoluteX, texW);
@@ -198,9 +168,7 @@ public class EnhancedAdvancementTab {
 
         if (ModConfig.get().blurBackground) {
             int alpha = (int) (ModConfig.get().blurBackgroundOpacity / 100.0f * 255.0f);
-            int color = (alpha << 24);
-
-            guiGraphics.fill(0, 0, scaledWidth, scaledHeight, color);
+            guiGraphics.fill(0, 0, scaledWidth, scaledHeight, alpha << 24);
         }
 
         for (EnhancedAdvancementWidget widget : this.widgets.values()) {
@@ -215,11 +183,34 @@ public class EnhancedAdvancementTab {
 
         for (EnhancedAdvancementWidget advancementWidget : this.widgets.values()) {
             if (EnhancedAdvancementsScreen.selectedWidgets.contains(advancementWidget)) {
-                guiGraphics.fill(advancementWidget.getX() + this.scrollX + 1, advancementWidget.getY() + this.scrollY - 2, advancementWidget.getX() + this.scrollX + 31, advancementWidget.getY() + this.scrollY + 28, 0x6600FF00);
+                guiGraphics.fill(advancementWidget.getX() + this.scrollX + 1, advancementWidget.getY() + this.scrollY - 2,
+                        advancementWidget.getX() + this.scrollX + 31, advancementWidget.getY() + this.scrollY + 28, 0x6600FF00);
             }
         }
         guiGraphics.pose().popPose();
         guiGraphics.disableScissor();
+    }
+
+    private void centreOnContent(int scaledWidth, int scaledHeight) {
+        AdvancementNode primary = getPrimaryRoot();
+        EnhancedAdvancementWidget anchor = primary != null ? getWidget(primary.holder().id()) : null;
+
+        int targetX;
+        int targetY;
+        if (anchor != null) {
+            targetX = anchor.getX() + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
+            targetY = anchor.getY() + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
+        } else if (!this.widgets.isEmpty()) {
+            recalculateBounds();
+            targetX = (this.minX + this.maxX) / 2;
+            targetY = (this.minY + this.maxY) / 2;
+        } else {
+            targetX = EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
+            targetY = EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2;
+        }
+
+        this.scrollX = (scaledWidth / 2) - targetX;
+        this.scrollY = (scaledHeight / 2) - targetY;
     }
 
     public void setCentered(boolean centered) {
@@ -263,18 +254,15 @@ public class EnhancedAdvancementTab {
     }
 
     public void scroll(double scrollX, double scrollY, int width, int height) {
-        if (ModConfig.get().unclampedScrolling) {
+        if (ModConfig.get().unclampedScrolling || this.widgets.isEmpty()) {
             this.scrollX = (int) Math.round(this.scrollX + scrollX);
             this.scrollY = (int) Math.round(this.scrollY + scrollY);
             return;
         }
 
         float zoom = this.screen.getZoom();
-        int scaledWidth = (int) (width / zoom);
-        int scaledHeight = (int) (height / zoom);
-
-        int marginX = scaledWidth / 2;
-        int marginY = scaledHeight / 2;
+        int marginX = (int) (width / zoom) / 2;
+        int marginY = (int) (height / zoom) / 2;
 
         this.scrollX = (int) Math.round(Mth.clamp(this.scrollX + scrollX, -(this.maxX - marginX), -this.minX + marginX));
         this.scrollY = (int) Math.round(Mth.clamp(this.scrollY + scrollY, -(this.maxY - marginY), -this.minY + marginY));
@@ -282,10 +270,8 @@ public class EnhancedAdvancementTab {
 
     public void addAdvancement(AdvancementNode advancementNode) {
         Optional<DisplayInfo> optional = advancementNode.advancement().display();
-        if (optional.isPresent()) {
-            EnhancedAdvancementWidget advancementEntryScreen = new EnhancedAdvancementWidget(this, this.minecraft, advancementNode, optional.get());
-            this.addWidget(advancementEntryScreen, advancementNode.holder());
-        }
+        optional.ifPresent(displayInfo -> this.addWidget(new EnhancedAdvancementWidget(this, this.minecraft, advancementNode, displayInfo),
+                advancementNode.holder()));
     }
 
     public void recalculateBounds() {
@@ -294,31 +280,23 @@ public class EnhancedAdvancementTab {
         this.minY = Integer.MAX_VALUE;
         this.maxY = Integer.MIN_VALUE;
         for (EnhancedAdvancementWidget widget : this.widgets.values()) {
-            int left = widget.getX();
-            int right = left + 28;
-            int top = widget.getY();
-            int bottom = top + 27;
-            this.minX = Math.min(this.minX, left);
-            this.maxX = Math.max(this.maxX, right);
-            this.minY = Math.min(this.minY, top);
-            this.maxY = Math.max(this.maxY, bottom);
+            expandBounds(widget);
         }
     }
 
-    public void addWidget(EnhancedAdvancementWidget advancementEntryScreen, AdvancementHolder advancementHolder) {
-        advancementEntryScreen.setTab(this);
-        this.widgets.put(advancementHolder, advancementEntryScreen);
-        this.widgetsById.put(advancementHolder.id(), advancementEntryScreen);
-        int left = advancementEntryScreen.getX();
-        int right = left + 28;
-        int top = advancementEntryScreen.getY();
-        int bottom = top + 27;
-        this.minX = Math.min(this.minX, left);
-        this.maxX = Math.max(this.maxX, right);
-        this.minY = Math.min(this.minY, top);
-        this.maxY = Math.max(this.maxY, bottom);
+    private void expandBounds(EnhancedAdvancementWidget widget) {
+        this.minX = Math.min(this.minX, widget.getX());
+        this.maxX = Math.max(this.maxX, widget.getX() + 28);
+        this.minY = Math.min(this.minY, widget.getY());
+        this.maxY = Math.max(this.maxY, widget.getY() + 27);
+    }
 
-        advancementEntryScreen.attachToParent();
+    public void addWidget(EnhancedAdvancementWidget widget, AdvancementHolder advancementHolder) {
+        widget.setTab(this);
+        this.widgets.put(advancementHolder, widget);
+        this.widgetsById.put(advancementHolder.id(), widget);
+        expandBounds(widget);
+        widget.attachToParent();
     }
 
     public void removeWidget(ResourceLocation id) {
@@ -335,13 +313,8 @@ public class EnhancedAdvancementTab {
         this.recalculateBounds();
     }
 
-    public EnhancedAdvancementWidget getWidget(AdvancementHolder advancementHolder) {
-        return this.widgets.get(advancementHolder);
-    }
-
     public EnhancedAdvancementWidget getWidget(ResourceLocation id) {
-        if (id == null) return null;
-        return this.widgetsById.get(id);
+        return id == null ? null : this.widgetsById.get(id);
     }
 
     public EnhancedAdvancementsScreen getScreen() {
@@ -354,12 +327,12 @@ public class EnhancedAdvancementTab {
 
     public void storeScroll() {
         if (this.centered) {
-            scrollHistory.put(this.rootNode.holder().id(), new Tuple<>(scrollX, scrollY));
+            scrollHistory.put(getId(), new Tuple<>(scrollX, scrollY));
         }
     }
 
     public void loadScroll() {
-        Tuple<Integer, Integer> scroll = scrollHistory.get(this.rootNode.holder().id());
+        Tuple<Integer, Integer> scroll = scrollHistory.get(getId());
         if (scroll != null) {
             this.centered = true;
             this.scrollX = scroll.getA();

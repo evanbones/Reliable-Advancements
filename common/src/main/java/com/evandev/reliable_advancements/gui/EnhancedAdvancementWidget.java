@@ -5,12 +5,13 @@ import com.evandev.reliable_advancements.advancements.IMultiParentAdvancement;
 import com.evandev.reliable_advancements.api.IAdvancementEntryGui;
 import com.evandev.reliable_advancements.api.event.IAdvancementDrawConnectionsEvent;
 import com.evandev.reliable_advancements.client.ClientRewardTracker;
+import com.evandev.reliable_advancements.client.ClientTabStore;
 import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.reliable_advancements.platform.Services;
+import com.evandev.reliable_advancements.tabs.TabDefinition;
 import com.evandev.reliable_advancements.util.ConnectionRouter;
 import com.evandev.reliable_advancements.util.CriterionGrid;
-import com.evandev.reliable_advancements.util.PersistentData;
 import com.evandev.reliable_advancements.util.RenderUtil;
 import com.google.common.collect.Lists;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -39,7 +40,6 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     private static final int TITLE_SIZE = 32;
     private static final int ICON_SIZE = 26;
     public final AdvancementDisplayInfo enhancedDisplayInfo;
-    private EnhancedAdvancementTab advancementTabGui;
     private final AdvancementNode advancementNode;
     private final DisplayInfo displayInfo;
     private final String title;
@@ -48,6 +48,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     private final List<EnhancedAdvancementWidget> parents = Lists.newArrayList();
     public AdvancementProgress advancementProgress;
     protected int x, y;
+    private EnhancedAdvancementTab advancementTabGui;
     private int width;
     private List<FormattedCharSequence> description;
     private CriterionGrid criterionGrid;
@@ -61,10 +62,12 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         this.displayInfo = displayInfo;
         this.minecraft = mc;
         this.title = displayInfo.getTitle().getString(163);
-        this.x = this.enhancedDisplayInfo.getPosX() != null ? this.enhancedDisplayInfo.getPosX() : Mth.floor(displayInfo.getX() * 32.0F);
-        this.y = this.enhancedDisplayInfo.getPosY() != null ? this.enhancedDisplayInfo.getPosY() : Mth.floor(displayInfo.getY() * 27.0F);
-        if (PersistentData.hasSavedPosition(this.advancementNode.holder())) {
-            PersistentData.loadSavedPosition(this.advancementNode.holder(), this);
+        this.x = this.enhancedDisplayInfo.getPosX() != null ? this.enhancedDisplayInfo.getPosX() : Mth.floor(displayInfo.getX() * TabDefinition.PIXELS_PER_COLUMN);
+        this.y = this.enhancedDisplayInfo.getPosY() != null ? this.enhancedDisplayInfo.getPosY() : Mth.floor(displayInfo.getY() * TabDefinition.PIXELS_PER_ROW);
+        int[] saved = ClientTabStore.savedPosition(advancementTabGui.getId(), this.advancementNode.holder().id());
+        if (saved != null) {
+            this.x = saved[0];
+            this.y = saved[1];
         }
     }
 

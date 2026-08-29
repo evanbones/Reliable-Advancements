@@ -29,8 +29,12 @@ public class NeoForgeNetworkHandler {
             context.enqueueWork(() -> ServerAdvancementEditor.handleRequestFullTree(context.player().getServer(), (ServerPlayer) context.player()));
         });
 
-        registrar.playToServer(ResetTabPayload.TYPE, ResetTabPayload.STREAM_CODEC, (payload, context) -> {
-            context.enqueueWork(() -> ServerAdvancementEditor.handleResetTab(context.player().getServer(), (ServerPlayer) context.player(), payload));
+        registrar.playToServer(TabActionPayload.TYPE, TabActionPayload.STREAM_CODEC, (payload, context) -> {
+            context.enqueueWork(() -> ServerAdvancementEditor.handleTabAction(context.player().getServer(), (ServerPlayer) context.player(), payload));
+        });
+
+        registrar.playToServer(AdvancementBatchPayload.TYPE, AdvancementBatchPayload.STREAM_CODEC, (payload, context) -> {
+            context.enqueueWork(() -> ServerAdvancementEditor.handleAdvancementBatch(context.player().getServer(), (ServerPlayer) context.player(), payload));
         });
 
         registrar.playToClient(AdvancementJsonPayload.TYPE, AdvancementJsonPayload.STREAM_CODEC, (payload, context) -> {
@@ -39,6 +43,10 @@ public class NeoForgeNetworkHandler {
 
         registrar.playToClient(SyncClaimedRewardsPayload.TYPE, SyncClaimedRewardsPayload.STREAM_CODEC, (payload, context) -> {
             context.enqueueWork(() -> ClientNetworkHandler.handleSyncClaimedRewards(payload));
+        });
+
+        registrar.playToClient(SyncTabsPayload.TYPE, SyncTabsPayload.STREAM_CODEC, (payload, context) -> {
+            context.enqueueWork(() -> ClientNetworkHandler.handleSyncTabs(payload));
         });
     }
 }

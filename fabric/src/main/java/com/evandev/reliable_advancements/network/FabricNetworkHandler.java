@@ -11,9 +11,11 @@ public class FabricNetworkHandler {
         PayloadTypeRegistry.playC2S().register(LinkAdvancementPayload.TYPE, LinkAdvancementPayload.STREAM_CODEC);
         PayloadTypeRegistry.playC2S().register(ClaimRewardPayload.TYPE, ClaimRewardPayload.STREAM_CODEC);
         PayloadTypeRegistry.playC2S().register(RequestFullTreePayload.TYPE, RequestFullTreePayload.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(ResetTabPayload.TYPE, ResetTabPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(TabActionPayload.TYPE, TabActionPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(AdvancementBatchPayload.TYPE, AdvancementBatchPayload.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(AdvancementJsonPayload.TYPE, AdvancementJsonPayload.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(SyncClaimedRewardsPayload.TYPE, SyncClaimedRewardsPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(SyncTabsPayload.TYPE, SyncTabsPayload.STREAM_CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(EditAdvancementPayload.TYPE, (payload, context) -> {
             context.server().execute(() -> ServerAdvancementEditor.saveAdvancementEdit(context.server(), context.player(), payload));
@@ -35,8 +37,12 @@ public class FabricNetworkHandler {
             context.server().execute(() -> ServerAdvancementEditor.handleRequestFullTree(context.server(), context.player()));
         });
 
-        ServerPlayNetworking.registerGlobalReceiver(ResetTabPayload.TYPE, (payload, context) -> {
-            context.server().execute(() -> ServerAdvancementEditor.handleResetTab(context.server(), context.player(), payload));
+        ServerPlayNetworking.registerGlobalReceiver(TabActionPayload.TYPE, (payload, context) -> {
+            context.server().execute(() -> ServerAdvancementEditor.handleTabAction(context.server(), context.player(), payload));
+        });
+
+        ServerPlayNetworking.registerGlobalReceiver(AdvancementBatchPayload.TYPE, (payload, context) -> {
+            context.server().execute(() -> ServerAdvancementEditor.handleAdvancementBatch(context.server(), context.player(), payload));
         });
     }
 
@@ -47,6 +53,10 @@ public class FabricNetworkHandler {
 
         ClientPlayNetworking.registerGlobalReceiver(SyncClaimedRewardsPayload.TYPE, (payload, context) -> {
             context.client().execute(() -> ClientNetworkHandler.handleSyncClaimedRewards(payload));
+        });
+
+        ClientPlayNetworking.registerGlobalReceiver(SyncTabsPayload.TYPE, (payload, context) -> {
+            context.client().execute(() -> ClientNetworkHandler.handleSyncTabs(payload));
         });
     }
 }

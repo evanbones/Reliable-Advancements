@@ -106,9 +106,23 @@ public class FabricPlatformHelper implements IPlatformHelper {
     }
 
     @Override
-    public void sendResetTab(ResetTabPayload payload) {
-        if (ClientPlayNetworking.canSend(ResetTabPayload.TYPE)) {
+    public void sendTabAction(TabActionPayload payload) {
+        if (ClientPlayNetworking.canSend(TabActionPayload.TYPE)) {
             ClientPlayNetworking.send(payload);
+        }
+    }
+
+    @Override
+    public void sendAdvancementBatch(AdvancementBatchPayload payload) {
+        if (ClientPlayNetworking.canSend(AdvancementBatchPayload.TYPE)) {
+            ClientPlayNetworking.send(payload);
+        }
+    }
+
+    @Override
+    public void sendTabsToClient(ServerPlayer player, SyncTabsPayload payload) {
+        if (ServerPlayNetworking.canSend(player, SyncTabsPayload.TYPE)) {
+            ServerPlayNetworking.send(player, payload);
         }
     }
 }

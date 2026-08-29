@@ -4,6 +4,7 @@ import com.evandev.reliable_advancements.client.ClientSetup;
 import com.evandev.reliable_advancements.network.NeoForgeNetworkHandler;
 import com.evandev.reliable_advancements.network.ServerAdvancementEditor;
 import com.evandev.reliable_advancements.reference.Constants;
+import com.evandev.reliable_advancements.tabs.ServerTabManager;
 import com.evandev.reliable_advancements.util.RewardTrackerData;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.api.distmarker.Dist;
@@ -30,6 +31,7 @@ public class ReliableAdvancements {
     private void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
             RewardTrackerData.get(serverPlayer.server).syncToPlayer(serverPlayer);
+            ServerTabManager.syncToPlayer(serverPlayer);
         }
     }
 

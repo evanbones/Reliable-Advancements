@@ -2,7 +2,11 @@ package com.evandev.reliable_advancements.mixin;
 
 import com.evandev.reliable_advancements.advancements.IMultiParentNode;
 import com.evandev.reliable_advancements.config.ModConfig;
+import com.evandev.reliable_advancements.reference.Constants;
 import com.evandev.reliable_advancements.util.RewardTrackerData;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.advancements.*;
@@ -11,6 +15,7 @@ import net.minecraft.server.PlayerAdvancements;
 import net.minecraft.server.ServerAdvancementManager;
 import net.minecraft.server.advancements.AdvancementVisibilityEvaluator;
 import net.minecraft.server.level.ServerPlayer;
+import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -20,31 +25,33 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
 
 @Mixin(PlayerAdvancements.class)
 public abstract class PlayerAdvancementsMixin {
 
+    @Unique
+    private final Map<String, JsonElement> reliable_advancements$retainedProgress = new LinkedHashMap<>();
     @Shadow
     private ServerPlayer player;
-
     @Shadow
     private AdvancementTree tree;
-
     @Shadow
     @Final
     private Set<AdvancementNode> rootsToUpdate;
-
     @Shadow
     @Final
     private Set<AdvancementHolder> visible;
-
     @Shadow
     @Final
     private Set<AdvancementHolder> progressChanged;
+    @Shadow
+    @Final
+    private Path playerSavePath;
 
     @Unique
     private static void reliable_advancements$collectAllRoots(AdvancementNode node, Set<AdvancementNode> roots, Set<AdvancementNode> visited) {
@@ -63,6 +70,55 @@ public abstract class PlayerAdvancementsMixin {
 
     @Shadow
     public abstract AdvancementProgress getOrStartProgress(AdvancementHolder advancement);
+
+    @Inject(method = "load", at = @At("HEAD"))
+    private void reliable_advancements$retainUnknownProgress(ServerAdvancementManager manager, CallbackInfo ci) {
+        this.reliable_advancements$retainedProgress.clear();
+
+        JsonObject saved = reliable_advancements$readSavedProgress();
+        if (saved == null) return;
+
+        for (String key : saved.keySet()) {
+            ResourceLocation id = ResourceLocation.tryParse(key);
+            if (id != null && manager.get(id) == null) {
+                this.reliable_advancements$retainedProgress.put(key, saved.get(key));
+            }
+        }
+    }
+
+    @Inject(method = "save", at = @At("RETURN"))
+    private void reliable_advancements$restoreUnknownProgress(CallbackInfo ci) {
+        if (this.reliable_advancements$retainedProgress.isEmpty()) return;
+
+        JsonObject saved = reliable_advancements$readSavedProgress();
+        if (saved == null) return;
+
+        boolean changed = false;
+        for (Map.Entry<String, JsonElement> entry : this.reliable_advancements$retainedProgress.entrySet()) {
+            if (saved.has(entry.getKey())) continue;
+            saved.add(entry.getKey(), entry.getValue());
+            changed = true;
+        }
+        if (!changed) return;
+
+        try {
+            Files.writeString(this.playerSavePath, saved.toString(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            Constants.LOG.error("Failed to keep progress for deleted advancements in {}", this.playerSavePath, e);
+        }
+    }
+
+    @Unique
+    private @Nullable JsonObject reliable_advancements$readSavedProgress() {
+        if (!Files.isRegularFile(this.playerSavePath)) return null;
+        try {
+            JsonElement parsed = JsonParser.parseString(Files.readString(this.playerSavePath, StandardCharsets.UTF_8));
+            return parsed.isJsonObject() ? parsed.getAsJsonObject() : null;
+        } catch (Exception e) {
+            Constants.LOG.error("Failed to read player advancements at {}", this.playerSavePath, e);
+            return null;
+        }
+    }
 
     @Inject(method = "reload", at = @At("HEAD"))
     private void reliable_advancements$saveBeforeReload(ServerAdvancementManager manager, CallbackInfo ci) {

@@ -1,11 +1,12 @@
 package com.evandev.reliable_advancements.network;
 
 import com.evandev.reliable_advancements.client.ClientRewardTracker;
+import com.evandev.reliable_advancements.client.ClientTabStore;
 import com.evandev.reliable_advancements.gui.EnhancedAdvancementTab;
 import com.evandev.reliable_advancements.gui.EnhancedAdvancementWidget;
 import com.evandev.reliable_advancements.gui.screens.AdvancementEditorScreen;
 import com.evandev.reliable_advancements.gui.screens.EnhancedAdvancementsScreen;
-import com.evandev.reliable_advancements.gui.screens.TabEditorScreen;
+import com.evandev.reliable_advancements.tabs.TabStore;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -13,12 +14,6 @@ public class ClientNetworkHandler {
     public static void handleAdvancementJson(AdvancementJsonPayload payload) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.screen instanceof EnhancedAdvancementsScreen mainScreen) {
-            if ("TabProperties".equals(payload.initialTab())) {
-                if (mainScreen.selectedTab != null && mainScreen.selectedTab.getRootNode().holder().id().equals(payload.advancementId())) {
-                    mc.setScreen(new TabEditorScreen(mainScreen, mainScreen.selectedTab, payload.jsonPayload()));
-                }
-                return;
-            }
             if ("Copy".equals(payload.initialTab())) {
                 EnhancedAdvancementsScreen.clipboardJson = payload.jsonPayload();
                 EnhancedAdvancementsScreen.clipboardId = payload.advancementId();
@@ -58,5 +53,11 @@ public class ClientNetworkHandler {
     public static void handleSyncClaimedRewards(SyncClaimedRewardsPayload payload) {
         ClientRewardTracker.CLAIMED.clear();
         ClientRewardTracker.CLAIMED.addAll(payload.claimedIds());
+    }
+
+    public static void handleSyncTabs(SyncTabsPayload payload) {
+        ClientTabStore.set(TabStore.parse(payload.jsonPayload()));
+        EnhancedAdvancementsScreen screen = EnhancedAdvancementsScreen.active();
+        if (screen != null) screen.onTabsSynced();
     }
 }

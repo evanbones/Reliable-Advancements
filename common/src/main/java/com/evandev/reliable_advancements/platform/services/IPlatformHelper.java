@@ -70,5 +70,9 @@ public interface IPlatformHelper {
 
     void sendRequestFullTree();
 
-    void sendResetTab(ResetTabPayload payload);
+    void sendTabAction(TabActionPayload payload);
+
+    void sendAdvancementBatch(AdvancementBatchPayload payload);
+
+    void sendTabsToClient(ServerPlayer player, SyncTabsPayload payload);
 }
