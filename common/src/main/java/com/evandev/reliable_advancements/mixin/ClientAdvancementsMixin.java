@@ -1,12 +1,15 @@
 package com.evandev.reliable_advancements.mixin;
 
 import com.evandev.reliable_advancements.advancements.IAdvancementSyncListener;
+import com.evandev.reliable_advancements.gui.screens.EnhancedAdvancementsScreen;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalBooleanRef;
 import net.minecraft.advancements.AdvancementProgress;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientAdvancements;
+import net.minecraft.client.telemetry.WorldSessionTelemetryManager;
 import net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,6 +26,11 @@ public abstract class ClientAdvancementsMixin {
     @Shadow
     @Nullable
     private ClientAdvancements.Listener listener;
+
+    @Inject(method = "<init>", at = @At("RETURN"))
+    private void reliable_advancements$onNewSession(Minecraft minecraft, WorldSessionTelemetryManager telemetryManager, CallbackInfo ci) {
+        EnhancedAdvancementsScreen.resetSession();
+    }
 
     @WrapOperation(
             method = "update",

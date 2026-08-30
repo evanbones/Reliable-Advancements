@@ -68,6 +68,11 @@ public class ServerAdvancementEditor {
                 new AdvancementJsonPayload(payload.advancementId(), json.toString(), payload.initialTab()));
     }
 
+    public static void handleSyncRequest(@Nullable ServerPlayer player, RequestSyncPayload payload) {
+        if (player == null) return;
+        Services.PLATFORM.sendSyncComplete(player, new SyncCompletePayload(payload.token()));
+    }
+
     public static void handleRequestFullTree(MinecraftServer server, ServerPlayer player) {
         if (player != null && player.hasPermissions(2)) {
             ServerTabManager.syncToPlayer(player);

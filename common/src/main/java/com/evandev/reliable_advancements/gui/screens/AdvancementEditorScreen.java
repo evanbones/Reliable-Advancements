@@ -364,6 +364,7 @@ public class AdvancementEditorScreen extends Screen {
             Services.PLATFORM.sendTabAction(TabActionPayload.addRoot(parentScreen.selectedTab.getId(), finalId));
         }
 
+        parentScreen.awaitServerSync();
         this.minecraft.setScreen(parentScreen);
     }
 

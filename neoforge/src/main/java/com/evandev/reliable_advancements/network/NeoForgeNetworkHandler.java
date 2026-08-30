@@ -37,6 +37,10 @@ public class NeoForgeNetworkHandler {
             context.enqueueWork(() -> ServerAdvancementEditor.handleAdvancementBatch(context.player().getServer(), (ServerPlayer) context.player(), payload));
         });
 
+        registrar.playToServer(RequestSyncPayload.TYPE, RequestSyncPayload.STREAM_CODEC, (payload, context) -> {
+            context.enqueueWork(() -> ServerAdvancementEditor.handleSyncRequest((ServerPlayer) context.player(), payload));
+        });
+
         registrar.playToClient(AdvancementJsonPayload.TYPE, AdvancementJsonPayload.STREAM_CODEC, (payload, context) -> {
             context.enqueueWork(() -> ClientNetworkHandler.handleAdvancementJson(payload));
         });
@@ -47,6 +51,10 @@ public class NeoForgeNetworkHandler {
 
         registrar.playToClient(SyncTabsPayload.TYPE, SyncTabsPayload.STREAM_CODEC, (payload, context) -> {
             context.enqueueWork(() -> ClientNetworkHandler.handleSyncTabs(payload));
+        });
+
+        registrar.playToClient(SyncCompletePayload.TYPE, SyncCompletePayload.STREAM_CODEC, (payload, context) -> {
+            context.enqueueWork(() -> ClientNetworkHandler.handleSyncComplete(payload));
         });
     }
 }

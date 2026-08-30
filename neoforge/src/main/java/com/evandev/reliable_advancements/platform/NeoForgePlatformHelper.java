@@ -133,4 +133,19 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
             PacketDistributor.sendToPlayer(player, payload);
         }
     }
+
+    @Override
+    public boolean sendSyncRequest(RequestSyncPayload payload) {
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection == null || !connection.hasChannel(RequestSyncPayload.TYPE)) return false;
+        PacketDistributor.sendToServer(payload);
+        return true;
+    }
+
+    @Override
+    public void sendSyncComplete(ServerPlayer player, SyncCompletePayload payload) {
+        if (player.connection.hasChannel(SyncCompletePayload.TYPE)) {
+            PacketDistributor.sendToPlayer(player, payload);
+        }
+    }
 }

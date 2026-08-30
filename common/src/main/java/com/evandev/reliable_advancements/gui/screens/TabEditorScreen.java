@@ -252,7 +252,7 @@ public class TabEditorScreen extends Screen {
                 TabActionPayload.Action.SAVE, tabId, def.toJson().toString()));
 
         EnhancedAdvancementsScreen.setSavedSelectedTab(tabId);
-        parentScreen.setLoading(true);
+        parentScreen.awaitServerSync();
         this.minecraft.setScreen(parentScreen);
     }
 

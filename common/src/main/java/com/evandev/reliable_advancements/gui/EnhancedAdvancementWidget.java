@@ -1,7 +1,6 @@
 package com.evandev.reliable_advancements.gui;
 
 import com.evandev.reliable_advancements.advancements.AdvancementDisplayInfo;
-import com.evandev.reliable_advancements.advancements.IMultiParentAdvancement;
 import com.evandev.reliable_advancements.api.IAdvancementEntryGui;
 import com.evandev.reliable_advancements.api.event.IAdvancementDrawConnectionsEvent;
 import com.evandev.reliable_advancements.client.ClientRewardTracker;
@@ -364,10 +363,6 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         this.advancementProgress = advancementProgressIn;
     }
 
-    public void addGuiAdvancement(EnhancedAdvancementWidget advancementEntryScreen) {
-        this.children.add(advancementEntryScreen);
-    }
-
     public void drawHover(GuiGraphics guiGraphics, int scrollX, int scrollY, int left, int top) {
         if (EnhancedAdvancementsScreen.canEdit() && !ModConfig.get().showTooltipsInEditMode) {
             return;
@@ -502,37 +497,24 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         }
     }
 
-    public void attachToParent() {
-        for (EnhancedAdvancementWidget p : new ArrayList<>(this.parents)) {
-            if (p != null) {
-                p.getChildren().remove(this);
-            }
-        }
-        this.parents.clear();
-        List<ResourceLocation> parentIds = IMultiParentAdvancement.getParents(this.advancementNode.advancement());
+    public void link(EnhancedAdvancementWidget parent) {
+        if (parent == null || parent == this || this.parents.contains(parent)) return;
+        this.parents.add(parent);
+        parent.children.add(this);
+    }
 
-        for (ResourceLocation parentId : parentIds) {
-            EnhancedAdvancementWidget pWidget = this.advancementTabGui.getWidget(parentId);
-            if (pWidget != null) {
-                if (!this.parents.contains(pWidget)) {
-                    this.parents.add(pWidget);
-                }
-                if (!pWidget.getChildren().contains(this)) {
-                    pWidget.addGuiAdvancement(this);
-                }
-            }
+    public void unlink(EnhancedAdvancementWidget parent) {
+        if (parent != null && this.parents.remove(parent)) {
+            parent.children.remove(this);
         }
+    }
 
-        for (AdvancementNode childNode : this.advancementNode.children()) {
-            EnhancedAdvancementWidget childWidget = this.advancementTabGui.getWidget(childNode.holder().id());
-            if (childWidget != null) {
-                if (!this.children.contains(childWidget)) {
-                    this.addGuiAdvancement(childWidget);
-                }
-                if (!childWidget.getParents().contains(this)) {
-                    childWidget.getParents().add(this);
-                }
-            }
+    public void unlinkAll() {
+        for (EnhancedAdvancementWidget parent : new ArrayList<>(this.parents)) {
+            unlink(parent);
+        }
+        for (EnhancedAdvancementWidget child : new ArrayList<>(this.children)) {
+            child.unlink(this);
         }
     }
 
@@ -555,32 +537,15 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     }
 
     public List<EnhancedAdvancementWidget> getParents() {
-        return this.parents;
+        return Collections.unmodifiableList(this.parents);
     }
 
     public EnhancedAdvancementWidget getParent() {
         return this.parents.isEmpty() ? null : this.parents.getFirst();
     }
 
-    public void setParent(EnhancedAdvancementWidget parent) {
-        this.parents.clear();
-        if (parent != null) {
-            this.parents.add(parent);
-        }
-    }
-
-    public void addParent(EnhancedAdvancementWidget parent) {
-        if (parent != null && !this.parents.contains(parent)) {
-            this.parents.add(parent);
-        }
-    }
-
-    public void removeParent(EnhancedAdvancementWidget parent) {
-        this.parents.remove(parent);
-    }
-
     public List<EnhancedAdvancementWidget> getChildren() {
-        return this.children;
+        return Collections.unmodifiableList(this.children);
     }
 
     @Override

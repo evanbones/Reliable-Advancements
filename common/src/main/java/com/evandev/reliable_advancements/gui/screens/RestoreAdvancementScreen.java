@@ -128,7 +128,7 @@ public class RestoreAdvancementScreen extends Screen {
 
         Services.PLATFORM.sendAdvancementBatch(new AdvancementBatchPayload(
                 AdvancementBatchPayload.Op.RESTORE, new ArrayList<>(selected)));
-        parentScreen.setLoading(true);
+        parentScreen.awaitServerSync();
         Minecraft.getInstance().setScreen(parentScreen);
     }
 
@@ -149,7 +149,7 @@ public class RestoreAdvancementScreen extends Screen {
                     if (confirmed) {
                         Services.PLATFORM.sendAdvancementBatch(new AdvancementBatchPayload(
                                 AdvancementBatchPayload.Op.PERMANENT_DELETE, new ArrayList<>(selected)));
-                        parentScreen.setLoading(true);
+                        parentScreen.awaitServerSync();
                         Minecraft.getInstance().setScreen(parentScreen);
                     } else {
                         Minecraft.getInstance().setScreen(this);

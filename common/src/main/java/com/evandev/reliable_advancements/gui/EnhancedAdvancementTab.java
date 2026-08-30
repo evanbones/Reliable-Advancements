@@ -2,6 +2,7 @@ package com.evandev.reliable_advancements.gui;
 
 import com.evandev.reliable_advancements.advancements.AdvancementDisplayInfo;
 import com.evandev.reliable_advancements.advancements.AdvancementDisplayInfoRegistry;
+import com.evandev.reliable_advancements.advancements.IMultiParentNode;
 import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.gui.screens.EnhancedAdvancementsScreen;
 import com.evandev.reliable_advancements.reference.Constants;
@@ -11,7 +12,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.Minecraft;
@@ -28,8 +28,7 @@ public class EnhancedAdvancementTab {
     public static final Map<ResourceLocation, Tuple<Integer, Integer>> scrollHistory = Maps.newLinkedHashMap();
 
     public final List<BackgroundRule> backgroundRules = new ArrayList<>();
-    protected final Map<AdvancementHolder, EnhancedAdvancementWidget> widgets = Maps.newLinkedHashMap();
-    protected final Map<ResourceLocation, EnhancedAdvancementWidget> widgetsById = Maps.newHashMap();
+    protected final Map<ResourceLocation, EnhancedAdvancementWidget> widgets = Maps.newLinkedHashMap();
 
     private final Minecraft minecraft;
     private final EnhancedAdvancementsScreen screen;
@@ -90,7 +89,7 @@ public class EnhancedAdvancementTab {
         }
     }
 
-    public Map<AdvancementHolder, EnhancedAdvancementWidget> getWidgets() {
+    public Map<ResourceLocation, EnhancedAdvancementWidget> getWidgets() {
         return this.widgets;
     }
 
@@ -271,7 +270,7 @@ public class EnhancedAdvancementTab {
     public void addAdvancement(AdvancementNode advancementNode) {
         Optional<DisplayInfo> optional = advancementNode.advancement().display();
         optional.ifPresent(displayInfo -> this.addWidget(new EnhancedAdvancementWidget(this, this.minecraft, advancementNode, displayInfo),
-                advancementNode.holder()));
+                advancementNode.holder().id()));
     }
 
     public void recalculateBounds() {
@@ -291,30 +290,27 @@ public class EnhancedAdvancementTab {
         this.maxY = Math.max(this.maxY, widget.getY() + 27);
     }
 
-    public void addWidget(EnhancedAdvancementWidget widget, AdvancementHolder advancementHolder) {
+    public void addWidget(EnhancedAdvancementWidget widget, ResourceLocation id) {
         widget.setTab(this);
-        this.widgets.put(advancementHolder, widget);
-        this.widgetsById.put(advancementHolder.id(), widget);
+        this.widgets.put(id, widget);
         expandBounds(widget);
-        widget.attachToParent();
     }
 
-    public void removeWidget(ResourceLocation id) {
-        if (id == null) return;
-        EnhancedAdvancementWidget widget = this.widgetsById.remove(id);
-        this.widgets.entrySet().removeIf(e -> e.getKey().id().equals(id));
-        if (widget != null) {
-            for (EnhancedAdvancementWidget p : new ArrayList<>(widget.getParents())) {
-                if (p != null) {
-                    p.getChildren().remove(widget);
+    public void linkWidgets() {
+        for (EnhancedAdvancementWidget widget : this.widgets.values()) {
+            widget.unlinkAll();
+        }
+        for (EnhancedAdvancementWidget widget : this.widgets.values()) {
+            for (AdvancementNode parent : IMultiParentNode.getParents(widget.getAdvancement())) {
+                if (parent != null) {
+                    widget.link(this.widgets.get(parent.holder().id()));
                 }
             }
         }
-        this.recalculateBounds();
     }
 
     public EnhancedAdvancementWidget getWidget(ResourceLocation id) {
-        return id == null ? null : this.widgetsById.get(id);
+        return id == null ? null : this.widgets.get(id);
     }
 
     public EnhancedAdvancementsScreen getScreen() {

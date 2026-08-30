@@ -75,4 +75,14 @@ public interface IPlatformHelper {
     void sendAdvancementBatch(AdvancementBatchPayload payload);
 
     void sendTabsToClient(ServerPlayer player, SyncTabsPayload payload);
+
+    /**
+     * Sends a sync barrier to the server.
+     *
+     * @return True if it was actually sent, false when the server can't answer it, in which
+     * case the caller won't bother waiting for a reply.
+     */
+    boolean sendSyncRequest(RequestSyncPayload payload);
+
+    void sendSyncComplete(ServerPlayer player, SyncCompletePayload payload);
 }

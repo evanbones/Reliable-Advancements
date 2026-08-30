@@ -1,5 +1,6 @@
 package com.evandev.reliable_advancements.tabs;
 
+import com.evandev.reliable_advancements.advancements.IMultiParentNode;
 import net.minecraft.advancements.AdvancementNode;
 import net.minecraft.advancements.AdvancementTree;
 import net.minecraft.advancements.DisplayInfo;
@@ -197,12 +198,32 @@ public final class TabResolver {
         }
 
         Map<ResourceLocation, ResourceLocation> result = new HashMap<>();
+        List<AdvancementNode> unplaced = new ArrayList<>();
         for (AdvancementNode node : tree.nodes()) {
             ResourceLocation tabId = rootToTab.get(node.root().holder().id());
             if (tabId != null) {
                 result.put(node.holder().id(), tabId);
+            } else {
+                unplaced.add(node);
             }
         }
+
+        unplaced.sort(Comparator.comparing(node -> node.holder().id()));
+        boolean progressed;
+        do {
+            progressed = false;
+            for (AdvancementNode node : unplaced) {
+                if (result.containsKey(node.holder().id())) continue;
+                for (AdvancementNode parent : IMultiParentNode.getParents(node)) {
+                    ResourceLocation tabId = parent == null ? null : result.get(parent.holder().id());
+                    if (tabId != null) {
+                        result.put(node.holder().id(), tabId);
+                        progressed = true;
+                        break;
+                    }
+                }
+            }
+        } while (progressed);
         return result;
     }
 }

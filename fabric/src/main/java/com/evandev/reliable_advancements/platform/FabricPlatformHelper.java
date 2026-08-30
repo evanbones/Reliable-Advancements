@@ -125,4 +125,18 @@ public class FabricPlatformHelper implements IPlatformHelper {
             ServerPlayNetworking.send(player, payload);
         }
     }
+
+    @Override
+    public boolean sendSyncRequest(RequestSyncPayload payload) {
+        if (!ClientPlayNetworking.canSend(RequestSyncPayload.TYPE)) return false;
+        ClientPlayNetworking.send(payload);
+        return true;
+    }
+
+    @Override
+    public void sendSyncComplete(ServerPlayer player, SyncCompletePayload payload) {
+        if (ServerPlayNetworking.canSend(player, SyncCompletePayload.TYPE)) {
+            ServerPlayNetworking.send(player, payload);
+        }
+    }
 }

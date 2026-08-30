@@ -22,23 +22,11 @@ public class ClientNetworkHandler {
                 }
                 return;
             }
-            EnhancedAdvancementWidget targetWidget = null;
-            if (mainScreen.selectedTab != null) {
-                for (EnhancedAdvancementWidget w : mainScreen.selectedTab.getWidgets().values()) {
-                    if (w.getAdvancement().holder().id().equals(payload.advancementId())) {
-                        targetWidget = w;
-                        break;
-                    }
-                }
-            }
+            EnhancedAdvancementWidget targetWidget = mainScreen.selectedTab == null
+                    ? null : mainScreen.selectedTab.getWidget(payload.advancementId());
             if (targetWidget == null) {
                 for (EnhancedAdvancementTab tab : mainScreen.getTabs().values()) {
-                    for (EnhancedAdvancementWidget w : tab.getWidgets().values()) {
-                        if (w.getAdvancement().holder().id().equals(payload.advancementId())) {
-                            targetWidget = w;
-                            break;
-                        }
-                    }
+                    targetWidget = tab.getWidget(payload.advancementId());
                     if (targetWidget != null) break;
                 }
             }
@@ -53,6 +41,11 @@ public class ClientNetworkHandler {
     public static void handleSyncClaimedRewards(SyncClaimedRewardsPayload payload) {
         ClientRewardTracker.CLAIMED.clear();
         ClientRewardTracker.CLAIMED.addAll(payload.claimedIds());
+    }
+
+    public static void handleSyncComplete(SyncCompletePayload payload) {
+        EnhancedAdvancementsScreen screen = EnhancedAdvancementsScreen.active();
+        if (screen != null) screen.onServerSyncComplete(payload.token());
     }
 
     public static void handleSyncTabs(SyncTabsPayload payload) {

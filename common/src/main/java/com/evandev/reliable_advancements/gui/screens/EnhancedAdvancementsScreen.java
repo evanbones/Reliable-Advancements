@@ -57,11 +57,11 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public static ResourceLocation clipboardId = null;
     public static boolean clientHasFullTree = false;
     public static float savedZoom = 1.0F;
-    private static ClientAdvancements lastAdvancementsManager = null;
     private static int tabPage, maxPages;
     private static @Nullable EnhancedAdvancementsScreen active = null;
     private static ResourceLocation savedSelectedTab = null;
     private static String lastPushedPresentation = "";
+    private static int nextSyncToken = 0;
     private final ClientAdvancements clientAdvancements;
     private final Screen parent;
     private final Map<ResourceLocation, EnhancedAdvancementTab> tabs = Maps.newLinkedHashMap();
@@ -71,8 +71,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public int internalWidth;
     protected int internalHeight;
     private boolean tabsDirty = true;
-    private boolean isLoading = false;
-    private long loadingTimeout = 0;
+    private int syncRequested = 0;
+    private int syncCompleted = 0;
     private Button prevPageBtn;
     private Button nextPageBtn;
     private Button editModeBtn;
@@ -84,6 +84,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     private double dragOffsetY = 0.0;
     private String linkingError = null;
     private long linkingErrorTime = 0;
+    private @Nullable ResourceLocation announcedTab = null;
 
     public EnhancedAdvancementsScreen(ClientAdvancements clientAdvancements) {
         this(clientAdvancements, null);
@@ -94,16 +95,18 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         this.clientAdvancements = clientAdvancements;
         this.parent = parent;
 
-        if (lastAdvancementsManager != clientAdvancements) {
-            lastAdvancementsManager = clientAdvancements;
-            clientHasFullTree = false;
-            savedSelectedTab = null;
-            lastPushedPresentation = "";
-            active = null;
-            ClientTabStore.clear();
-        }
         PersistentData.load();
         this.zoom = savedZoom = Mth.clamp(PersistentData.getZoom(), MIN_ZOOM, MAX_ZOOM);
+    }
+
+    public static void resetSession() {
+        clientHasFullTree = false;
+        savedSelectedTab = null;
+        lastPushedPresentation = "";
+        nextSyncToken = 0;
+        active = null;
+        EnhancedAdvancementTab.scrollHistory.clear();
+        ClientTabStore.clear();
     }
 
     public static void setSavedSelectedTab(ResourceLocation id) {
@@ -127,31 +130,30 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         return active;
     }
 
-    public void setLoading(boolean loading) {
-        this.isLoading = loading;
-        if (loading) {
-            this.loadingTimeout = Util.getMillis() + 6000;
-            this.advConnectedToMouse = null;
-            this.linkingWidget = null;
-            this.contextMenu = null;
-            selectedWidgets.clear();
+    public void awaitServerSync() {
+        this.advConnectedToMouse = null;
+        this.linkingWidget = null;
+        this.contextMenu = null;
+        selectedWidgets.clear();
+
+        int token = this.syncRequested = ++nextSyncToken;
+        if (!Services.PLATFORM.sendSyncRequest(new RequestSyncPayload(token))) {
+            this.syncCompleted = token;
         }
     }
 
-    @Override
-    public void tick() {
-        super.tick();
-        if (this.isLoading && Util.getMillis() > this.loadingTimeout) {
-            this.isLoading = false;
+    public void onServerSyncComplete(int token) {
+        if (token > this.syncCompleted && token <= this.syncRequested) {
+            this.syncCompleted = token;
         }
-        if (editModeBtn == null && ModConfig.get().showEditModeButton && this.minecraft.player != null && this.minecraft.player.hasPermissions(2)) {
-            rebuildEditModeButton();
-        }
+    }
+
+    public boolean isLoading() {
+        return this.syncCompleted < this.syncRequested;
     }
 
     @Override
     public void onAdvancementSyncComplete() {
-        this.isLoading = false;
         this.finalizeResync();
     }
 
@@ -159,7 +161,6 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         rebuildTabs();
         rebuildNavigationWidgets();
         rebuildEditModeButton();
-        this.isLoading = false;
     }
 
     public void markTabsDirty() {
@@ -168,7 +169,6 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     public void onTabsSynced() {
         this.tabsDirty = true;
-        this.isLoading = false;
     }
 
     public void rebuildTabs() {
@@ -288,9 +288,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
 
         for (EnhancedAdvancementTab tab : this.tabs.values()) {
+            tab.linkWidgets();
             tab.loadScroll();
-            for (Map.Entry<AdvancementHolder, EnhancedAdvancementWidget> entry : tab.getWidgets().entrySet()) {
-                AdvancementProgress progress = this.progressCache.get(entry.getKey().id());
+            for (Map.Entry<ResourceLocation, EnhancedAdvancementWidget> entry : tab.getWidgets().entrySet()) {
+                AdvancementProgress progress = this.progressCache.get(entry.getKey());
                 if (progress != null) {
                     entry.getValue().getAdvancementProgress(progress);
                 }
@@ -307,11 +308,17 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         if (this.selectedTab == null) return;
 
         this.selectedTab.loadScroll();
+        announceTab(this.selectedTab);
+    }
 
-        AdvancementNode primaryRoot = this.selectedTab.getPrimaryRoot();
-        if (primaryRoot != null) {
-            this.clientAdvancements.setSelectedTab(primaryRoot.holder(), true);
-        }
+    private void announceTab(@Nullable EnhancedAdvancementTab tab) {
+        AdvancementNode primaryRoot = tab == null ? null : tab.getPrimaryRoot();
+        if (primaryRoot == null) return;
+
+        ResourceLocation id = primaryRoot.holder().id();
+        boolean changed = !id.equals(this.announcedTab);
+        this.announcedTab = id;
+        this.clientAdvancements.setSelectedTab(primaryRoot.holder(), changed);
     }
 
     private Comparator<ResolvedTab> tabOrder() {
@@ -420,7 +427,6 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             editModeBtn = Button.builder(Component.literal("Edit: " + (ModConfig.get().enableEditMode ? "ON" : "OFF")), b -> {
                 ModConfig.get().enableEditMode = !ModConfig.get().enableEditMode;
                 if (this.selectedTab != null) this.selectedTab.storeScroll();
-                this.setLoading(true);
                 if (ModConfig.get().enableEditMode) {
                     clientHasFullTree = true;
                     Services.PLATFORM.sendRequestFullTree();
@@ -429,6 +435,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     Services.PLATFORM.sendAdvancementJsonRequest(new RequestAdvancementJsonPayload(
                             ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "resync"), "Resync"));
                 }
+                this.awaitServerSync();
                 b.setMessage(Component.literal("Edit: " + (ModConfig.get().enableEditMode ? "ON" : "OFF")));
             }).pos(this.width - editBtnWidth - 30, 10).size(editBtnWidth, 20).build();
             addRenderableWidget(editModeBtn);
@@ -443,10 +450,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         if (targetTab != null) {
             this.selectedTab = targetTab;
             savedSelectedTab = targetTab.getId();
-            AdvancementNode primaryRoot = targetTab.getPrimaryRoot();
-            if (primaryRoot != null) {
-                this.clientAdvancements.setSelectedTab(primaryRoot.holder(), true);
-            }
+            announceTab(targetTab);
             EnhancedAdvancementWidget widget = targetTab.getWidget(id);
 
             if (widget != null) {
@@ -531,11 +535,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         for (EnhancedAdvancementWidget parentWidget : new ArrayList<>(widget.getParents())) {
             Services.PLATFORM.sendLinkAdvancement(
                     new LinkAdvancementPayload(childId, parentWidget.getAdvancement().holder().id(), true));
-            parentWidget.getChildren().remove(widget);
+            widget.unlink(parentWidget);
         }
-        widget.getParents().clear();
         IMultiParentAdvancement.setParents(widget.getAdvancement().advancement(), List.of());
-        this.setLoading(true);
+        this.awaitServerSync();
     }
 
     public float getZoom() {
@@ -583,7 +586,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     if (confirmed) {
                         if (this.selectedTab != null) this.selectedTab.storeScroll();
                         Services.PLATFORM.sendAdvancementBatch(new AdvancementBatchPayload(op, ids));
-                        this.setLoading(true);
+                        this.awaitServerSync();
                     }
                     this.minecraft.setScreen(this);
                 },
@@ -644,7 +647,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         if (pasteParent == null && this.selectedTab != null) {
             Services.PLATFORM.sendTabAction(TabActionPayload.addRoot(this.selectedTab.getId(), newId));
         }
-        this.setLoading(true);
+        this.awaitServerSync();
     }
 
     public void createNewAdvancement(int mouseX, int mouseY) {
@@ -685,6 +688,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         active = this;
         this.clearWidgets();
         this.editModeBtn = null;
+        this.prevPageBtn = null;
+        this.nextPageBtn = null;
         this.advConnectedToMouse = null;
         this.linkingWidget = null;
         this.contextMenu = null;
@@ -704,13 +709,13 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         }
 
         if (EnhancedAdvancementsScreen.canEdit() && !clientHasFullTree) {
-            this.setLoading(true);
             Services.PLATFORM.sendRequestFullTree();
             clientHasFullTree = true;
-            return;
+            this.awaitServerSync();
+        } else if (!isLoading()) {
+            rebuildTabs();
         }
 
-        rebuildTabs();
         this.rebuildNavigationWidgets();
         this.rebuildEditModeButton();
     }
@@ -731,7 +736,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (this.isLoading) return true;
+        if (isLoading()) return true;
 
         if (EnhancedAdvancementsScreen.canEdit() && button == 0 && this.contextMenu == null) {
             EnhancedAdvancementWidget hovered = getHoveredWidget(mouseX, mouseY);
@@ -782,8 +787,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     LinkAdvancementPayload payload = new LinkAdvancementPayload(id, parentResId, true);
                     Services.PLATFORM.sendLinkAdvancement(payload);
 
-                    linkingWidget.removeParent(target);
-                    target.getChildren().remove(linkingWidget);
+                    linkingWidget.unlink(target);
                 } else {
                     if (isDescendant(this.linkingWidget, target)) {
                         this.linkingError = Component.translatable("gui.reliable_advancements.linking.error.cycle").getString();
@@ -795,10 +799,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     LinkAdvancementPayload payload = new LinkAdvancementPayload(id, parentResId, false);
                     Services.PLATFORM.sendLinkAdvancement(payload);
 
-                    linkingWidget.addParent(target);
-                    if (!target.getChildren().contains(linkingWidget)) {
-                        target.getChildren().add(linkingWidget);
-                    }
+                    linkingWidget.link(target);
                 }
 
             }
@@ -875,7 +876,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (this.isLoading) return true;
+        if (isLoading()) return true;
         if (this.contextMenu != null) this.contextMenu = null;
         if (this.selectedTab != null) {
             if (Screen.hasControlDown()) {
@@ -904,7 +905,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (this.isLoading) {
+        if (isLoading()) {
             if (keyCode == 256) {
                 this.onClose();
                 return true;
@@ -977,7 +978,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (this.isLoading) return true;
+        if (isLoading()) return true;
         if (this.advConnectedToMouse != null) {
             Collection<EnhancedAdvancementWidget> moved = selectedWidgets.contains(this.advConnectedToMouse)
                     ? new ArrayList<>(selectedWidgets)
@@ -1024,7 +1025,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double mouseDeltaX, double mouseDeltaY) {
-        if (this.isLoading) return true;
+        if (isLoading()) return true;
         TabBounds bounds = getTabBounds();
 
         if (button != 0 && button != 2) {
@@ -1101,7 +1102,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        if (this.tabsDirty && !this.isLoading) {
+        if (this.tabsDirty && !isLoading()) {
             rebuildTabs();
             rebuildNavigationWidgets();
         }
@@ -1124,7 +1125,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
         this.renderInside(guiGraphics, mouseX, mouseY, left, top, right, bottom);
 
-        if (!this.isLoading) {
+        if (!isLoading()) {
             guiGraphics.pose().pushPose();
             guiGraphics.pose().translate(left + PADDING, top + 2 * PADDING, 0);
             guiGraphics.pose().scale(zoom, zoom, 1.0F);
@@ -1175,7 +1176,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
 
-        if (this.isLoading) {
+        if (isLoading()) {
             guiGraphics.pose().pushPose();
             guiGraphics.pose().translate(0, 0, 400.0D);
             RenderSystem.disableDepthTest();
@@ -1317,7 +1318,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         int width = boxRight - boxLeft;
         int height = boxBottom - boxTop;
 
-        if (this.isLoading) {
+        if (isLoading()) {
             guiGraphics.fill(boxLeft, boxTop, boxRight, boxBottom, 0xFF0E131F);
             return;
         }
@@ -1418,7 +1419,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
         savedSelectedTab = newId;
         this.contextMenu = null;
-        this.setLoading(true);
+        this.awaitServerSync();
     }
 
     public void deleteTab(EnhancedAdvancementTab tab) {
@@ -1431,7 +1432,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     if (confirmed) {
                         savedSelectedTab = null;
                         Services.PLATFORM.sendTabAction(TabActionPayload.of(TabActionPayload.Action.DELETE, tabId));
-                        this.setLoading(true);
+                        this.awaitServerSync();
                     }
                     this.minecraft.setScreen(this);
                 },
@@ -1450,7 +1451,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     if (confirmed) {
                         savedSelectedTab = tabId;
                         Services.PLATFORM.sendTabAction(TabActionPayload.of(TabActionPayload.Action.RESET_TO_VANILLA, tabId));
-                        this.setLoading(true);
+                        this.awaitServerSync();
                     }
                     this.minecraft.setScreen(this);
                 },
@@ -1468,17 +1469,12 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         this.selectedTab = tab;
         savedSelectedTab = tab.getId();
         tab.loadScroll();
-
-        AdvancementNode primaryRoot = tab.getPrimaryRoot();
-        if (primaryRoot != null) {
-            this.clientAdvancements.setSelectedTab(primaryRoot.holder(), true);
-        }
+        announceTab(tab);
         updateTabPage(getTabBounds().maxTabs);
     }
 
     @Override
     public void onAdvancementsCleared() {
-        this.setLoading(true);
         if (this.selectedTab != null) this.selectedTab.storeScroll();
         this.tabs.clear();
         this.progressCache.clear();

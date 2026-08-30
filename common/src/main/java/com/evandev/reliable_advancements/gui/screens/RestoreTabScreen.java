@@ -110,7 +110,7 @@ public class RestoreTabScreen extends Screen {
                         EnhancedAdvancementsScreen.setSavedSelectedTab(entry.id());
                         Services.PLATFORM.sendTabAction(
                                 TabActionPayload.of(TabActionPayload.Action.RESTORE, entry.id()));
-                        parentScreen.setLoading(true);
+                        parentScreen.awaitServerSync();
                         Minecraft.getInstance().setScreen(parentScreen);
                     } else {
                         Minecraft.getInstance().setScreen(this);
@@ -127,7 +127,7 @@ public class RestoreTabScreen extends Screen {
                     if (confirmed) {
                         Services.PLATFORM.sendTabAction(
                                 TabActionPayload.of(TabActionPayload.Action.PERMANENT_DELETE, entry.id()));
-                        parentScreen.setLoading(true);
+                        parentScreen.awaitServerSync();
                         Minecraft.getInstance().setScreen(parentScreen);
                     } else {
                         Minecraft.getInstance().setScreen(this);

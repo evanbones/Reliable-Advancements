@@ -98,6 +98,10 @@ public class AdvancementContextMenu {
                 () -> parentScreen.editTabProperties(tab)));
         this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.create_tab"), false,
                 parentScreen::createNewTab));
+        this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.restore_tab"), false, () -> {
+            Minecraft.getInstance().setScreen(new RestoreTabScreen(parentScreen));
+            parentScreen.closeContextMenu();
+        }));
         this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.reset_tab"), true,
                 () -> parentScreen.resetTabToVanilla(tab)));
         this.options.add(new ContextOption(Component.translatable("gui.reliable_advancements.context.delete_tab"), true,

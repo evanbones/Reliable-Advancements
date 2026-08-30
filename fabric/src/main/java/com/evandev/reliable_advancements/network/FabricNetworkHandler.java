@@ -13,9 +13,11 @@ public class FabricNetworkHandler {
         PayloadTypeRegistry.playC2S().register(RequestFullTreePayload.TYPE, RequestFullTreePayload.STREAM_CODEC);
         PayloadTypeRegistry.playC2S().register(TabActionPayload.TYPE, TabActionPayload.STREAM_CODEC);
         PayloadTypeRegistry.playC2S().register(AdvancementBatchPayload.TYPE, AdvancementBatchPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(RequestSyncPayload.TYPE, RequestSyncPayload.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(AdvancementJsonPayload.TYPE, AdvancementJsonPayload.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(SyncClaimedRewardsPayload.TYPE, SyncClaimedRewardsPayload.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(SyncTabsPayload.TYPE, SyncTabsPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(SyncCompletePayload.TYPE, SyncCompletePayload.STREAM_CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(EditAdvancementPayload.TYPE, (payload, context) -> {
             context.server().execute(() -> ServerAdvancementEditor.saveAdvancementEdit(context.server(), context.player(), payload));
@@ -44,6 +46,10 @@ public class FabricNetworkHandler {
         ServerPlayNetworking.registerGlobalReceiver(AdvancementBatchPayload.TYPE, (payload, context) -> {
             context.server().execute(() -> ServerAdvancementEditor.handleAdvancementBatch(context.server(), context.player(), payload));
         });
+
+        ServerPlayNetworking.registerGlobalReceiver(RequestSyncPayload.TYPE, (payload, context) -> {
+            context.server().execute(() -> ServerAdvancementEditor.handleSyncRequest(context.player(), payload));
+        });
     }
 
     public static void registerClientReceivers() {
@@ -57,6 +63,10 @@ public class FabricNetworkHandler {
 
         ClientPlayNetworking.registerGlobalReceiver(SyncTabsPayload.TYPE, (payload, context) -> {
             context.client().execute(() -> ClientNetworkHandler.handleSyncTabs(payload));
+        });
+
+        ClientPlayNetworking.registerGlobalReceiver(SyncCompletePayload.TYPE, (payload, context) -> {
+            context.client().execute(() -> ClientNetworkHandler.handleSyncComplete(payload));
         });
     }
 }
