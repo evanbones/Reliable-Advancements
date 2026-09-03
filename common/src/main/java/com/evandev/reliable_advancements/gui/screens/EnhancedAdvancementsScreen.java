@@ -1282,17 +1282,32 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                 guiGraphics.pose().popPose();
             }
 
-            if (ModConfig.get().showDebugCoordinates && this.selectedTab != null && mouseX < getTabInternalWidth() - SIDE - PADDING && mouseX > SIDE + PADDING && mouseY < getTabInternalHeight() - top + 1 && mouseY > top + PADDING * 2) {
+            int boxLeft = left + PADDING;
+            int boxTop = top + 2 * PADDING;
+            int boxRight = right - PADDING;
+            int boxBottom = bottom - PADDING;
+
+            if (ModConfig.get().showDebugCoordinates && this.selectedTab != null) {
                 if (this.advConnectedToMouse != null) {
-                    int currentX = (int) ((this.advConnectedToMouse.getX() + this.selectedTab.scrollX + 4) * zoom) + left + PADDING;
-                    int currentY = (int) ((this.advConnectedToMouse.getY() + this.selectedTab.scrollY) * zoom) + top + 2 * PADDING - font.lineHeight + 1;
+                    guiGraphics.pose().pushPose();
+                    guiGraphics.pose().translate(0, 0, 500.0F);
+                    RenderSystem.disableDepthTest();
+                    int currentX = (int) ((this.advConnectedToMouse.getX() + this.selectedTab.scrollX + 4) * zoom) + boxLeft;
+                    int currentY = (int) ((this.advConnectedToMouse.getY() + this.selectedTab.scrollY) * zoom) + boxTop - font.lineHeight + 1;
                     guiGraphics.drawString(font, this.advConnectedToMouse.getX() + "," + this.advConnectedToMouse.getY(), currentX, currentY, 0xFFFFFF);
-                } else {
-                    int xMouse = (int) ((mouseX - left - PADDING) / zoom);
-                    int yMouse = (int) ((mouseY - top - 2 * PADDING) / zoom);
+                    RenderSystem.enableDepthTest();
+                    guiGraphics.pose().popPose();
+                } else if (mouseX >= boxLeft && mouseX <= boxRight && mouseY >= boxTop && mouseY <= boxBottom) {
+                    guiGraphics.pose().pushPose();
+                    guiGraphics.pose().translate(0, 0, 500.0F);
+                    RenderSystem.disableDepthTest();
+                    int xMouse = (int) ((mouseX - boxLeft) / zoom);
+                    int yMouse = (int) ((mouseY - boxTop) / zoom);
                     int currentX = xMouse - this.selectedTab.scrollX - 4;
                     int currentY = yMouse - this.selectedTab.scrollY - 1;
                     guiGraphics.drawString(font, currentX + "," + currentY, mouseX, mouseY - font.lineHeight, 0xFFFFFF);
+                    RenderSystem.enableDepthTest();
+                    guiGraphics.pose().popPose();
                 }
             }
 
@@ -1301,10 +1316,15 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             }
 
             if (this.linkingError != null && Util.getMillis() < this.linkingErrorTime) {
+                guiGraphics.pose().pushPose();
+                guiGraphics.pose().translate(0, 0, 600.0F);
+                RenderSystem.disableDepthTest();
                 int errW = this.font.width(this.linkingError);
                 guiGraphics.fill(mouseX + 10, mouseY - 15, mouseX + 16 + errW, mouseY + 1, 0xDD000000);
                 guiGraphics.renderOutline(mouseX + 10, mouseY - 15, errW + 6, 16, 0xFFFF5555);
                 guiGraphics.drawString(this.font, this.linkingError, mouseX + 13, mouseY - 11, 0xFF5555);
+                RenderSystem.enableDepthTest();
+                guiGraphics.pose().popPose();
             }
         }
     }

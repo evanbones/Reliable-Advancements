@@ -157,55 +157,21 @@ public class ServerAdvancementEditor {
             advJson.getAsJsonObject("display").remove("background");
         }
         IMultiParentAdvancement.setParents(adv, parsedParents);
-        AdvancementHolder newHolder = new AdvancementHolder(payload.advancementId(), adv);
-
         if (!writeEditFile(server, player, payload.advancementId(), advJson)) return;
 
-        boolean wasTombstoned = ServerTabManager.store().isAdvancementDeleted(payload.advancementId());
-        if (wasTombstoned) {
+        if (ServerTabManager.store().isAdvancementDeleted(payload.advancementId())) {
             ServerTabManager.store().clearAdvancementDeletion(payload.advancementId());
             saveTabs(server);
         }
 
         AdvancementHolder previous = server.getAdvancements().get(payload.advancementId());
-        if (wasTombstoned || isStructuralChange(previous, newHolder)) {
-            Set<ResourceLocation> seeds = new LinkedHashSet<>();
-            seeds.add(payload.advancementId());
-            if (previous != null) previous.value().parent().ifPresent(seeds::add);
-            newHolder.value().parent().ifPresent(seeds::add);
-            pinCurrentLayout(server, seeds);
+        Set<ResourceLocation> seeds = new LinkedHashSet<>();
+        seeds.add(payload.advancementId());
+        if (previous != null) previous.value().parent().ifPresent(seeds::add);
+        adv.parent().ifPresent(seeds::add);
+        pinCurrentLayout(server, seeds);
 
-            rebuildServerAdvancements(server);
-            return;
-        }
-
-        ServerAdvancementManagerAccessor manager = (ServerAdvancementManagerAccessor) server.getAdvancements();
-        Map<ResourceLocation, AdvancementHolder> map = new LinkedHashMap<>(manager.getAdvancements());
-        map.put(newHolder.id(), newHolder);
-        Map<ResourceLocation, float[]> positionsBefore = snapshotDisplayPositions(map.values());
-        applyTreeAndPositions(manager, map);
-
-        List<AdvancementHolder> changed = new ArrayList<>();
-        changed.add(newHolder);
-        for (AdvancementHolder holder : map.values()) {
-            if (holder.id().equals(newHolder.id())) continue;
-            if (hasMoved(positionsBefore.get(holder.id()), holder)) {
-                changed.add(holder);
-            }
-        }
-        sendIncrementalUpdateToAll(server, changed, Set.of());
-    }
-
-    private static boolean isStructuralChange(@Nullable AdvancementHolder previous, AdvancementHolder updated) {
-        if (previous == null) return true;
-        if (!previous.value().parent().equals(updated.value().parent())) return true;
-        if (!IMultiParentAdvancement.getParents(previous.value()).equals(IMultiParentAdvancement.getParents(updated.value())))
-            return true;
-
-        Optional<DisplayInfo> before = previous.value().display();
-        Optional<DisplayInfo> after = updated.value().display();
-        if (before.isPresent() != after.isPresent()) return true;
-        return before.isPresent() && !before.get().getBackground().equals(after.get().getBackground());
+        rebuildServerAdvancements(server);
     }
 
     public static void handleAdvancementBatch(MinecraftServer server, ServerPlayer player, AdvancementBatchPayload payload) {
@@ -321,8 +287,10 @@ public class ServerAdvancementEditor {
         }
         if (def.background == null) def.background = tab.background();
         if (!def.staticBackground && tab.staticBackground()) def.staticBackground = tab.staticBackground();
-        if (def.bgWidth == TabDefinition.DEFAULT_TILE && tab.bgWidth() != TabDefinition.DEFAULT_TILE) def.bgWidth = tab.bgWidth();
-        if (def.bgHeight == TabDefinition.DEFAULT_TILE && tab.bgHeight() != TabDefinition.DEFAULT_TILE) def.bgHeight = tab.bgHeight();
+        if (def.bgWidth == TabDefinition.DEFAULT_TILE && tab.bgWidth() != TabDefinition.DEFAULT_TILE)
+            def.bgWidth = tab.bgWidth();
+        if (def.bgHeight == TabDefinition.DEFAULT_TILE && tab.bgHeight() != TabDefinition.DEFAULT_TILE)
+            def.bgHeight = tab.bgHeight();
         if (def.windowWidth == 0 && tab.windowWidth() > 0) def.windowWidth = tab.windowWidth();
         if (def.windowHeight == 0 && tab.windowHeight() > 0) def.windowHeight = tab.windowHeight();
         if (def.index == null) def.index = tab.index();
@@ -361,24 +329,28 @@ public class ServerAdvancementEditor {
         rebuildAndApplyServerTree(server);
 
         boolean severed = false;
-        for (Map.Entry<ResourceLocation, TabStore.Deletion> entry : restored.entrySet()) {
-            if (server.getAdvancements().get(entry.getKey()) != null) continue;
+        for (ResourceLocation id : restored.keySet()) {
+            if (server.getAdvancements().get(id) != null) continue;
 
-            AdvancementHolder holder = baseAdvancements(server).get(entry.getKey());
-            JsonObject json = holder == null ? readEditFile(server, entry.getKey()) : encode(server, player, holder);
+            AdvancementHolder holder = baseAdvancements(server).get(id);
+            JsonObject json = holder == null ? readEditFile(server, id) : encode(server, player, holder);
             if (json == null) continue;
 
             MultiParentHelper.applyParentsToJson(json, List.of(), null);
-            if (!writeEditFile(server, player, entry.getKey(), json)) continue;
+            if (!writeEditFile(server, player, id, json)) continue;
             severed = true;
-
-            ResourceLocation tabId = entry.getValue().tab();
-            TabDefinition def = tabId == null ? null : store.tab(tabId);
-            if (def != null && !def.deleted && !def.roots.contains(entry.getKey())) {
-                def.roots.add(entry.getKey());
-            }
         }
         if (severed) rebuildAndApplyServerTree(server);
+
+        AdvancementTree tree = server.getAdvancements().tree();
+        for (Map.Entry<ResourceLocation, TabStore.Deletion> entry : restored.entrySet()) {
+            AdvancementNode node = tree.get(entry.getKey());
+            ResourceLocation tabId = entry.getValue().tab();
+            if (node == null || node.parent() != null || tabId == null || store.isTabDeleted(tabId)) continue;
+
+            TabDefinition def = store.getOrCreate(tabId);
+            if (!def.roots.contains(entry.getKey())) def.roots.add(entry.getKey());
+        }
 
         saveTabs(server);
         rebuildServerAdvancements(server);
@@ -765,7 +737,9 @@ public class ServerAdvancementEditor {
         TabStore store = ServerTabManager.store();
 
         Set<ResourceLocation> claimed = new HashSet<>();
-        for (TabDefinition def : store.tabs()) claimed.addAll(def.roots);
+        for (TabDefinition def : store.tabs()) {
+            if (!def.deleted) claimed.addAll(def.roots);
+        }
 
         Map<ResourceLocation, ResolvedTab> tabsById = new HashMap<>();
         for (ResolvedTab tab : tabsBefore) tabsById.put(tab.id(), tab);
@@ -775,10 +749,15 @@ public class ServerAdvancementEditor {
             ResourceLocation id = root.holder().id();
             if (claimed.contains(id) || TabResolver.declaresTab(root)) continue;
 
-            ResolvedTab was = tabsById.get(whereTheyWere.get(id));
+            ResourceLocation wasId = whereTheyWere.get(id);
+            if (wasId == null || wasId.equals(id)) continue;
+
+            ResolvedTab was = tabsById.get(wasId);
             if (was == null || store.isTabDeleted(was.id())) continue;
 
-            materialise(store, was).roots.add(id);
+            TabDefinition def = materialise(store, was);
+            if (def.roots.contains(id)) continue;
+            def.roots.add(id);
             dirty = true;
         }
         if (dirty) saveTabs(server);
@@ -876,22 +855,6 @@ public class ServerAdvancementEditor {
                 }
             }
         } while (added);
-    }
-
-    private static Map<ResourceLocation, float[]> snapshotDisplayPositions(Collection<AdvancementHolder> holders) {
-        Map<ResourceLocation, float[]> positions = new HashMap<>();
-        for (AdvancementHolder holder : holders) {
-            holder.value().display().ifPresent(display ->
-                    positions.put(holder.id(), new float[]{display.getX(), display.getY()}));
-        }
-        return positions;
-    }
-
-    private static boolean hasMoved(float[] before, AdvancementHolder holder) {
-        Optional<DisplayInfo> display = holder.value().display();
-        if (display.isEmpty()) return false;
-        if (before == null) return true;
-        return before[0] != display.get().getX() || before[1] != display.get().getY();
     }
 
     private static void saveTabs(MinecraftServer server) {
@@ -1015,25 +978,6 @@ public class ServerAdvancementEditor {
                 Set.of(),
                 progressMap
         ));
-    }
-
-    public static void sendIncrementalUpdateToAll(MinecraftServer server, Collection<AdvancementHolder> added, Set<ResourceLocation> removed) {
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            sendIncrementalUpdateToPlayer(player, added, removed);
-        }
-    }
-
-    public static void sendIncrementalUpdateToPlayer(ServerPlayer player, Collection<AdvancementHolder> added, Set<ResourceLocation> removed) {
-        Map<ResourceLocation, AdvancementProgress> progressMap = new HashMap<>();
-        Map<AdvancementHolder, AdvancementProgress> playerProgress = ((PlayerAdvancementsAccessor) player.getAdvancements()).getProgress();
-        for (AdvancementHolder holder : added) {
-            AdvancementProgress prog = playerProgress.get(holder);
-            if (prog != null && prog.hasProgress()) {
-                progressMap.put(holder.id(), prog);
-            }
-        }
-
-        player.connection.send(new ClientboundUpdateAdvancementsPacket(false, added, removed, progressMap));
     }
 
     public static void handleRewardClaim(MinecraftServer server, ServerPlayer player, ClaimRewardPayload payload) {

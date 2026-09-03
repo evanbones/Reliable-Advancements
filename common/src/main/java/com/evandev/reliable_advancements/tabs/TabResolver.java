@@ -68,7 +68,7 @@ public final class TabResolver {
             if (owner != null) {
                 rootsByTab.get(owner).add(root);
                 placed.add(rootId);
-            } else if (declaresTab(root) && !store.isTabDeleted(rootId)) {
+            } else if (root.advancement().display().isPresent() && !store.isTabDeleted(rootId)) {
                 rootsByTab.computeIfAbsent(rootId, k -> new ArrayList<>()).add(root);
                 placed.add(rootId);
             }

@@ -128,15 +128,6 @@ public final class ServerTabManager {
 
     public static void applyTombstones(Map<ResourceLocation, AdvancementHolder> map) {
         map.keySet().removeAll(store.deletedAdvancements().keySet());
-
-        boolean removedAny;
-        do {
-            removedAny = map.values().removeIf(holder -> {
-                Optional<ResourceLocation> parent = holder.value().parent();
-                return parent.isPresent() && !map.containsKey(parent.get());
-            });
-        } while (removedAny);
-
     }
 
     public static Set<ResourceLocation> collectSubtrees(Map<ResourceLocation, AdvancementHolder> map,
