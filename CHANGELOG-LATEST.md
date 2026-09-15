@@ -1,4 +1,4 @@
 ### Fixed
 
-- Fixed widget tooltip order.
-- Fixed duplicate advancements being created when changing IDs.
+- Fixed possible cycle crash.
+- Fixed rare service loading crash.

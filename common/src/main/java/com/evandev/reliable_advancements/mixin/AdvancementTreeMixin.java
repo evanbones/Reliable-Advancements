@@ -70,12 +70,43 @@ public abstract class AdvancementTreeMixin {
         } while (progressed);
 
         this.reliable_advancements$forcedRoots.clear();
-        for (Map.Entry<ResourceLocation, Optional<ResourceLocation>> entry : pending.entrySet()) {
-            if (!grounded.contains(entry.getKey())) {
-                this.reliable_advancements$forcedRoots.add(entry.getKey());
-                Constants.LOG.warn("Advancement {} cannot reach a root through parent {}; loading it as a root of its own",
-                        entry.getKey(), entry.getValue().orElse(null));
+        while (grounded.size() < pending.size() + this.nodes.size()) {
+            ResourceLocation candidate = null;
+            for (Map.Entry<ResourceLocation, Optional<ResourceLocation>> entry : pending.entrySet()) {
+                if (!grounded.contains(entry.getKey())) {
+                    Optional<ResourceLocation> parent = entry.getValue();
+                    if (parent.isPresent() && !pending.containsKey(parent.get()) && !this.nodes.containsKey(parent.get())) {
+                        candidate = entry.getKey();
+                        break;
+                    }
+                }
             }
+            if (candidate == null) {
+                for (ResourceLocation id : pending.keySet()) {
+                    if (!grounded.contains(id)) {
+                        candidate = id;
+                        break;
+                    }
+                }
+            }
+            if (candidate == null) break;
+
+            this.reliable_advancements$forcedRoots.add(candidate);
+            Constants.LOG.warn("Advancement {} cannot reach a root through parent {}; loading it as a root of its own",
+                    candidate, pending.get(candidate).orElse(null));
+            grounded.add(candidate);
+
+            do {
+                progressed = false;
+                for (Map.Entry<ResourceLocation, Optional<ResourceLocation>> entry : pending.entrySet()) {
+                    if (grounded.contains(entry.getKey())) continue;
+                    Optional<ResourceLocation> parent = entry.getValue();
+                    if (parent.isPresent() && grounded.contains(parent.get())) {
+                        grounded.add(entry.getKey());
+                        progressed = true;
+                    }
+                }
+            } while (progressed);
         }
         return sorted;
     }
@@ -144,11 +175,21 @@ public abstract class AdvancementTreeMixin {
     private void reliable_advancements$linkMultiParents(AdvancementHolder advancement) {
         AdvancementNode currentNode = this.nodes.get(advancement.id());
         if (currentNode == null) return;
+        boolean isForcedRoot = this.reliable_advancements$forcedRoots.contains(advancement.id());
 
         for (ResourceLocation parentId : IMultiParentAdvancement.getParents(advancement.value())) {
+            if (isForcedRoot && advancement.value().parent().map(parentId::equals).orElse(false)) {
+                continue;
+            }
+
             this.reliable_advancements$childrenByParent.computeIfAbsent(parentId, k -> new HashSet<>()).add(advancement.id());
             AdvancementNode parentNode = this.nodes.get(parentId);
             if (parentNode != null) {
+                if (reliable_advancements$isAncestor(currentNode, parentNode)) {
+                    Constants.LOG.warn("Ignoring cyclic parent link: {} is already an ancestor of {}",
+                            currentNode.holder().id(), parentNode.holder().id());
+                    continue;
+                }
                 parentNode.addChild(currentNode);
                 IMultiParentNode.addParent(currentNode, parentNode);
             }
@@ -159,11 +200,46 @@ public abstract class AdvancementTreeMixin {
             for (ResourceLocation childId : childIds) {
                 AdvancementNode childNode = this.nodes.get(childId);
                 if (childNode != null) {
+                    if (reliable_advancements$isAncestor(childNode, currentNode)) {
+                        Constants.LOG.warn("Ignoring cyclic child link: {} is already an ancestor of {}",
+                                childNode.holder().id(), currentNode.holder().id());
+                        continue;
+                    }
                     currentNode.addChild(childNode);
                     IMultiParentNode.addParent(childNode, currentNode);
                 }
             }
         }
+    }
+
+    @Unique
+    private static boolean reliable_advancements$isAncestor(AdvancementNode potentialAncestor, AdvancementNode node) {
+        if (potentialAncestor == null || node == null) return false;
+        if (potentialAncestor.equals(node)) return true;
+
+        Set<AdvancementNode> visited = new HashSet<>();
+        Queue<AdvancementNode> queue = new ArrayDeque<>();
+        queue.add(node);
+        visited.add(node);
+
+        while (!queue.isEmpty()) {
+            AdvancementNode curr = queue.poll();
+            for (AdvancementNode parent : IMultiParentNode.getParents(curr)) {
+                if (parent == null) continue;
+                if (parent.equals(potentialAncestor)) return true;
+                if (visited.add(parent)) {
+                    queue.add(parent);
+                }
+            }
+            AdvancementNode primaryParent = curr.parent();
+            if (primaryParent != null) {
+                if (primaryParent.equals(potentialAncestor)) return true;
+                if (visited.add(primaryParent)) {
+                    queue.add(primaryParent);
+                }
+            }
+        }
+        return false;
     }
 
     @WrapOperation(

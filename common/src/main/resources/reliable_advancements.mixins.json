@@ -15,6 +15,7 @@
     "PlayerAdvancementsMixin",
     "accessor.ServerAdvancementManagerAccessor",
     "ServerAdvancementManagerMixin",
+    "accessor.TreeNodePositionAccessor",
     "TreeNodePositionMixin"
   ],
   "client": [
