@@ -46,7 +46,7 @@ publishMods {
         client = true
         server = true
 
-        requires("cloth-config")
+        optional("yacl")
     }
 
     modrinth {
@@ -54,6 +54,6 @@ publishMods {
         projectId = "xVwaUG1g"
         minecraftVersions.add("${minecraft_version}")
 
-        requires("cloth-config")
+        optional("yacl")
     }
 }

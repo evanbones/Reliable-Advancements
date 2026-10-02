@@ -516,12 +516,12 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
     public int getTabInternalWidth() {
         int custom = selectedTab != null ? selectedTab.getDefinition().windowWidth() : 0;
-        return custom > 0 ? custom : Math.min(this.internalWidth, 500);
+        return custom > 0 ? custom : this.internalWidth;
     }
 
     public int getTabInternalHeight() {
         int custom = selectedTab != null ? selectedTab.getDefinition().windowHeight() : 0;
-        return custom > 0 ? custom : Math.min(this.internalHeight, 350);
+        return custom > 0 ? custom : this.internalHeight;
     }
 
     public void closeContextMenu() {
@@ -833,7 +833,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                 return true;
             }
 
-            boolean inGui = mouseX < left + internalWidth - 2 * SIDE - PADDING && mouseX > left + PADDING && mouseY < top + internalHeight - TOP + 1 && mouseY > top + 2 * PADDING;
+            boolean inGui = mouseX < bounds.right - PADDING && mouseX > left + PADDING && mouseY < bounds.bottom + 1 && mouseY > top + 2 * PADDING;
 
             if (inGui) {
                 EnhancedAdvancementWidget hoveredWidget = getHoveredWidget(mouseX, mouseY);
@@ -880,8 +880,9 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         if (this.contextMenu != null) this.contextMenu = null;
         if (this.selectedTab != null) {
             if (Screen.hasControlDown()) {
-                int left = SIDE + (width - internalWidth) / 2;
-                int top = TOP + (height - internalHeight) / 2;
+                TabBounds bounds = getTabBounds();
+                int left = bounds.left;
+                int top = bounds.top;
                 double relMouseX = mouseX - (left + PADDING);
                 double relMouseY = mouseY - (top + 2 * PADDING);
                 float oldZoom = this.zoom;
@@ -894,9 +895,9 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                     this.selectedTab.scroll(shiftX, shiftY, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
                 }
             } else if (Screen.hasShiftDown()) {
-                this.selectedTab.scroll(scrollY * 20.0, 0, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
+                this.selectedTab.scroll(scrollY * 20.0 / this.zoom, 0, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
             } else {
-                this.selectedTab.scroll(scrollX * 20.0, scrollY * 20.0, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
+                this.selectedTab.scroll(scrollX * 20.0 / this.zoom, scrollY * 20.0 / this.zoom, getTabInternalWidth() - 2 * SIDE - 3 * PADDING, getTabInternalHeight() - TOP - BOTTOM - 3 * PADDING);
             }
             return true;
         }

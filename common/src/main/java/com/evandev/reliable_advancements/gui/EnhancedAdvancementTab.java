@@ -39,6 +39,8 @@ public class EnhancedAdvancementTab {
     private final int index;
     public int scrollX;
     public int scrollY;
+    private double scrollRemainderX;
+    private double scrollRemainderY;
     private int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
     private int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
     private float fade;
@@ -253,18 +255,22 @@ public class EnhancedAdvancementTab {
     }
 
     public void scroll(double scrollX, double scrollY, int width, int height) {
-        if (ModConfig.get().unclampedScrolling || this.widgets.isEmpty()) {
-            this.scrollX = (int) Math.round(this.scrollX + scrollX);
-            this.scrollY = (int) Math.round(this.scrollY + scrollY);
-            return;
+        double targetX = this.scrollX + this.scrollRemainderX + scrollX;
+        double targetY = this.scrollY + this.scrollRemainderY + scrollY;
+
+        if (!ModConfig.get().unclampedScrolling && !this.widgets.isEmpty()) {
+            float zoom = this.screen.getZoom();
+            int marginX = (int) (width / zoom) / 2;
+            int marginY = (int) (height / zoom) / 2;
+
+            targetX = Mth.clamp(targetX, -(this.maxX - marginX), -this.minX + marginX);
+            targetY = Mth.clamp(targetY, -(this.maxY - marginY), -this.minY + marginY);
         }
 
-        float zoom = this.screen.getZoom();
-        int marginX = (int) (width / zoom) / 2;
-        int marginY = (int) (height / zoom) / 2;
-
-        this.scrollX = (int) Math.round(Mth.clamp(this.scrollX + scrollX, -(this.maxX - marginX), -this.minX + marginX));
-        this.scrollY = (int) Math.round(Mth.clamp(this.scrollY + scrollY, -(this.maxY - marginY), -this.minY + marginY));
+        this.scrollX = (int) Math.round(targetX);
+        this.scrollY = (int) Math.round(targetY);
+        this.scrollRemainderX = targetX - this.scrollX;
+        this.scrollRemainderY = targetY - this.scrollY;
     }
 
     public void addAdvancement(AdvancementNode advancementNode) {

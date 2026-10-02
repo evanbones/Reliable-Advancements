@@ -65,8 +65,13 @@ repositories {
     }
 
     maven {
-        name = "ClothConfig"
-        url = "https://maven.shedaniel.me/"
+        name = "Xander"
+        url = "https://maven.isxander.dev/releases"
+    }
+
+    maven {
+        name = 'Quilt'
+        url = 'https://maven.quiltmc.org/repository/release/'
     }
 
     maven {

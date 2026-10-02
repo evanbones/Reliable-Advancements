@@ -45,8 +45,9 @@ dependencies {
     // EMI
     runtimeOnly "dev.emi:emi-neoforge:${emi_version}"
 
-    // Cloth Config
-    implementation "me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}"
+    // YACL
+    compileOnly "dev.isxander:yet-another-config-lib:${yacl_version}-neoforge"
+    runtimeOnly "dev.isxander:yet-another-config-lib:${yacl_version}-neoforge"
 
     // CodecUI
     implementation "net.mehvahdjukaar:codecui-neoforge:${codecui_version}"
