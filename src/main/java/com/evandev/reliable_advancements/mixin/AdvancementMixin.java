@@ -13,10 +13,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.ArrayList;
 import java.util.List;
 
-//? if <26.3 {
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-//?} else {
-/*import net.minecraft.network.codec.StreamCodec;
+
+//? if >=26.3 {
+/*import com.evandev.reliable_advancements.advancements.DisplayCompat;
+import com.mojang.serialization.DataResult;
+import net.minecraft.network.codec.StreamCodec;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
@@ -58,6 +60,13 @@ public abstract class AdvancementMixin implements IMultiParentAdvancement {
                     return advancement;
                 }
         );
+    }
+
+    @Inject(method = "validate(Lnet/minecraft/advancements/Advancement;)Lcom/mojang/serialization/DataResult;", at = @At("HEAD"), cancellable = true)
+    private static void reliable_advancements$allowBackgroundlessRoots(Advancement advancement, CallbackInfoReturnable<DataResult<Advancement>> cir) {
+        if (advancement.parent().isEmpty() && advancement.display().isPresent() && DisplayCompat.background(advancement.display().get()).isEmpty()) {
+            cir.setReturnValue(advancement.requirements().validate(advancement.criteria().keySet()).map(r -> advancement));
+        }
     }
     *///?}
 

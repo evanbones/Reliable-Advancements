@@ -118,7 +118,6 @@ public class EnhancedAdvancementTab {
         guiGraphics.enableScissor(left, top, left + width, top + height);
         GuiCompat.push(guiGraphics);
         GuiCompat.translate(guiGraphics, left, top, 0);
-        GuiCompat.scale(guiGraphics, zoom, zoom);
 
         ResourceLocation defaultRes = this.definition.background();
         boolean isStatic = this.definition.staticBackground();
@@ -126,7 +125,7 @@ public class EnhancedAdvancementTab {
         int configuredH = this.definition.bgHeight();
 
         if (isStatic && configuredW == 0 && configuredH == 0) {
-            GuiCompat.blit(guiGraphics, defaultRes, 0, 0, 0.0F, 0.0F, scaledWidth, scaledHeight, scaledWidth, scaledHeight);
+            GuiCompat.blit(guiGraphics, defaultRes, 0, 0, 0.0F, 0.0F, width, height, width, height);
         } else {
             int texW = configuredW > 0 ? configuredW : 16;
             int texH = configuredH > 0 ? configuredH : 16;
@@ -136,8 +135,8 @@ public class EnhancedAdvancementTab {
 
             Random random = new Random();
 
-            for (int k = -1; k <= 1 + scaledWidth / texW; k++) {
-                for (int l = -1; l <= 1 + scaledHeight / texH; l++) {
+            for (int k = -1; k <= 1 + width / texW; k++) {
+                for (int l = -1; l <= 1 + height / texH; l++) {
                     ResourceLocation texToDraw = defaultRes;
 
                     if (!this.backgroundRules.isEmpty() && !isStatic) {
@@ -168,8 +167,10 @@ public class EnhancedAdvancementTab {
 
         if (ModConfig.get().blurBackground) {
             int alpha = (int) (ModConfig.get().blurBackgroundOpacity / 100.0f * 255.0f);
-            guiGraphics.fill(0, 0, scaledWidth, scaledHeight, alpha << 24);
+            guiGraphics.fill(0, 0, width, height, alpha << 24);
         }
+
+        GuiCompat.scale(guiGraphics, zoom, zoom);
 
         for (EnhancedAdvancementWidget widget : this.widgets.values()) {
             widget.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, true);
