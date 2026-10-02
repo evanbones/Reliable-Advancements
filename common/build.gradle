@@ -18,7 +18,7 @@ legacyForge {
 }
 
 dependencies {
-    compileOnly "me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}"
+    compileOnly "dev.isxander:yet-another-config-lib:${yacl_version}-forge"
 
     compileOnly 'org.jetbrains:annotations:26.0.2-1'
     compileOnly group: 'org.spongepowered', name: 'mixin', version: '0.8.5'

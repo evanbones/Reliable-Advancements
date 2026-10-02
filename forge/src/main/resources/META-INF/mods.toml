@@ -27,8 +27,8 @@ ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.${ mod_id }]]
-modId = "cloth_config"
-mandatory = true
-versionRange = "*"
+modId = "yet_another_config_lib_v3"
+mandatory = false
+versionRange = "[0,)"
 ordering = "NONE"
-side = "BOTH"
+side = "CLIENT"

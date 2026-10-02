@@ -44,7 +44,7 @@ publishMods {
         projectId = "1527472"
         minecraftVersions.add("${minecraft_version}")
 
-        requires("cloth-config")
+        optional("yacl")
     }
 
     modrinth {
@@ -52,6 +52,6 @@ publishMods {
         projectId = "xVwaUG1g"
         minecraftVersions.add("${minecraft_version}")
 
-        requires("cloth-config")
+        optional("yacl")
     }
 }

@@ -37,6 +37,8 @@ public class EnhancedAdvancementTab {
     private final AdvancementDisplayInfoRegistry displayInfos;
     public int scrollX;
     public int scrollY;
+    private double scrollRemainderX;
+    private double scrollRemainderY;
     public String customTitle = "";
     public ResourceLocation customBackground = null;
     public boolean isStaticBackground = false;
@@ -149,12 +151,11 @@ public class EnhancedAdvancementTab {
         guiGraphics.enableScissor(left, top, left + width, top + height);
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(left, top, 0);
-        guiGraphics.pose().scale(zoom, zoom, 1.0F);
 
         ResourceLocation defaultRes = this.customBackground != null ? this.customBackground : (this.display.getBackground() != null ? this.display.getBackground() : TextureManager.INTENTIONAL_MISSING_TEXTURE);
 
         if (this.isStaticBackground && this.bgWidth == 0 && this.bgHeight == 0) {
-            guiGraphics.blit(defaultRes, 0, 0, 0.0F, 0.0F, scaledWidth, scaledHeight, scaledWidth, scaledHeight);
+            guiGraphics.blit(defaultRes, 0, 0, 0.0F, 0.0F, width, height, width, height);
         } else {
             int texW = this.bgWidth > 0 ? this.bgWidth : 16;
             int texH = this.bgHeight > 0 ? this.bgHeight : 16;
@@ -165,9 +166,9 @@ public class EnhancedAdvancementTab {
             Random random = new Random();
 
             int k = -1;
-            for (; k <= 1 + scaledWidth / texW; k++) {
+            for (; k <= 1 + width / texW; k++) {
                 int l = -1;
-                for (; l <= 1 + scaledHeight / texH; l++) {
+                for (; l <= 1 + height / texH; l++) {
                     ResourceLocation texToDraw = defaultRes;
 
                     if (!this.backgroundRules.isEmpty() && !this.isStaticBackground) {
@@ -200,8 +201,10 @@ public class EnhancedAdvancementTab {
             int alpha = (int) (ModConfig.get().blurBackgroundOpacity / 100.0f * 255.0f);
             int color = (alpha << 24);
 
-            guiGraphics.fill(0, 0, scaledWidth, scaledHeight, color);
+            guiGraphics.fill(0, 0, width, height, color);
         }
+
+        guiGraphics.pose().scale(zoom, zoom, 1.0F);
 
         this.root.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, true);
         this.root.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, false);
@@ -264,8 +267,13 @@ public class EnhancedAdvancementTab {
         int marginX = scaledWidth / 2;
         int marginY = scaledHeight / 2;
 
-        this.scrollX = (int) Math.round(Mth.clamp(this.scrollX + scrollX, -(this.maxX - marginX), -this.minX + marginX));
-        this.scrollY = (int) Math.round(Mth.clamp(this.scrollY + scrollY, -(this.maxY - marginY), -this.minY + marginY));
+        double targetX = Mth.clamp(this.scrollX + this.scrollRemainderX + scrollX, -(this.maxX - marginX), -this.minX + marginX);
+        double targetY = Mth.clamp(this.scrollY + this.scrollRemainderY + scrollY, -(this.maxY - marginY), -this.minY + marginY);
+
+        this.scrollX = (int) Math.round(targetX);
+        this.scrollY = (int) Math.round(targetY);
+        this.scrollRemainderX = targetX - this.scrollX;
+        this.scrollRemainderY = targetY - this.scrollY;
     }
 
     public void addAdvancement(Advancement advancement) {

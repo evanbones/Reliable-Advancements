@@ -157,11 +157,11 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     public int getTabInternalWidth() {
-        return selectedTab != null && selectedTab.customWidth > 0 ? selectedTab.customWidth : Math.min(this.internalWidth, 500);
+        return selectedTab != null && selectedTab.customWidth > 0 ? selectedTab.customWidth : this.internalWidth;
     }
 
     public int getTabInternalHeight() {
-        return selectedTab != null && selectedTab.customHeight > 0 ? selectedTab.customHeight : Math.min(this.internalHeight, 350);
+        return selectedTab != null && selectedTab.customHeight > 0 ? selectedTab.customHeight : this.internalHeight;
     }
 
     public void closeContextMenu() {
@@ -535,7 +535,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
                 }
             }
         } else if (button == 1 && EnhancedAdvancementsScreen.canEdit()) {
-            boolean inGui = mouseX < left + internalWidth - 2 * SIDE - PADDING && mouseX > left + PADDING && mouseY < top + internalHeight - TOP + 1 && mouseY > top + 2 * PADDING;
+            boolean inGui = mouseX < left + tabW - 2 * SIDE - PADDING && mouseX > left + PADDING && mouseY < top + tabH - TOP + 1 && mouseY > top + 2 * PADDING;
 
             if (inGui) {
                 EnhancedAdvancementWidget hoveredWidget = getHoveredWidget(mouseX, mouseY);
@@ -569,8 +569,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
         if (this.selectedTab != null) {
             if (Screen.hasControlDown()) {
-                int left = SIDE + (width - internalWidth) / 2;
-                int top = TOP + (height - internalHeight) / 2;
+                int left = SIDE + (width - getTabInternalWidth()) / 2;
+                int top = TOP + (height - getTabInternalHeight()) / 2;
 
                 double relMouseX = mouseX - (left + PADDING);
                 double relMouseY = mouseY - (top + 2 * PADDING);

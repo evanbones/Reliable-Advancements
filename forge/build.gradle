@@ -54,8 +54,9 @@ dependencies {
     // EMI
     modRuntimeOnly "dev.emi:emi-forge:${emi_version}"
 
-    // Cloth Config
-    modImplementation "me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}"
+    // YACL
+    modCompileOnly "dev.isxander:yet-another-config-lib:${yacl_version}-forge"
+    modRuntimeOnly "dev.isxander:yet-another-config-lib:${yacl_version}-forge"
 
     compileOnly project(":common")
     compileOnly 'org.jetbrains:annotations:26.0.2-1'
