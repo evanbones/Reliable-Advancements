@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "version": "${version}",
+  "name": "${mod_name}",
+  "description": "${description}",
+  "accessWidener": "${access_widener}",
+  "authors": [
+    "${mod_author}"
+  ],
+  "contact": {
+    "homepage": "https://github.com/evanbones/Reliable-Advancements",
+    "sources": "https://github.com/evanbones/Reliable-Advancements"
+  },
+  "license": "${license}",
+  "icon": "${mod_id}.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.evandev.reliable_advancements.fabric.ReliableAdvancementsFabric"
+    ],
+    "client": [
+      "com.evandev.reliable_advancements.fabric.client.ReliableAdvancementsFabricClient"
+    ],
+    "modmenu": [
+      "com.evandev.reliable_advancements.fabric.compat.ModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    "${mod_id}.mixins.json",
+    "${mod_id}.fabric.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${fabric_loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft}",
+    "java": ">=${java_version}"
+  },
+  "suggests": {
+    "yet_another_config_lib_v3": ">=${yacl_version}",
+    "modmenu": "*"
+  },
+  "breaks": {
+    "betteradvancements": "*"
+  }
+}

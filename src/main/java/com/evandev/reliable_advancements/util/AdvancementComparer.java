@@ -1,0 +1,37 @@
+package com.evandev.reliable_advancements.util;
+
+import com.evandev.reliable_advancements.advancements.DisplayCompat;
+import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.AdvancementNode;
+import net.minecraft.advancements.DisplayInfo;
+
+import java.util.Comparator;
+import java.util.Optional;
+
+public class AdvancementComparer {
+    public static Comparator<AdvancementNode> sortByTitle() {
+        return (n1, n2) -> {
+            Advancement a1 = n1.advancement();
+            Advancement a2 = n2.advancement();
+            if (a1 == a2) {
+                return 0;
+            } else {
+                Optional<DisplayInfo> info1 = a1.display();
+                Optional<DisplayInfo> info2 = a2.display();
+
+                if (info1.isEmpty() && info2.isEmpty()) {
+                    return n1.holder().id().toString().compareTo(n2.holder().id().toString());
+                } else if (info1.isEmpty()) {
+                    return 1;
+                } else if (info2.isEmpty()) {
+                    return -1;
+                } else {
+                    String title1 = DisplayCompat.title(info1.get()).getString().toLowerCase();
+                    String title2 = DisplayCompat.title(info2.get()).getString().toLowerCase();
+                    int cmp = title1.compareTo(title2);
+                    return cmp != 0 ? cmp : n1.holder().id().toString().compareTo(n2.holder().id().toString());
+                }
+            }
+        };
+    }
+}

@@ -1,0 +1,31 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.evandev.reliable_advancements.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "AdvancementCommandsMixin",
+    "AdvancementMixin",
+    "AdvancementNodeMixin",
+    "AdvancementTreeMixin",
+    "AdvancementTypeMixin",
+    "AdvancementVisibilityEvaluatorMixin",
+    "MinecraftServerMixin",
+    "accessor.PlayerAdvancementsAccessor",
+    "PlayerAdvancementsMixin",
+    "accessor.ServerAdvancementManagerAccessor",
+    "ServerAdvancementManagerMixin",
+    "AdvancementJsonParseMixin",
+    "accessor.TreeNodePositionAccessor",
+    "TreeNodePositionMixin"
+  ],
+  "client": [
+    "ClientAdvancementsMixin",
+    "ScreenMixin"
+  ],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
+

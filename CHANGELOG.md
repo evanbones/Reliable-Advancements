@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.3.0] - 2026-10-02
+
+### Added
+
+- Added support for 26.3.
+- 1.21+ versions are now in parity.
+
+## [6.2.6] - 2026-10-01
+
+### Changed
+
+- Switched the config screen from Cloth Config to YACL. YACL is optional.
+- The advancement window is no longer capped at 500x350 by default and now scales with the screen size.
+- Marked Better Advancements as incompatible, since Reliable Advancements already includes all of its features.
+
+### Fixed
+
+- Scroll-wheel scrolling now moves the same on-screen distance at every zoom level.
+- Fixed clicks and Ctrl+scroll zooming using the wrong bounds for tabs with a custom window size.
+
 ## [6.2.5] - 2026-09-14
 
 ### Fixed
