@@ -1,0 +1,96 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "net.mehvahdjukaar",
+    "module": "codecui-fabric",
+    "version": "26.3-1.4.4",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.6.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "codecui-fabric-26.3-1.4.4.jar",
+          "url": "codecui-fabric-26.3-1.4.4.jar",
+          "size": 268459,
+          "sha512": "17d36a32d21b437652fec3164cb45046a2c8d6143400c04e9106aebc5133d6424079b6861c4b9300c1ce8eb69f9524a5d0b1ae3aae89976017815298208002a0",
+          "sha256": "2874dd07d2738fb9acbf33939a6484ddc2ad9ead63dd9eac562d3b396aa64b29",
+          "sha1": "769fc9aeaacfd1027f0e608f92fbbdc33ac096ee",
+          "md5": "015321bf659cac7128a60ba6d22f117a"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "net.fabricmc",
+          "module": "fabric-loader",
+          "version": {
+            "requires": "0.19.5"
+          }
+        },
+        {
+          "group": "net.fabricmc.fabric-api",
+          "module": "fabric-api",
+          "version": {
+            "requires": "0.160.5+26.3"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "codecui-fabric-26.3-1.4.4.jar",
+          "url": "codecui-fabric-26.3-1.4.4.jar",
+          "size": 268459,
+          "sha512": "17d36a32d21b437652fec3164cb45046a2c8d6143400c04e9106aebc5133d6424079b6861c4b9300c1ce8eb69f9524a5d0b1ae3aae89976017815298208002a0",
+          "sha256": "2874dd07d2738fb9acbf33939a6484ddc2ad9ead63dd9eac562d3b396aa64b29",
+          "sha1": "769fc9aeaacfd1027f0e608f92fbbdc33ac096ee",
+          "md5": "015321bf659cac7128a60ba6d22f117a"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "codecui-fabric-26.3-1.4.4-sources.jar",
+          "url": "codecui-fabric-26.3-1.4.4-sources.jar",
+          "size": 79843,
+          "sha512": "0564b658c06ca419c3690938609296295ccb763c18bf484fb2d3ca364d2d784927470477d566951af0aef2149bbb8716199fac1c43599bab1d270ae38ae94c45",
+          "sha256": "17b9ccc33969f275af837d381d1c51ac7ce313d9bc2be70bf025e930bc5722b2",
+          "sha1": "1871f9727fd486939943598bbce3f8f27f86d906",
+          "md5": "00bcf71dc5136a0d65ea94d924744ac6"
+        }
+      ]
+    }
+  ]
+}

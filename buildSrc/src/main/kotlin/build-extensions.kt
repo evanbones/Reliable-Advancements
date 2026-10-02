@@ -1,5 +1,6 @@
 import org.gradle.api.artifacts.dsl.RepositoryHandler
 import org.gradle.kotlin.dsl.maven
+import java.io.File
 
 /**
  * Extra resource roots under `src/main/overlays/<dir>`, added when the stonecutter predicate matches the current version.
@@ -15,7 +16,10 @@ val RESOURCE_OVERLAYS: Map<String, String> = linkedMapOf(
 fun accessWidenerName(modId: String, unobfuscated: Boolean) =
     if (unobfuscated) "$modId.classtweaker" else "$modId.accesswidener"
 
-fun RepositoryHandler.reliableAdvancementsRepositories() {
+/**
+ * @param localMaven repo-local maven folder for locally built dependencies
+ */
+fun RepositoryHandler.reliableAdvancementsRepositories(localMaven: File) {
     mavenLocal()
     mavenCentral()
     exclusiveContent {
@@ -43,6 +47,10 @@ fun RepositoryHandler.reliableAdvancementsRepositories() {
     maven("https://maven.cassian.cc/") {
         name = "Cassian's Maven"
         content { includeGroupAndSubgroups("cc.cassian") }
+    }
+    maven(localMaven) {
+        name = "Local libs (CodecUI ports)"
+        content { includeGroupAndSubgroups("net.mehvahdjukaar") }
     }
     maven("https://registry.somethingcatchy.net/repository/maven-public/") {
         name = "SomethingCatchy (CodecUI)"

@@ -79,7 +79,10 @@ stonecutter parameters {
         }
         string(eval(node.metadata.version, ">=26.1")) {
             val mouse = "net.minecraft.client.input.MouseButtonEvent event"
-            val unpack = "double mouseX = event.x(), mouseY = event.y(); int button = event.button();"
+            val buttonExpr = if (eval(node.metadata.version, ">=26.3"))
+                "switch (event.button()) { case 1 -> 0; case 2 -> 2; case 3 -> 1; default -> event.button() - 1; }"
+            else "event.button()"
+            val unpack = "double mouseX = event.x(), mouseY = event.y(); int button = $buttonExpr;"
             replace(
                 "boolean mouseClicked(double mouseX, double mouseY, int button) {",
                 "boolean mouseClicked($mouse, boolean doubleClick) { $unpack"

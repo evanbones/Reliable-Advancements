@@ -84,6 +84,6 @@ public final class EditorTheme {
         ResourceLocation tex = expanded
                 ? (hovered ? ICON_CHEVRON_DOWN_GOLD : ICON_CHEVRON_DOWN)
                 : (hovered ? ICON_CHEVRON_RIGHT_GOLD : ICON_CHEVRON_RIGHT);
-        gfx.blit(tex, x, y, 0, 0, 16, 16, 16, 16);
+        GuiCompat.blit(gfx, tex, x, y, 0, 0, 16, 16, 16, 16);
     }
 }

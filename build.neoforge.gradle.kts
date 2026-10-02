@@ -44,7 +44,7 @@ version = "${property("mod.version")}+${property("deps.minecraft")}-neoforge"
 base.archivesName = modId
 
 repositories {
-    reliableAdvancementsRepositories()
+    reliableAdvancementsRepositories(rootProject.file("libs/maven"))
 }
 
 neoForge {

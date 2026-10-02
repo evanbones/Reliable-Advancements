@@ -1,0 +1,97 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "net.mehvahdjukaar",
+    "module": "codecui-neoforge",
+    "version": "26.3-1.4.4",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.6.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "codecui-neoforge-26.3-1.4.4.jar",
+          "url": "codecui-neoforge-26.3-1.4.4.jar",
+          "size": 264696,
+          "sha512": "f31f269c40f13a1df5f5974813073d5e2ca3e793de05a4093dac51dd2afc139ea7635848933a5d9c8d8177e02c4a06646c106044f413d42d48fcd46a3676212f",
+          "sha256": "4f85fb07749c2e71e3bd4c312d47dd8ef7099b0c267c7a2182172ec093a787be",
+          "sha1": "97cf1d7af698211130bdabff1275bbc4ccec19b1",
+          "md5": "36cc33b8f11a72009e03bf706b2aae41"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "codecui-neoforge-26.3-1.4.4.jar",
+          "url": "codecui-neoforge-26.3-1.4.4.jar",
+          "size": 264696,
+          "sha512": "f31f269c40f13a1df5f5974813073d5e2ca3e793de05a4093dac51dd2afc139ea7635848933a5d9c8d8177e02c4a06646c106044f413d42d48fcd46a3676212f",
+          "sha256": "4f85fb07749c2e71e3bd4c312d47dd8ef7099b0c267c7a2182172ec093a787be",
+          "sha1": "97cf1d7af698211130bdabff1275bbc4ccec19b1",
+          "md5": "36cc33b8f11a72009e03bf706b2aae41"
+        }
+      ]
+    },
+    {
+      "name": "accessTransformersElements",
+      "attributes": {
+        "org.gradle.category": "accesstransformer"
+      },
+      "files": [
+        {
+          "name": "codecui-neoforge-26.3-1.4.4-accesstransformer.cfg",
+          "url": "codecui-neoforge-26.3-1.4.4-accesstransformer.cfg",
+          "size": 350,
+          "sha512": "4ab0fdc343ac109b723507bfc384c0a09bdc88b4b8903adb5f28358f9cd4b9be96c0b41f70a4fc5a3134ed535eb7678c8b6f637a52773b5d9c88eca8256abd40",
+          "sha256": "0df92e2c31dcb5d2165eb04bf69b57b2a31c699b6292497db412edc4a1ec39ed",
+          "sha1": "0f8079597c53b6b87cce7e7a70029fd946e5dcfa",
+          "md5": "2eb15daa94d32d7e9e5f657df9382c2a"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "codecui-neoforge-26.3-1.4.4-sources.jar",
+          "url": "codecui-neoforge-26.3-1.4.4-sources.jar",
+          "size": 79848,
+          "sha512": "fb5c28336a1f75df1a5b46b761dd419991d346c23f8b3a6b7e59eacbd954ae7627c1103c1cdd3d361574c76e1705f5cba478c1fe66ef03de19b1c9421c9a6b9a",
+          "sha256": "4201e50da6bdf48a27257083d69e325b634f9dd7be4fecc46fff840c8994eb34",
+          "sha1": "93dcb4be35667dd8eb07f42c0f58c3166a4cb89e",
+          "md5": "0f0acf9f1002d065d81b156906cc3f0f"
+        }
+      ]
+    }
+  ]
+}

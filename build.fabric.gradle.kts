@@ -51,7 +51,7 @@ version = "${property("mod.version")}+${property("deps.minecraft")}-fabric"
 base.archivesName = modId
 
 repositories {
-    reliableAdvancementsRepositories()
+    reliableAdvancementsRepositories(rootProject.file("libs/maven"))
 }
 
 dependencies {

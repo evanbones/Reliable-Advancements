@@ -122,3 +122,4 @@ runs/
 !gradle-wrapper.jar
 .cache/
 /fabric/logs/*
+!libs/maven/**/*.jar
