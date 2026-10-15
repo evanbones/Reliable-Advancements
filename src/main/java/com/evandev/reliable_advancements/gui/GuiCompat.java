@@ -8,8 +8,17 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
+
 //? if <26.1 {
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.renderer.GameRenderer;
+import org.joml.Matrix4f;
 import net.minecraft.client.gui.screens.Screen;
 import org.joml.Quaternionf;
 //?} else {
@@ -114,6 +123,34 @@ public final class GuiCompat {
      */
     public static void blit(GuiGraphics g, ResourceLocation texture, int x, int y, float u, float v, int width, int height) {
         blit(g, texture, x, y, u, v, width, height, 256, 256);
+    }
+
+    /**
+     * Draws a full texture stretched onto many same-sized tiles.
+     */
+    public static void blitTiles(GuiGraphics g, ResourceLocation texture, List<int[]> tiles, int width, int height) {
+        if (tiles.isEmpty()) return;
+        //? if <26.1 {
+        RenderSystem.setShaderTexture(0, texture);
+        RenderSystem.setShader(GameRenderer::getPositionTexShader);
+        Matrix4f matrix = g.pose().last().pose();
+        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+        for (int[] tile : tiles) {
+            float x0 = tile[0];
+            float y0 = tile[1];
+            float x1 = x0 + width;
+            float y1 = y0 + height;
+            buffer.addVertex(matrix, x0, y0, 0).setUv(0.0F, 0.0F);
+            buffer.addVertex(matrix, x0, y1, 0).setUv(0.0F, 1.0F);
+            buffer.addVertex(matrix, x1, y1, 0).setUv(1.0F, 1.0F);
+            buffer.addVertex(matrix, x1, y0, 0).setUv(1.0F, 0.0F);
+        }
+        BufferUploader.drawWithShader(buffer.buildOrThrow());
+        //?} else {
+        /*for (int[] tile : tiles) {
+            g.blit(RenderPipelines.GUI_TEXTURED, texture, tile[0], tile[1], 0.0F, 0.0F, width, height, width, height);
+        }
+        *///?}
     }
 
     public static void blit(GuiGraphics g, ResourceLocation texture, int x, int y, float u, float v, int width, int height, int textureWidth, int textureHeight) {

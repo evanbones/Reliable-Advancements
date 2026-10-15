@@ -27,6 +27,7 @@ public class EnhancedAdvancementTab {
     public static final Map<ResourceLocation, ScrollPosition> scrollHistory = Maps.newLinkedHashMap();
 
     public final List<BackgroundRule> backgroundRules = new ArrayList<>();
+    private final Random tileRandom = new Random();
     protected final LinkedHashMap<ResourceLocation, EnhancedAdvancementWidget> widgets = Maps.newLinkedHashMap();
 
     private final Minecraft minecraft;
@@ -124,53 +125,23 @@ public class EnhancedAdvancementTab {
         int configuredW = this.definition.bgWidth();
         int configuredH = this.definition.bgHeight();
 
-        if (isStatic && configuredW == 0 && configuredH == 0) {
-            GuiCompat.blit(guiGraphics, defaultRes, 0, 0, 0.0F, 0.0F, width, height, width, height);
-        } else {
-            int texW = configuredW > 0 ? configuredW : 16;
-            int texH = configuredH > 0 ? configuredH : 16;
+        int texW = configuredW > 0 ? configuredW : 16;
+        int texH = configuredH > 0 ? configuredH : 16;
 
-            int i = isStatic ? 0 : this.scrollX % texW;
-            int j = isStatic ? 0 : this.scrollY % texH;
-
-            Random random = new Random();
-
-            for (int k = -1; k <= 1 + width / texW; k++) {
-                for (int l = -1; l <= 1 + height / texH; l++) {
-                    ResourceLocation texToDraw = defaultRes;
-
-                    if (!this.backgroundRules.isEmpty() && !isStatic) {
-                        int absoluteX = i + (texW * k) - this.scrollX;
-                        int absoluteY = j + (texH * l) - this.scrollY;
-                        int cellX = Math.floorDiv(absoluteX, texW);
-                        int cellY = Math.floorDiv(absoluteY, texH);
-
-                        random.setSeed((long) cellX * 3129871L ^ (long) cellY * 116129781L);
-
-                        int j4 = cellY + random.nextInt(4) - random.nextInt(4);
-                        float randomChance = random.nextFloat();
-
-                        for (BackgroundRule rule : this.backgroundRules) {
-                            int yToCheck = rule.absoluteY ? cellY : j4;
-
-                            if (yToCheck >= rule.minY && yToCheck <= rule.maxY && randomChance <= rule.chance) {
-                                texToDraw = rule.texture;
-                                break;
-                            }
-                        }
-                    }
-
-                    GuiCompat.blit(guiGraphics, texToDraw, i + texW * k, j + texH * l, 0.0F, 0.0F, texW, texH, texW, texH);
-                }
+        if (isStatic) {
+            if (configuredW == 0 && configuredH == 0) {
+                GuiCompat.blit(guiGraphics, defaultRes, 0, 0, 0.0F, 0.0F, width, height, width, height);
+            } else {
+                drawTiles(guiGraphics, defaultRes, width, height, texW, texH, 0, 0, false);
             }
+            drawBlur(guiGraphics, width, height);
+            GuiCompat.scale(guiGraphics, zoom, zoom);
+        } else {
+            GuiCompat.scale(guiGraphics, zoom, zoom);
+            drawTiles(guiGraphics, defaultRes, scaledWidth, scaledHeight, texW, texH,
+                    Math.floorMod(this.scrollX, texW), Math.floorMod(this.scrollY, texH), !this.backgroundRules.isEmpty());
+            drawBlur(guiGraphics, scaledWidth + texW, scaledHeight + texH);
         }
-
-        if (ModConfig.get().blurBackground) {
-            int alpha = (int) (ModConfig.get().blurBackgroundOpacity / 100.0f * 255.0f);
-            guiGraphics.fill(0, 0, width, height, alpha << 24);
-        }
-
-        GuiCompat.scale(guiGraphics, zoom, zoom);
 
         for (EnhancedAdvancementWidget widget : this.widgets.values()) {
             widget.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, true);
@@ -190,6 +161,42 @@ public class EnhancedAdvancementTab {
         }
         GuiCompat.pop(guiGraphics);
         guiGraphics.disableScissor();
+    }
+
+    private void drawTiles(GuiGraphics guiGraphics, ResourceLocation defaultRes, int width, int height, int texW, int texH,
+                           int offsetX, int offsetY, boolean useRules) {
+        Map<ResourceLocation, List<int[]>> batches = new LinkedHashMap<>();
+        for (int k = -1; k <= 1 + width / texW; k++) {
+            for (int l = -1; l <= 1 + height / texH; l++) {
+                int x = offsetX + texW * k;
+                int y = offsetY + texH * l;
+                ResourceLocation texture = useRules ? ruleTexture(Math.floorDiv(x - this.scrollX, texW), Math.floorDiv(y - this.scrollY, texH), defaultRes) : defaultRes;
+                batches.computeIfAbsent(texture, t -> new ArrayList<>()).add(new int[]{x, y});
+            }
+        }
+        for (Map.Entry<ResourceLocation, List<int[]>> batch : batches.entrySet()) {
+            GuiCompat.blitTiles(guiGraphics, batch.getKey(), batch.getValue(), texW, texH);
+        }
+    }
+
+    private ResourceLocation ruleTexture(int cellX, int cellY, ResourceLocation defaultRes) {
+        this.tileRandom.setSeed((long) cellX * 3129871L ^ (long) cellY * 116129781L);
+        int jitteredY = cellY + this.tileRandom.nextInt(4) - this.tileRandom.nextInt(4);
+        float chance = this.tileRandom.nextFloat();
+        for (BackgroundRule rule : this.backgroundRules) {
+            int y = rule.absoluteY ? cellY : jitteredY;
+            if (y >= rule.minY && y <= rule.maxY && chance <= rule.chance) {
+                return rule.texture;
+            }
+        }
+        return defaultRes;
+    }
+
+    private static void drawBlur(GuiGraphics guiGraphics, int width, int height) {
+        if (ModConfig.get().blurBackground) {
+            int alpha = (int) (ModConfig.get().blurBackgroundOpacity / 100.0f * 255.0f);
+            guiGraphics.fill(0, 0, width, height, alpha << 24);
+        }
     }
 
     private void centreOnContent(int scaledWidth, int scaledHeight) {
