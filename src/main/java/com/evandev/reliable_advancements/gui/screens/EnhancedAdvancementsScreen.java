@@ -86,6 +86,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     private String linkingError = null;
     private long linkingErrorTime = 0;
     private @Nullable ResourceLocation announcedTab = null;
+    private @Nullable ResourceLocation pendingFocus = null;
 
     public EnhancedAdvancementsScreen(ClientAdvancements clientAdvancements) {
         this(clientAdvancements, null);
@@ -208,7 +209,11 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
 
         pushTabPresentation(resolved);
         populateWidgets(resolved);
+        EnhancedAdvancementTab focusTab = this.pendingFocus != null ? findTabContaining(this.pendingFocus) : null;
+        if (focusTab != null) savedSelectedTab = focusTab.getId();
         reselectTab();
+        if (focusTab != null) applyPendingFocus();
+        this.pendingFocus = null;
 
         this.advConnectedToMouse = draggingId != null ? findWidgetById(draggingId) : null;
         selectedWidgets.clear();
@@ -444,14 +449,19 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     public void centerOnAdvancement(ResourceLocation id) {
-        AdvancementNode node = this.clientAdvancements.getTree().get(id);
-        if (node == null) return;
+        this.pendingFocus = id;
+        if (!isLoading() && !this.tabsDirty) applyPendingFocus();
+    }
 
-        EnhancedAdvancementTab targetTab = findTabContaining(id);
+    private void applyPendingFocus() {
+        ResourceLocation id = this.pendingFocus;
+        EnhancedAdvancementTab targetTab = id == null ? null : findTabContaining(id);
         if (targetTab != null) {
+            this.pendingFocus = null;
             this.selectedTab = targetTab;
             savedSelectedTab = targetTab.getId();
             announceTab(targetTab);
+            updateTabPage(getTabBounds().maxTabs);
             EnhancedAdvancementWidget widget = targetTab.getWidget(id);
 
             if (widget != null) {
@@ -1406,7 +1416,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             GuiCompat.push(guiGraphics);
             GuiCompat.translate(guiGraphics, left + PADDING, top + 2 * PADDING, 400.0D);
             GuiCompat.enableDepthTest();
-            this.selectedTab.drawToolTips(guiGraphics, mouseX - left - PADDING, mouseY - top - 2 * PADDING, left, top, right - left - 2 * PADDING, bottom - top - 3 * PADDING);
+            this.selectedTab.drawToolTips(guiGraphics, mouseX - left - PADDING, mouseY - top - 2 * PADDING, left + PADDING, top + 2 * PADDING, right - left - 2 * PADDING, bottom - top - 3 * PADDING);
             GuiCompat.disableDepthTest();
             GuiCompat.pop(guiGraphics);
         }

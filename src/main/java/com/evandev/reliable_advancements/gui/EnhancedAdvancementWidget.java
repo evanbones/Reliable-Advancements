@@ -380,13 +380,13 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         this.advancementProgress = advancementProgressIn;
     }
 
-    public void drawHover(GuiGraphics guiGraphics, int scrollX, int scrollY, int left, int top) {
+    public void drawHover(GuiGraphics guiGraphics, int scrollX, int scrollY, float originX, float originY, float scale) {
         if (EnhancedAdvancementsScreen.canEdit() && !ModConfig.get().showTooltipsInEditMode) {
             return;
         }
 
         this.refreshHover();
-        boolean drawLeft = left + scrollX + this.x + this.width + ADVANCEMENT_SIZE >= this.advancementTabGui.getScreen().internalWidth;
+        boolean drawLeft = originX + (scrollX + this.x + this.width + ADVANCEMENT_SIZE) * scale >= this.advancementTabGui.getScreen().width;
         String s = this.advancementProgress == null || this.advancementProgress.getProgressText() == null ? null : this.advancementProgress.getProgressText().getString();
         int i = s == null ? 0 : this.minecraft.font.width(s);
         boolean showCriteria = this.criterionGrid != null && this.criterionGrid.height > 0 && (!ModConfig.get().requiresShift || GuiCompat.hasShiftDown());
@@ -396,7 +396,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         if (showCriteria && this.criterionGrid.height >= this.advancementTabGui.getScreen().height) {
             drawTop = false;
         } else {
-            drawTop = top + scrollY + this.y + totalContentHeight + 50 >= this.advancementTabGui.getScreen().height;
+            drawTop = originY + (scrollY + this.y + totalContentHeight + 50) * scale >= this.advancementTabGui.getScreen().height;
         }
 
         float percentageObtained = this.advancementProgress == null ? 0.0F : this.advancementProgress.getPercent();

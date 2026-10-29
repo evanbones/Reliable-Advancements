@@ -45,6 +45,7 @@ public class EnhancedAdvancementTab {
     private int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
     private float fade;
     private boolean centered;
+    private @Nullable EnhancedAdvancementWidget tooltipWidget;
 
     protected EnhancedAdvancementTab(Minecraft mc, EnhancedAdvancementsScreen screen, EnhancedAdvancementTabType type,
                                      int index, ResolvedTab definition) {
@@ -150,6 +151,7 @@ public class EnhancedAdvancementTab {
             widget.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, false);
         }
         for (EnhancedAdvancementWidget widget : this.widgets.values()) {
+            if (widget == this.tooltipWidget && widget.isMouseOver(this.scrollX, this.scrollY, unzoomedX, unzoomedY)) continue;
             widget.draw(guiGraphics, this.scrollX, this.scrollY, unzoomedX, unzoomedY);
         }
 
@@ -230,6 +232,7 @@ public class EnhancedAdvancementTab {
         GuiCompat.translate(guiGraphics, 0.0D, 0.0D, -200.0D);
         guiGraphics.fill(0, 0, width, height, Mth.floor(this.fade * 255.0F) << 24);
         boolean flag = false;
+        this.tooltipWidget = null;
 
         float zoom = this.screen.getZoom();
         double scaledMouseX = mouseX / zoom;
@@ -239,9 +242,19 @@ public class EnhancedAdvancementTab {
             for (EnhancedAdvancementWidget advancementWidget : this.widgets.sequencedValues().reversed()) {
                 if (advancementWidget.isMouseOver(this.scrollX, this.scrollY, scaledMouseX, scaledMouseY)) {
                     flag = true;
+                    double guiScale = this.minecraft.getWindow().getGuiScale();
+                    float hoverScale = (float) (Math.max(1, Math.round(guiScale * zoom)) / guiScale);
+                    if (!EnhancedAdvancementsScreen.canEdit() || ModConfig.get().showTooltipsInEditMode) {
+                        this.tooltipWidget = advancementWidget;
+                    }
+                    float anchorX = this.scrollX + advancementWidget.getX() + 3 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2.0F;
+                    float anchorY = this.scrollY + advancementWidget.getY() + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2.0F;
+                    float offsetX = (float) (Math.round((anchorX * zoom - anchorX * hoverScale) * guiScale) / guiScale);
+                    float offsetY = (float) (Math.round((anchorY * zoom - anchorY * hoverScale) * guiScale) / guiScale);
                     GuiCompat.push(guiGraphics);
-                    GuiCompat.scale(guiGraphics, zoom, zoom);
-                    advancementWidget.drawHover(guiGraphics, this.scrollX, this.scrollY, (int) (left / zoom), (int) (top / zoom));
+                    GuiCompat.translate(guiGraphics, offsetX, offsetY, 0);
+                    GuiCompat.scale(guiGraphics, hoverScale, hoverScale);
+                    advancementWidget.drawHover(guiGraphics, this.scrollX, this.scrollY, left + offsetX, top + offsetY, hoverScale);
                     GuiCompat.pop(guiGraphics);
                     break;
                 }

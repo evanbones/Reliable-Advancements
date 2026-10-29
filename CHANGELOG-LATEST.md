@@ -1,5 +1,5 @@
 ### Fixed
 
-- Tab backgrounds now zoom with the advancement tree.
-- Tiled backgrounds are drawn in one batch per texture instead of one draw call per tile, which makes large tabs much
-  more performant.
+- Clicking an advancement in chat now opens its tab and centres on it the first time the screen is opened.
+- Advancement tooltips are no longer jagged at fractional zoom levels.
+- Advancement tooltips now flip left or upward correctly near the screen edges when zoomed.
