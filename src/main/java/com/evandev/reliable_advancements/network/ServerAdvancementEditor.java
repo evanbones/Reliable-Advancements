@@ -794,6 +794,9 @@ public class ServerAdvancementEditor {
 
                 try {
                     JsonObject json = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
+                    if (MultiParentHelper.prepareForDisk(json)) {
+                        Files.writeString(file, GSON.toJson(json), StandardCharsets.UTF_8);
+                    }
                     JsonObject prepared = MultiParentHelper.prepareJsonForCodec(json);
                     DataResult<Advancement> parsed = Advancement.CODEC.parse(ops, prepared);
                     parsed.result().ifPresentOrElse(
@@ -919,6 +922,7 @@ public class ServerAdvancementEditor {
             if (ModConfig.get().storeAdvancementEditsAsDatapack) {
                 ensurePackMetaExists(configuredEditsRoot(server).toFile());
             }
+            MultiParentHelper.prepareForDisk(json);
             try (FileWriter writer = new FileWriter(advFile, StandardCharsets.UTF_8)) {
                 writer.write(GSON.toJson(json));
             }

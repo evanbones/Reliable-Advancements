@@ -2,6 +2,7 @@ package com.evandev.reliable_advancements.mixin;
 
 import com.evandev.reliable_advancements.advancements.DisplayCompat;
 import com.evandev.reliable_advancements.advancements.AdvancementVisibilityRule;
+import com.evandev.reliable_advancements.advancements.IMultiParentNode;
 import com.evandev.reliable_advancements.config.ModConfig;
 import it.unimi.dsi.fastutil.Stack;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -28,10 +29,9 @@ public abstract class AdvancementVisibilityEvaluatorMixin {
             AdvancementVisibilityEvaluator.Output output,
             CallbackInfo ci
     ) {
-        AdvancementNode root = advancement.root();
-
         Set<AdvancementNode> reachableNodes = new LinkedHashSet<>();
-        reliable_advancements$collectReachable(root, reachableNodes);
+        reliable_advancements$collectConnected(advancement.root(), reachableNodes);
+        List<AdvancementNode> roots = reachableNodes.stream().filter(node -> node.parent() == null).toList();
 
         Map<AdvancementNode, Boolean> hasDoneDescendant = new HashMap<>();
         for (AdvancementNode node : reachableNodes) {
@@ -41,45 +41,62 @@ public abstract class AdvancementVisibilityEvaluatorMixin {
         Set<AdvancementNode> pathVisibleNodes = new HashSet<>();
         int maxDepth = ModConfig.get().visibilityDepth;
 
-        if (maxDepth < 0) {
-            reliable_advancements$evaluateUnlimitedVisibility(
-                    root,
-                    hasDoneDescendant,
-                    pathVisibleNodes,
-                    new HashSet<>()
-            );
-        } else if (maxDepth > 0) {
-            Stack<AdvancementVisibilityRule> stack = new ObjectArrayList<>();
-            int stackInitSize = Math.max(maxDepth, 2);
-            for (int i = 0; i <= stackInitSize; i++) {
-                stack.push(AdvancementVisibilityRule.NO_CHANGE);
-            }
+        for (AdvancementNode root : roots) {
+            if (maxDepth < 0) {
+                reliable_advancements$evaluateUnlimitedVisibility(
+                        root,
+                        hasDoneDescendant,
+                        pathVisibleNodes,
+                        new HashSet<>()
+                );
+            } else if (maxDepth > 0) {
+                Stack<AdvancementVisibilityRule> stack = new ObjectArrayList<>();
+                int stackInitSize = Math.max(maxDepth, 2);
+                for (int i = 0; i <= stackInitSize; i++) {
+                    stack.push(AdvancementVisibilityRule.NO_CHANGE);
+                }
 
-            reliable_advancements$evaluatePathVisibility(
-                    root,
-                    stack,
-                    maxDepth,
-                    hasDoneDescendant,
-                    pathVisibleNodes,
-                    new HashSet<>()
-            );
+                reliable_advancements$evaluatePathVisibility(
+                        root,
+                        stack,
+                        maxDepth,
+                        hasDoneDescendant,
+                        pathVisibleNodes,
+                        new HashSet<>()
+                );
+            }
+        }
+
+        Set<AdvancementNode> visibleNodes = new HashSet<>();
+        for (AdvancementNode node : reachableNodes) {
+            if (Boolean.TRUE.equals(hasDoneDescendant.get(node)) || pathVisibleNodes.contains(node)) {
+                visibleNodes.add(node);
+            }
+        }
+        for (AdvancementNode node : List.copyOf(visibleNodes)) {
+            AdvancementNode parent = node.parent();
+            while (parent != null && visibleNodes.add(parent)) {
+                parent = parent.parent();
+            }
         }
 
         for (AdvancementNode node : reachableNodes) {
-            boolean isVisible = Boolean.TRUE.equals(hasDoneDescendant.get(node)) || pathVisibleNodes.contains(node);
-            output.accept(node, isVisible);
+            output.accept(node, visibleNodes.contains(node));
         }
 
         ci.cancel();
     }
 
     @Unique
-    private static void reliable_advancements$collectReachable(AdvancementNode node, Set<AdvancementNode> reachable) {
-        if (node == null || !reachable.add(node)) {
+    private static void reliable_advancements$collectConnected(AdvancementNode node, Set<AdvancementNode> connected) {
+        if (node == null || !connected.add(node)) {
             return;
         }
         for (AdvancementNode child : node.children()) {
-            reliable_advancements$collectReachable(child, reachable);
+            reliable_advancements$collectConnected(child, connected);
+        }
+        for (AdvancementNode parent : IMultiParentNode.getParents(node)) {
+            reliable_advancements$collectConnected(parent, connected);
         }
     }
 

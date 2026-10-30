@@ -1,5 +1,6 @@
 package com.evandev.reliable_advancements.advancements;
 
+import com.evandev.reliable_advancements.reference.Constants;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -11,6 +12,12 @@ import java.util.List;
 import java.util.Set;
 
 public class MultiParentHelper {
+    public static final String TAB_MEMBER_KEY = Constants.MOD_ID + ":tab_member";
+    //? if <26.1 {
+    private static final String PLACEHOLDER_BACKGROUND = "minecraft:textures/gui/advancements/backgrounds/stone.png";
+    //?} else {
+    /*private static final String PLACEHOLDER_BACKGROUND = "minecraft:gui/advancements/backgrounds/stone";
+    *///?}
 
     public static List<ResourceLocation> parseParents(JsonObject json) {
         if (json == null) {
@@ -124,7 +131,28 @@ public class MultiParentHelper {
         } else {
             copy.remove("parent");
         }
+        stripPlaceholderBackground(copy);
 
         return copy;
+    }
+
+    public static void stripPlaceholderBackground(JsonObject json) {
+        JsonElement marker = json.remove(TAB_MEMBER_KEY);
+        if (marker != null && marker.isJsonPrimitive() && marker.getAsBoolean()
+                && json.has("display") && json.get("display").isJsonObject()) {
+            json.getAsJsonObject("display").remove("background");
+        }
+    }
+
+    public static boolean prepareForDisk(JsonObject json) {
+        JsonObject display = json.has("display") && json.get("display").isJsonObject() ? json.getAsJsonObject("display") : null;
+        if (display == null || !parseParents(json).isEmpty()) {
+            return json.remove(TAB_MEMBER_KEY) != null;
+        }
+        if (display.has("background")) return false;
+
+        display.addProperty("background", PLACEHOLDER_BACKGROUND);
+        json.addProperty(TAB_MEMBER_KEY, true);
+        return true;
     }
 }

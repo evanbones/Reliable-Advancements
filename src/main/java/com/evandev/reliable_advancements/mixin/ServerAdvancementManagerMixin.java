@@ -55,6 +55,7 @@ public abstract class ServerAdvancementManagerMixin {
     private void reliable_advancements$prepareJson(Map<ResourceLocation, JsonElement> map, ResourceManager resourceManager, ProfilerFiller profiler, CallbackInfo ci) {
         for (Map.Entry<ResourceLocation, JsonElement> entry : map.entrySet()) {
             if (entry.getValue() instanceof JsonObject jsonObj) {
+                MultiParentHelper.stripPlaceholderBackground(jsonObj);
                 if (jsonObj.has("parent") && jsonObj.get("parent").isJsonArray()) {
                     JsonArray arr = jsonObj.getAsJsonArray("parent");
                     if (!jsonObj.has("parents")) {

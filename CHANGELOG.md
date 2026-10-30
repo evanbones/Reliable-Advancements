@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.3.3] - 2026-10-30
+
+### Fixed
+
+- An advancement revealed through a second parent no longer shows up as its own tab when its first parent is still
+  hidden, including when the two parents are in different trees.
+- Saved edits no longer break once Reliable Advancements is removed on 26.3.
+    - Advancements detached into an existing tab are now saved with a stand-in background.
+- With reward claiming on, completed advancements that have no reward no longer stay hidden.
+
 ## [6.3.2] - 2026-10-29
 
 ### Fixed
@@ -18,7 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Tab backgrounds now zoom with the advancement tree.
-- Tiled backgrounds are drawn in one batch per texture instead of one draw call per tile, which makes large tabs much more performant.
+- Tiled backgrounds are drawn in one batch per texture instead of one draw call per tile, which makes large tabs much
+  more performant.
 
 ## [6.3.0] - 2026-10-02
 

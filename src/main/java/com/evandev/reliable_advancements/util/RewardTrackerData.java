@@ -2,6 +2,8 @@ package com.evandev.reliable_advancements.util;
 
 import com.evandev.reliable_advancements.network.SyncClaimedRewardsPayload;
 import com.evandev.reliable_advancements.platform.Services;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.AdvancementRewards;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -78,8 +80,20 @@ public class RewardTrackerData extends SavedData {
         }
     }
 
+    public static boolean hasRewards(AdvancementRewards rewards) {
+        return !AdvancementRewards.EMPTY.equals(rewards);
+    }
+
     public void syncToPlayer(ServerPlayer player) {
-        Set<ResourceLocation> claims = claimedRewards.getOrDefault(player.getUUID(), Collections.emptySet());
+        Set<ResourceLocation> claims = new HashSet<>(claimedRewards.getOrDefault(player.getUUID(), Collections.emptySet()));
+        MinecraftServer server = player.level().getServer();
+        if (server != null) {
+            for (AdvancementHolder holder : server.getAdvancements().getAllAdvancements()) {
+                if (!hasRewards(holder.value().rewards()) && player.getAdvancements().getOrStartProgress(holder).isDone()) {
+                    claims.add(holder.id());
+                }
+            }
+        }
         Services.PLATFORM.sendClaimedRewardsSync(player, new SyncClaimedRewardsPayload(new ArrayList<>(claims)));
     }
 

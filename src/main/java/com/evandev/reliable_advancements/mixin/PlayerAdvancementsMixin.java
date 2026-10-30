@@ -130,6 +130,8 @@ public abstract class PlayerAdvancementsMixin {
     private void interceptRewardGrant(AdvancementRewards rewards, ServerPlayer player, Operation<Void> original) {
         if (!ModConfig.get().requireRewardClaiming) {
             original.call(rewards, player);
+        } else if (!RewardTrackerData.hasRewards(rewards) && player.level().getServer() != null) {
+            RewardTrackerData.get(player.level().getServer()).syncToPlayer(player);
         }
     }
 
