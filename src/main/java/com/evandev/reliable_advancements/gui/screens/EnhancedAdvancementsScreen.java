@@ -86,6 +86,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     private String linkingError = null;
     private long linkingErrorTime = 0;
     private @Nullable ResourceLocation announcedTab = null;
+    private final Deque<ResourceLocation> unconfirmedAnnouncements = new ArrayDeque<>();
     private @Nullable ResourceLocation pendingFocus = null;
 
     public EnhancedAdvancementsScreen(ClientAdvancements clientAdvancements) {
@@ -325,6 +326,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         boolean changed = !id.equals(this.announcedTab);
         this.announcedTab = id;
         this.clientAdvancements.setSelectedTab(primaryRoot.holder(), changed);
+        if (changed) {
+            this.unconfirmedAnnouncements.addLast(id);
+            while (this.unconfirmedAnnouncements.size() > 16) this.unconfirmedAnnouncements.removeFirst();
+        }
     }
 
     private Comparator<ResolvedTab> tabOrder() {
@@ -1498,6 +1503,10 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     }
 
     public void selectTab(EnhancedAdvancementTab tab) {
+        selectTab(tab, true);
+    }
+
+    private void selectTab(EnhancedAdvancementTab tab, boolean announce) {
         if (tab == null || tab == this.selectedTab) return;
         if (this.selectedTab != null) {
             this.selectedTab.storeScroll();
@@ -1505,7 +1514,7 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         this.selectedTab = tab;
         savedSelectedTab = tab.getId();
         tab.loadScroll();
-        announceTab(tab);
+        if (announce) announceTab(tab);
         updateTabPage(getTabBounds().maxTabs);
     }
 
@@ -1567,9 +1576,18 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
     public void onSelectedTabChanged(@Nullable AdvancementHolder advancement) {
         if (advancement == null) return;
 
+        if (this.unconfirmedAnnouncements.contains(advancement.id())) {
+            ResourceLocation confirmed;
+            do {
+                confirmed = this.unconfirmedAnnouncements.removeFirst();
+            } while (!confirmed.equals(advancement.id()));
+            return;
+        }
+
         EnhancedAdvancementTab tab = findTabContaining(advancement.id());
         if (tab != null) {
-            selectTab(tab);
+            this.announcedTab = advancement.id();
+            selectTab(tab, false);
         }
     }
 
