@@ -895,7 +895,8 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
         if (isLoading()) return true;
         if (this.contextMenu != null) this.contextMenu = null;
         if (this.selectedTab != null) {
-            if (GuiCompat.hasControlDown()) {
+            boolean zoomScroll = ModConfig.get().scrollToZoom != GuiCompat.hasControlDown();
+            if (zoomScroll && !GuiCompat.hasShiftDown()) {
                 TabBounds bounds = getTabBounds();
                 int left = bounds.left;
                 int top = bounds.top;

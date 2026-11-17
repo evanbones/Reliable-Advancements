@@ -29,7 +29,7 @@ screen, provides quality-of-life improvements, extensive customization, and in-g
 * Additional control options in the Advancement Window!
     * Middle mouse drag to freely pan.
     * Shift-scroll to scroll left and right.
-    * Control-scroll to zoom out and in.
+    * Scroll to zoom out and in (or Control-scroll, configurable).
 * Open the advancements tab directly from the inventory screen! Includes options to customize the
   button style, texture, and position.
 * View detailed criteria for each advancement directly in the UI.

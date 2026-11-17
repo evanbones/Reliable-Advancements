@@ -26,6 +26,7 @@ public class ModConfig {
     public boolean orderTabsAlphabetically = false;
     public List<String> tabSortOrder = new ArrayList<>();
     public boolean unclampedScrolling = false;
+    public boolean scrollToZoom = true;
     public int uiScaling = 100;
     public boolean onlyUseAboveAdvancementTabs = false;
     public int visibilityDepth = 2;

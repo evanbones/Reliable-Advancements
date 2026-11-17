@@ -25,6 +25,8 @@
   "config.reliable_advancements.tabSortOrder.tooltip": "Root advancement IDs (e.g. minecraft:story/root) listed in the order their tabs should appear. Any tab not listed here comes afterwards.",
   "config.reliable_advancements.unclampedScrolling": "Unclamped Scrolling",
   "config.reliable_advancements.unclampedScrolling.tooltip": "Lets you pan the advancement tab freely instead of stopping at the edges of the tree.",
+  "config.reliable_advancements.scrollToZoom": "Scroll to Zoom",
+  "config.reliable_advancements.scrollToZoom.tooltip": "Scrolling zooms the advancement tab in and out, and Ctrl-scroll pans instead. Turn off to scroll to pan and Ctrl-scroll to zoom.",
   "config.reliable_advancements.uiScaling": "UI Scaling (%)",
   "config.reliable_advancements.uiScaling.tooltip": "Scales the entire Better Advancements UI. Values below 50% might give odd results.",
   "config.reliable_advancements.onlyUseAboveAdvancementTabs": "Only Use Top Tabs",

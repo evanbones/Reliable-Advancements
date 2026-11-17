@@ -63,6 +63,7 @@ public final class YaclConfigScreen {
                         .collapsed(true)
                         .build())
                 .option(bool("unclampedScrolling", defaults.unclampedScrolling, () -> config.unclampedScrolling, v -> config.unclampedScrolling = v))
+                .option(bool("scrollToZoom", defaults.scrollToZoom, () -> config.scrollToZoom, v -> config.scrollToZoom = v))
                 .option(slider("uiScaling", 1, 100, defaults.uiScaling, () -> config.uiScaling, v -> config.uiScaling = v))
                 .option(bool("onlyUseAboveAdvancementTabs", defaults.onlyUseAboveAdvancementTabs, () -> config.onlyUseAboveAdvancementTabs, v -> config.onlyUseAboveAdvancementTabs = v))
                 .option(Option.<InventoryButtonStyle>createBuilder()
