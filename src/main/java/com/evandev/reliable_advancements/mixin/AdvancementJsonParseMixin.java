@@ -35,9 +35,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 *///?}
 
-/**
- * Reads multi-parent advancement JSON while it is decoded.
- */
 //? if <26.3 {
 @Mixin(SimpleJsonResourceReloadListener.class)
 //?} else {

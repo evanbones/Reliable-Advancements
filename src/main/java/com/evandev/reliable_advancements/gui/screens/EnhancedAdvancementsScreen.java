@@ -8,6 +8,7 @@ import com.evandev.reliable_advancements.client.ClientRewardTracker;
 import com.evandev.reliable_advancements.client.ClientTabStore;
 import com.evandev.reliable_advancements.config.ModConfig;
 import com.evandev.reliable_advancements.gui.AdvancementContextMenu;
+import com.evandev.reliable_advancements.gui.AlexsCavesCompat;
 import com.evandev.reliable_advancements.gui.EnhancedAdvancementTab;
 import com.evandev.reliable_advancements.gui.EnhancedAdvancementTabType;
 import com.evandev.reliable_advancements.gui.EnhancedAdvancementWidget;
@@ -1117,6 +1118,14 @@ public class EnhancedAdvancementsScreen extends Screen implements ClientAdvancem
             }
         }
         return true;
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (this.selectedTab != null && AlexsCavesCompat.appliesTo(this.selectedTab.getPrimaryRoot())) {
+            AlexsCavesCompat.tick();
+        }
     }
 
     @Override

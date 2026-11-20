@@ -61,6 +61,8 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
     private CriterionGrid criterionGrid;
     private float hoverAnim = 0.0f;
     private ConnectionRouter.Side incomingSide = ConnectionRouter.Side.NONE;
+    int driftOffset = 0;
+    float driftSpeed = 0.1F;
 
     public EnhancedAdvancementWidget(EnhancedAdvancementTab advancementTabGui, Minecraft mc, AdvancementNode advancementNode, DisplayInfo displayInfo) {
         this.advancementTabGui = advancementTabGui;
@@ -99,9 +101,10 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         } else {
             maxWidth = titleWidth;
         }
+        Component override = ModdedTabEffects.descriptionOverride(this);
         this.description = Language.getInstance().getVisualOrder(
                 this.findOptimalLines(ComponentUtils.mergeStyles(
-                        DisplayCompat.description(displayInfo).copy(),
+                        override != null ? override.copy() : DisplayCompat.description(displayInfo).copy(),
                         Style.EMPTY.withColor(DisplayCompat.type(displayInfo).getChatColor())
                 ), maxWidth));
 
@@ -225,9 +228,6 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         }
     }
 
-    /**
-     * Draws connection line between this advancement and the advancement supplied in parent.
-     */
     public void drawConnection(GuiGraphics guiGraphics, EnhancedAdvancementWidget parent, int scrollX, int scrollY, boolean drawInside) {
         boolean parentCompleted = parent.advancementProgress != null && parent.advancementProgress.isDone();
         boolean parentClaimed = !ModConfig.get().requireRewardClaiming || ClientRewardTracker.isClaimed(parent.getAdvancement().holder().id());
@@ -252,9 +252,9 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             innerLineColor = thisCompleted ? enhancedDisplayInfo.getCompletedLineColor() : enhancedDisplayInfo.getUnCompletedLineColor();
         }
 
-        int startX = scrollX + parent.x + ADVANCEMENT_SIZE / 2 + 3;
+        int startX = scrollX + parent.drawX() + ADVANCEMENT_SIZE / 2 + 3;
         int startY = scrollY + parent.y + ADVANCEMENT_SIZE / 2;
-        int endX = scrollX + this.x + ADVANCEMENT_SIZE / 2 + 3;
+        int endX = scrollX + this.drawX() + ADVANCEMENT_SIZE / 2 + 3;
         int endY = scrollY + this.y + ADVANCEMENT_SIZE / 2;
 
         boolean goalFrame = DisplayCompat.type(this.displayInfo) == AdvancementType.GOAL;
@@ -340,7 +340,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             GuiCompat.push(guiGraphics);
 
             float scale = 1.0f + (hoverAnim * 0.1f);
-            float centerX = scrollX + this.x + 3 + ICON_SIZE / 2.0f;
+            float centerX = scrollX + this.drawX() + 3 + ICON_SIZE / 2.0f;
             float centerY = scrollY + this.y + ICON_SIZE / 2.0f;
             GuiCompat.translate(guiGraphics, centerX, centerY, 0);
             GuiCompat.scale(guiGraphics, scale, scale);
@@ -354,7 +354,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                 RenderSystem.setShaderColor(0.5F, 0.5F, 0.5F, 1.0F);
             }
 
-            guiGraphics.blitSprite(advancementState.frameSprite(DisplayCompat.type(this.displayInfo)), scrollX + this.x + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE);
+            guiGraphics.blitSprite(advancementState.frameSprite(DisplayCompat.type(this.displayInfo)), scrollX + this.drawX() + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE);
 
             if (isDimmed) {
                 RenderSystem.setShaderColor(0.25F, 0.25F, 0.25F, 1.0F);
@@ -362,14 +362,14 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
                 RenderUtil.setColor(enhancedDisplayInfo.defaultIconColor());
             }
 
-            guiGraphics.renderFakeItem(DisplayCompat.icon(this.displayInfo), scrollX + this.x + 8, scrollY + this.y + 5);
+            guiGraphics.renderFakeItem(DisplayCompat.icon(this.displayInfo), scrollX + this.drawX() + 8, scrollY + this.y + 5);
 
             RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
             //?} else {
-            /*GuiCompat.blitSprite(guiGraphics, advancementState.frameSprite(DisplayCompat.type(this.displayInfo)), scrollX + this.x + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE, isDimmed ? 0x808080 : baseColor);
-            guiGraphics.renderFakeItem(DisplayCompat.icon(this.displayInfo), scrollX + this.x + 8, scrollY + this.y + 5);
+            /*GuiCompat.blitSprite(guiGraphics, advancementState.frameSprite(DisplayCompat.type(this.displayInfo)), scrollX + this.drawX() + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE, isDimmed ? 0x808080 : baseColor);
+            guiGraphics.renderFakeItem(DisplayCompat.icon(this.displayInfo), scrollX + this.drawX() + 8, scrollY + this.y + 5);
             if (isDimmed) {
-                guiGraphics.fill(scrollX + this.x + 8, scrollY + this.y + 5, scrollX + this.x + 24, scrollY + this.y + 21, 0xC0000000);
+                guiGraphics.fill(scrollX + this.drawX() + 8, scrollY + this.y + 5, scrollX + this.drawX() + 24, scrollY + this.y + 21, 0xC0000000);
             }
             *///?}
             GuiCompat.pop(guiGraphics);
@@ -386,7 +386,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         }
 
         this.refreshHover();
-        boolean drawLeft = originX + (scrollX + this.x + this.width + ADVANCEMENT_SIZE) * scale >= this.advancementTabGui.getScreen().width;
+        boolean drawLeft = originX + (scrollX + this.drawX() + this.width + ADVANCEMENT_SIZE) * scale >= this.advancementTabGui.getScreen().width;
         String s = this.advancementProgress == null || this.advancementProgress.getProgressText() == null ? null : this.advancementProgress.getProgressText().getString();
         int i = s == null ? 0 : this.minecraft.font.width(s);
         boolean showCriteria = this.criterionGrid != null && this.criterionGrid.height > 0 && (!ModConfig.get().requiresShift || GuiCompat.hasShiftDown());
@@ -431,9 +431,9 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
         int drawX;
 
         if (drawLeft) {
-            drawX = scrollX + this.x - this.width + ADVANCEMENT_SIZE + 6;
+            drawX = scrollX + this.drawX() - this.width + ADVANCEMENT_SIZE + 6;
         } else {
-            drawX = scrollX + this.x;
+            drawX = scrollX + this.drawX();
         }
         int boxHeight = TITLE_SIZE + this.description.size() * this.minecraft.font.lineHeight + (showCriteria ? this.criterionGrid.height : 0);
 
@@ -448,7 +448,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
 
         this.drawTitleBox(guiGraphics, drawX, drawY, this.width, j, stateTitleLeft, stateTitleRight);
 
-        GuiCompat.blitSprite(guiGraphics, stateIcon.frameSprite(DisplayCompat.type(this.displayInfo)), scrollX + this.x + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE, enhancedDisplayInfo.getIconColor(stateIcon));
+        GuiCompat.blitSprite(guiGraphics, stateIcon.frameSprite(DisplayCompat.type(this.displayInfo)), scrollX + this.drawX() + 3, scrollY + this.y, ICON_SIZE, ICON_SIZE, enhancedDisplayInfo.getIconColor(stateIcon));
         //? if <26.1 {
         RenderUtil.setColor(enhancedDisplayInfo.defaultIconColor());
         //?}
@@ -457,13 +457,13 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             GuiCompat.drawString(guiGraphics, this.minecraft.font, this.title, drawX + 5, scrollY + this.y + 9, -1);
 
             if (s != null) {
-                GuiCompat.drawString(guiGraphics, this.minecraft.font, s, scrollX + this.x - i, scrollY + this.y + 9, -1);
+                GuiCompat.drawString(guiGraphics, this.minecraft.font, s, scrollX + this.drawX() - i, scrollY + this.y + 9, -1);
             }
         } else {
-            GuiCompat.drawString(guiGraphics, this.minecraft.font, this.title, scrollX + this.x + 32, scrollY + this.y + 9, -1);
+            GuiCompat.drawString(guiGraphics, this.minecraft.font, this.title, scrollX + this.drawX() + 32, scrollY + this.y + 9, -1);
 
             if (s != null) {
-                GuiCompat.drawString(guiGraphics, this.minecraft.font, s, scrollX + this.x + this.width - i - 5, scrollY + this.y + 9, -1);
+                GuiCompat.drawString(guiGraphics, this.minecraft.font, s, scrollX + this.drawX() + this.width - i - 5, scrollY + this.y + 9, -1);
             }
         }
 
@@ -488,7 +488,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
             }
         }
 
-        guiGraphics.renderFakeItem(DisplayCompat.icon(this.displayInfo), scrollX + this.x + 8, scrollY + this.y + 5);
+        guiGraphics.renderFakeItem(DisplayCompat.icon(this.displayInfo), scrollX + this.drawX() + 8, scrollY + this.y + 5);
     }
 
     private void drawTitleBox(GuiGraphics guiGraphics, int x, int y, int width, int j,
@@ -529,7 +529,7 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
 
     public boolean isMouseOver(double scrollX, double scrollY, double mouseX, double mouseY) {
         if (this.shouldRender()) {
-            double left = scrollX + this.x + 3;
+            double left = scrollX + this.drawX() + 3;
             double right = left + ADVANCEMENT_SIZE;
             double top = scrollY + this.y;
             double bottom = top + ADVANCEMENT_SIZE;
@@ -576,6 +576,10 @@ public class EnhancedAdvancementWidget implements IAdvancementEntryGui {
 
     public void setX(int x) {
         this.x = x;
+    }
+
+    int drawX() {
+        return this.x + this.driftOffset;
     }
 
     public List<EnhancedAdvancementWidget> getParents() {

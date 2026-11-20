@@ -11,9 +11,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
 public class ClientNetworkHandler {
-    /**
-     * Shows a chat message to the local player.
-     */
     public static void showMessage(Component message) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;

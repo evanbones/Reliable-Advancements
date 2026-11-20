@@ -1,4 +1,8 @@
 ### Added
 
-- Scroll to Zoom option (on by default): scrolling zooms the advancement tab and Ctrl-scroll pans.
-    - Turn it off to go back to Ctrl-scroll zooming.
+- Compatibility with Alex's Caves ports.
+- Compatibility with Creature Feature and Nethermore.
+
+### Fixed
+
+- Fixed Creature Feature's "Found" advancement being impossible to get with Reliable Advancements installed.

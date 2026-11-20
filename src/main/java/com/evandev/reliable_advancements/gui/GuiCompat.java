@@ -73,9 +73,6 @@ public final class GuiCompat {
         return drawString(g, font, text, x, y, color, true);
     }
 
-    /**
-     * Draws text and returns the x coordinate just past it.
-     */
     public static int drawString(GuiGraphics g, Font font, @Nullable String text, int x, int y, int color, boolean shadow) {
         if (text == null) return 0;
         //? if <26.1 {
@@ -118,16 +115,10 @@ public final class GuiCompat {
     }
     *///?}
 
-    /**
-     * Draws a region of a 256x256 texture.
-     */
     public static void blit(GuiGraphics g, ResourceLocation texture, int x, int y, float u, float v, int width, int height) {
         blit(g, texture, x, y, u, v, width, height, 256, 256);
     }
 
-    /**
-     * Draws a full texture stretched onto many same-sized tiles.
-     */
     public static void blitTiles(GuiGraphics g, ResourceLocation texture, List<int[]> tiles, int width, int height) {
         if (tiles.isEmpty()) return;
         //? if <26.1 {
@@ -161,9 +152,6 @@ public final class GuiCompat {
         *///?}
     }
 
-    /**
-     * Draws a region of a texture multiplied by an opaque RGB color.
-     */
     public static void blit(GuiGraphics g, ResourceLocation texture, int x, int y, float u, float v, int width, int height, int textureWidth, int textureHeight, int color) {
         //? if <26.1 {
         setShaderColor(color);
@@ -182,9 +170,6 @@ public final class GuiCompat {
         *///?}
     }
 
-    /**
-     * Draws a sprite multiplied by an opaque RGB color.
-     */
     public static void blitSprite(GuiGraphics g, ResourceLocation sprite, int x, int y, int width, int height, int color) {
         //? if <26.1 {
         setShaderColor(color);
@@ -195,9 +180,6 @@ public final class GuiCompat {
         *///?}
     }
 
-    /**
-     * Draws a sub-region of a sprite multiplied by an opaque RGB color.
-     */
     public static void blitSprite(GuiGraphics g, ResourceLocation sprite, int spriteWidth, int spriteHeight, int u, int v, int x, int y, int width, int height, int color) {
         //? if <26.1 {
         setShaderColor(color);

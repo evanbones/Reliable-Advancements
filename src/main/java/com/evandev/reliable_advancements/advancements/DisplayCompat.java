@@ -70,9 +70,6 @@ public final class DisplayCompat {
         *///?}
     }
 
-    /**
-     * The background texture path (e.g. {@code minecraft:textures/gui/advancements/backgrounds/stone.png}).
-     */
     public static Optional<ResourceLocation> background(DisplayInfo display) {
         //? if <26.1 {
         return display.getBackground();

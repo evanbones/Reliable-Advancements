@@ -12,9 +12,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * An arrangement of criteria into rows and columns.
- */
 public class CriterionGrid {
     private static final CriterionGrid empty = new CriterionGrid();
     public final int numRows;
@@ -45,10 +42,6 @@ public class CriterionGrid {
         this.numRows = (int) Math.ceil((double) cellContents.size() / numColumns);
     }
 
-    /**
-     * Of all the possible grids whose aspect ratio is less than the maximum, this method returns the one with the smallest number of rows.
-     * If there is no such grid, this method returns a single-column grid.
-     */
     public static CriterionGrid findOptimalCriterionGrid(AdvancementHolder holder, Advancement advancement, AdvancementProgress progress, int maxWidth, Font font) {
         if (progress == null || progress.isDone() || CriteriaDetail.fromName(ModConfig.get().criteriaDetail) == CriteriaDetail.OFF) {
             return CriterionGrid.empty;

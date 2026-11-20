@@ -28,6 +28,7 @@ public class EnhancedAdvancementTab {
 
     public final List<BackgroundRule> backgroundRules = new ArrayList<>();
     private final Random tileRandom = new Random();
+    private final ModdedTabEffects moddedEffects = new ModdedTabEffects();
     protected final LinkedHashMap<ResourceLocation, EnhancedAdvancementWidget> widgets = Maps.newLinkedHashMap();
 
     private final Minecraft minecraft;
@@ -139,8 +140,12 @@ public class EnhancedAdvancementTab {
             GuiCompat.scale(guiGraphics, zoom, zoom);
         } else {
             GuiCompat.scale(guiGraphics, zoom, zoom);
-            drawTiles(guiGraphics, defaultRes, scaledWidth, scaledHeight, texW, texH,
-                    Math.floorMod(this.scrollX, texW), Math.floorMod(this.scrollY, texH), !this.backgroundRules.isEmpty());
+            boolean alexsCaves = AlexsCavesCompat.appliesTo(getPrimaryRoot())
+                    && AlexsCavesCompat.drawBackground(guiGraphics, getPrimaryRoot(), this.scrollX, this.scrollY, scaledWidth, scaledHeight);
+            if (!alexsCaves && !this.moddedEffects.drawBackground(guiGraphics, defaultRes, this.scrollX, this.scrollY, scaledWidth, scaledHeight, this.fade)) {
+                drawTiles(guiGraphics, defaultRes, scaledWidth, scaledHeight, texW, texH,
+                        Math.floorMod(this.scrollX, texW), Math.floorMod(this.scrollY, texH), !this.backgroundRules.isEmpty());
+            }
             drawBlur(guiGraphics, scaledWidth + texW, scaledHeight + texH);
         }
 
@@ -151,8 +156,12 @@ public class EnhancedAdvancementTab {
             widget.drawConnectivity(guiGraphics, this.scrollX, this.scrollY, false);
         }
         for (EnhancedAdvancementWidget widget : this.widgets.values()) {
+            ModdedTabEffects.tickWidget(widget);
             if (widget == this.tooltipWidget && widget.isMouseOver(this.scrollX, this.scrollY, unzoomedX, unzoomedY)) continue;
             widget.draw(guiGraphics, this.scrollX, this.scrollY, unzoomedX, unzoomedY);
+        }
+        if (!isStatic) {
+            this.moddedEffects.drawOverlay(guiGraphics, defaultRes, scaledWidth, scaledHeight, this.fade);
         }
 
         for (EnhancedAdvancementWidget advancementWidget : this.widgets.values()) {
@@ -241,13 +250,17 @@ public class EnhancedAdvancementTab {
         if (mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
             for (EnhancedAdvancementWidget advancementWidget : this.widgets.sequencedValues().reversed()) {
                 if (advancementWidget.isMouseOver(this.scrollX, this.scrollY, scaledMouseX, scaledMouseY)) {
+                    ModdedTabEffects.onHovered(advancementWidget);
+                    if (AlexsCavesCompat.appliesTo(getPrimaryRoot())) {
+                        AlexsCavesCompat.onHovered(this, advancementWidget);
+                    }
                     flag = true;
                     double guiScale = this.minecraft.getWindow().getGuiScale();
                     float hoverScale = (float) (Math.max(1, Math.round(guiScale * zoom)) / guiScale);
                     if (!EnhancedAdvancementsScreen.canEdit() || ModConfig.get().showTooltipsInEditMode) {
                         this.tooltipWidget = advancementWidget;
                     }
-                    float anchorX = this.scrollX + advancementWidget.getX() + 3 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2.0F;
+                    float anchorX = this.scrollX + advancementWidget.drawX() + 3 + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2.0F;
                     float anchorY = this.scrollY + advancementWidget.getY() + EnhancedAdvancementWidget.ADVANCEMENT_SIZE / 2.0F;
                     float offsetX = (float) (Math.round((anchorX * zoom - anchorX * hoverScale) * guiScale) / guiScale);
                     float offsetY = (float) (Math.round((anchorY * zoom - anchorY * hoverScale) * guiScale) / guiScale);

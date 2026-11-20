@@ -1,8 +1,5 @@
 package com.evandev.reliable_advancements.util;
 
-/**
- * Adapted from Advancements Arranged by Seraphaestus, used under the MIT license.
- */
 public final class ConnectionRouter {
     public static final int WIDGET_SIZE = 26;
     private static final int MAX_BEND_DISTANCE = 64;
